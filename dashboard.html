@@ -460,6 +460,7 @@ firebase.initializeApp(FB);
 db=firebase.firestore();}catch(e){console.warn("Firebase init failed",e);}
 
 let RKA_ALL=[],BELI_ALL=[],TAB='rka',DF='',NM=0,MF='',RF_FROM='',RF_TO='',SC='timestamp',SD=-1;
+let _expandedRkaVid=null,_expandedBeliVid=null;
 let cAV=null,cTrend=null,cBrand=null,mcAV=null,mcBrand=null;
 
 // ── PIN ─────────────────────────────────────────────────────────────────────
@@ -956,6 +957,7 @@ function renderRKA(rkaF){
     </tr>`;
   }).join(''):`<tr><td colspan="11"><div class="empty-state">Tidak ada data kunjungan.</div></td></tr>`;
   document.getElementById('tfoot').textContent=`${rows.length} kunjungan`;
+  if(_expandedRkaVid){const tr=document.querySelector(`tr[data-vid="${_expandedRkaVid}"]`);if(tr)toggleRkaDetail(tr,_expandedRkaVid);}
 }
 
 // ── TAB: AV per Toko ───────────────────────────────────────────────────────
@@ -1040,6 +1042,7 @@ function renderBeli(beliF){
     </tr>`;
   }).join(''):`<tr><td colspan="11"><div class="empty-state">Tidak ada data pembelian.</div></td></tr>`;
   document.getElementById('tfoot').textContent=`${rows.length} transaksi`;
+  if(_expandedBeliVid){const tr=document.querySelector(`tr[data-bid="${_expandedBeliVid}"]`);if(tr)toggleBeliDetail(tr,_expandedBeliVid);}
 }
 
 // ── TAB: Analisis Beli MDS ──────────────────────────────────────────────────
@@ -1380,8 +1383,10 @@ function toggleRkaDetail(tr, vid){
     next.style.display=next.style.display==='none'?'':'none';
     const sp=tr.querySelector('span[style*="▾"]')||tr.querySelector('span[style*="▴"]');
     if(sp)sp.textContent=next.style.display===''?'▴':'▾';
+    _expandedRkaVid=next.style.display===''?vid:null;
     return;
   }
+  _expandedRkaVid=vid;
   const r=RKA_ALL.find(x=>x.id===vid)||{};
   const items=r.items||{};
   const photos=Object.assign({},r.photoUrls||{},r.photoData||{});
@@ -1424,8 +1429,10 @@ function toggleBeliDetail(tr, bid){
     next.style.display=next.style.display==='none'?'':'none';
     const sp=tr.querySelector('span[style*="▾"]')||tr.querySelector('span[style*="▴"]');
     if(sp)sp.textContent=next.style.display===''?'▴':'▾';
+    _expandedBeliVid=next.style.display===''?bid:null;
     return;
   }
+  _expandedBeliVid=bid;
   const r=BELI_ALL.find(x=>x.id===bid)||{};
   const photo=r.photoData||r.photoUrl||'';
   const iq=r.itemQty||{};
