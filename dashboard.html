@@ -325,7 +325,7 @@ tr:hover td{background:rgba(255,255,255,.016);}
           <div class="kpi-border" style="--gc:rgba(236,72,153,.9)"></div>
           <div class="kpi-inner">
             <div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--pink),transparent 70%)"></div>
-            <div class="kpi-label">Kalkulasi Nominal</div>
+            <div class="kpi-label">Value Nominal</div>
             <div class="kpi-val sm" style="color:var(--pink)" id="ds-kalc">—</div>
             <div class="kpi-sub">NS×11.250 + HILO×16.000 + HILO SCHOOL PLS×31.500</div>
           </div>
@@ -411,7 +411,7 @@ tr:hover td{background:rgba(255,255,255,.016);}
       <div class="m-kpi"><div class="m-kpi-lbl">Total Visit</div><div class="m-kpi-val" id="m-visits">—</div><div class="m-kpi-sub">kunjungan</div></div>
       <div class="m-kpi"><div class="m-kpi-lbl">Avg AV%</div><div class="m-kpi-val" id="m-av">—</div><div class="m-kpi-sub">ketersediaan</div></div>
       <div class="m-kpi"><div class="m-kpi-lbl">NS Renceng</div><div class="m-kpi-val" id="m-ns">—</div><div class="m-kpi-sub" id="m-hilo-sub">HILO: —</div></div>
-      <div class="m-kpi"><div class="m-kpi-lbl">Kalkulasi</div><div class="m-kpi-val" style="font-size:13px;padding-top:4px" id="m-kalc">—</div><div class="m-kpi-sub" id="m-nota-sub">Nota: —</div></div>
+      <div class="m-kpi"><div class="m-kpi-lbl">Value</div><div class="m-kpi-val" style="font-size:13px;padding-top:4px" id="m-kalc">—</div><div class="m-kpi-sub" id="m-nota-sub">Nota: —</div></div>
     </div>
     <div class="modal-charts">
       <div class="mc-card"><div class="mc-lbl">AV% Trend (Harian)</div><div class="mc-wrap"><canvas id="mc-av"></canvas></div></div>
@@ -424,7 +424,7 @@ tr:hover td{background:rgba(255,255,255,.016);}
         <table class="mt"><thead><tr><th>Waktu</th><th>Toko</th><th>Area</th><th>Ada</th><th>Tdk</th><th>AV%</th><th>NS</th><th>HILO</th><th>TS</th></tr></thead><tbody id="modal-rka-body"></tbody></table>
       </div>
       <div class="msec"><div class="msec-title">Riwayat Pembelian (20 terbaru)</div>
-        <table class="mt"><thead><tr><th>Waktu</th><th>Toko</th><th>NS</th><th>HILO</th><th>Total</th><th>Kalkulasi</th><th>Nota</th><th>Selisih</th></tr></thead><tbody id="modal-beli-body"></tbody></table>
+        <table class="mt"><thead><tr><th>Waktu</th><th>Toko</th><th>NS</th><th>HILO</th><th>Total</th><th>Value</th><th>Nota</th><th>Selisih</th></tr></thead><tbody id="modal-beli-body"></tbody></table>
       </div>
     </div>
   </div></div>
@@ -1012,7 +1012,7 @@ function renderBeli(beliF){
     <th onclick="sortBy('store')">Toko${ar('store')}</th>
     <th>NS Rnc</th><th>HILO Rnc</th>
     <th onclick="sortBy('totalRenceng')">Total Rnc${ar('totalRenceng')}</th>
-    <th>Kalkulasi</th>
+    <th>Value</th>
     <th onclick="sortBy('nominal')">Nota${ar('nominal')}</th>
     <th>Selisih</th>
   </tr>`;
@@ -1056,7 +1056,8 @@ function renderAnalisis(rkaF,beliF){
     const a=r.area||'—',m=r.mds||'—';
     if(!submittedByArea[a])submittedByArea[a]=new Set();
     submittedByArea[a].add(m.toLowerCase());
-    if(!areaVars[a])areaVars[a]={jp:0,aso:0,nsOther:0,hilo:0};
+    if(!areaVars[a])areaVars[a]={jp:0,aso:0,nsOther:0,hilo:0,value:0};
+    areaVars[a].value+=((r.groupTotals&&r.groupTotals.NS||0)*NS_PRICE)+((r.groupTotals&&r.groupTotals.HILO||0)*HILO_PRICE)+((r.groupTotals&&r.groupTotals.HILOPLS||0)*HILOPLS_PRICE);
     if(!r.itemQty)return;
     Object.entries(r.itemQty).forEach(([nm,qty])=>{
       const q=Number(qty)||0; if(!q)return;
@@ -1116,7 +1117,7 @@ function renderAnalisis(rkaF,beliF){
       </div>
       ${done.length?`<div style="margin-bottom:6px"><div style="font-size:8px;color:var(--accent);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Sudah isi (${done.length})</div><div style="display:flex;flex-wrap:wrap;gap:3px">${done.map(m=>`<span style="font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(16,214,106,.1);color:var(--accent)">${sn(m)}</span>`).join('')}</div></div>`:''}
       ${missing.length?`<div style="margin-bottom:6px"><div style="font-size:8px;color:var(--red);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Belum isi (${missing.length})</div><div style="display:flex;flex-wrap:wrap;gap:3px">${missing.map(m=>`<span style="font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(239,68,68,.1);color:var(--red)">${sn(m)}</span>`).join('')}</div></div>`:'<div style="font-size:9px;color:var(--accent);margin-bottom:6px">✅ Semua MDS sudah isi</div>'}
-      ${nsTotal||av.hilo?`<div style="border-top:1px solid rgba(255,255,255,.06);padding-top:8px;margin-top:2px"><div style="font-size:8px;color:var(--t3);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px">Pengambilan</div><div style="display:flex;flex-wrap:wrap;gap:3px">${varBadge('JP',av.jp,'var(--accent)')}${varBadge('ASO',av.aso,'var(--blue)')}${av.nsOther?varBadge('NS Lain',av.nsOther,'var(--cyan)'):''}${varBadge('HILO',av.hilo,'var(--gold)')}</div></div>`:''}
+      ${nsTotal||av.hilo?`<div style="border-top:1px solid rgba(255,255,255,.06);padding-top:8px;margin-top:2px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px"><div style="font-size:8px;color:var(--t3);font-weight:700;letter-spacing:.1em;text-transform:uppercase">Pengambilan</div>${av.value?`<div style="font-size:10px;font-weight:800;color:var(--pink)">${rp(av.value)}</div>`:''}</div><div style="display:flex;flex-wrap:wrap;gap:3px">${varBadge('JP',av.jp,'var(--accent)')}${varBadge('ASO',av.aso,'var(--blue)')}${av.nsOther?varBadge('NS Lain',av.nsOther,'var(--cyan)'):''}${varBadge('HILO',av.hilo,'var(--gold)')}</div></div>`:''}
     </div>`;
   });
   cardsHtml+='</div>';
@@ -1184,7 +1185,7 @@ function renderAnalisis(rkaF,beliF){
     <th onclick="sortBy('visits')">Visit${ar('visits')}</th>
     <th onclick="sortBy('av')">AV%${ar('av')}</th>
     <th onclick="sortBy('ns')">NS Rnc${ar('ns')}</th><th onclick="sortBy('hi')">HILO Rnc${ar('hi')}</th>
-    <th onclick="sortBy('k')">Kalkulasi${ar('k')}</th><th onclick="sortBy('nom')">Nota${ar('nom')}</th>
+    <th onclick="sortBy('k')">Value${ar('k')}</th><th onclick="sortBy('nom')">Nota${ar('nom')}</th>
     <th>Selisih</th><th onclick="sortBy('beli')">Transaksi${ar('beli')}</th>
   </tr>`;
   document.getElementById('table-body-beli').innerHTML=entries.length?entries.map(e=>{
@@ -1482,7 +1483,7 @@ function exportCSV(){
       return[r.id,ts.toLocaleString('id-ID'),r.mds,r.area,q(r.store),r.avail,r.unavail,pct+'%',bp('NS'),bp('HILO'),bp('TS'),q(ada.join('; ')),q(tdk.join('; '))].join(',');
     }).join('\n');fn='RKA';
   }else if(TAB==='beli'){
-    csv='ID,Waktu,MDS,Area,Toko,NS Rnc,HILO Rnc,Total Rnc,Kalkulasi,Nota,Selisih,Detail Item\n';
+    csv='ID,Waktu,MDS,Area,Toko,NS Rnc,HILO Rnc,Total Rnc,Value,Nota,Selisih,Detail Item\n';
     csv+=doSort(beliF).map(r=>{
       const ts=r.timestamp,nsR=r.groupTotals&&r.groupTotals.NS||0,hiR=r.groupTotals&&r.groupTotals.HILO||0,k=nsR*NS_PRICE+hiR*HILO_PRICE;
       const detail=r.itemQty?Object.entries(r.itemQty).map(([n,v])=>`${n}:${v}`).join('; '):'';
