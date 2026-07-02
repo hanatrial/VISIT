@@ -1047,7 +1047,7 @@ function renderAnalisis(rkaF,beliF){
   // ── 1. MDS roster per area (from registered MDS_BY_AREA list) ──
   const rosterByArea={};
   Object.entries(MDS_BY_AREA).forEach(([a,list])=>{
-    if(list.length)rosterByArea[a]=new Set(list);
+    rosterByArea[a]=new Set(list);
   });
 
   // ── 2. Who submitted beli in filtered period ──
