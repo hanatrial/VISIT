@@ -484,7 +484,7 @@ function brandOf(n){
   return'O';
 }
 function isJP(n){return n&&n.toUpperCase().includes('NS JERUK PERAS PLS');}
-function isASO(n){return n&&n.toUpperCase().includes('NS AMERICAN SWEET ORANGE PLS');}
+function isASO(n){return n&&n.toUpperCase().includes('NS ASO PLS');}
 function kalc(r){return((r.groupTotals&&r.groupTotals.NS||0)*NS_PRICE)+((r.groupTotals&&r.groupTotals.HILO||0)*HILO_PRICE)+((r.groupTotals&&r.groupTotals.HILOPLS||0)*HILOPLS_PRICE);}
 function rp(n){return'Rp '+Math.round(n).toLocaleString('id-ID');}
 // Stock item category helpers
