@@ -481,6 +481,9 @@ function isJP(n){return n&&n.toUpperCase().includes('NS JERUK PERAS PLS');}
 function isASO(n){return n&&n.toUpperCase().includes('NS AMERICAN SWEET ORANGE PLS');}
 function kalc(r){return((r.groupTotals&&r.groupTotals.NS||0)*NS_PRICE)+((r.groupTotals&&r.groupTotals.HILO||0)*HILO_PRICE)+((r.groupTotals&&r.groupTotals.HILOPLS||0)*HILOPLS_PRICE);}
 function rp(n){return'Rp '+Math.round(n).toLocaleString('id-ID');}
+// Stock item category helpers
+function isPolosStock(name){if(!name)return false;const n=name.toUpperCase();if(n.startsWith('NS ')&&n.includes('PLS'))return true;if((n.startsWith('HI LO ')||n.startsWith('HILO '))&&n.includes('PLS')&&!n.includes('RTD'))return true;return false;}
+function stockItemPrice(name){if(!name)return 0;const n=name.toUpperCase();if(n.startsWith('NS ')&&n.includes('PLS'))return 11250;if((n.startsWith('HI LO ')||n.startsWith('HILO '))&&n.includes('PLS')&&!n.includes('RTD')){if(n.includes(' SCHOOL '))return 31500;return 16000;}return 0;}
 function sn(n){const p=n.split(' ');return p.length>=2?p.slice(0,2).join(' '):n;}
 function avC(p){return p>=80?'var(--accent)':p>=60?'var(--blue)':'var(--red)';}
 function avTag(p,sm=''){const cls=p>=80?'g':p>=60?'au':'r';return`<span class="tag ${cls}${sm}">${p}%</span>`;}
@@ -818,22 +821,26 @@ function renderStockItem(stockF){
   const map={};
   stockF.forEach(r=>{
     const key=(r.store||'?')+' | '+(r.stockType==='awal'?'Awal':'Akhir');
-    if(!map[key])map[key]={store:r.store,tipe:r.stockType,area:r.area,nama:r.nama,items:{},nilai:0,ts:r.timestamp};
+    if(!map[key])map[key]={store:r.store,tipe:r.stockType,area:r.area,nama:r.nama,items:{},nilaiPolos:0,nilaiNonPolos:0,ts:r.timestamp};
     if(r.items)Object.entries(r.items).forEach(([nm,v])=>{
       if(!map[key].items[nm])map[key].items[nm]={krt:0,rncg:0};
       map[key].items[nm].krt+=(v.krt||0);
       map[key].items[nm].rncg+=(v.rncg||0);
+      const price=stockItemPrice(nm);
+      const itemNilai=price*(v.rncg||0);
+      if(isPolosStock(nm))map[key].nilaiPolos+=itemNilai;
+      else map[key].nilaiNonPolos+=itemNilai;
     });
-    map[key].nilai+=(r.totalNilai||0);
   });
   _STOCK_ROWS=Object.values(map).sort((a,b)=>b.ts-a.ts);
   const th=document.getElementById('table-head-stock');
   const tb=document.getElementById('table-body-stock');
   const tf=document.getElementById('tfoot-stock');
   if(!th)return;
-  th.innerHTML='<tr><th>Toko</th><th>Area</th><th>MDS/SPG</th><th>Tipe</th><th>Item Terisi</th><th>Total Nilai</th></tr>';
+  th.innerHTML='<tr><th>Toko</th><th>Area</th><th>MDS/SPG</th><th>Tipe</th><th>Item Terisi</th><th style="color:var(--accent)">Nilai Polos</th><th style="color:var(--gold)">Nilai Non Polos</th><th>Total Nilai</th></tr>';
   tb.innerHTML=_STOCK_ROWS.length?_STOCK_ROWS.map((r,i)=>{
     const cnt=Object.keys(r.items).length;
+    const total=r.nilaiPolos+r.nilaiNonPolos;
     const tipeTag=r.tipe==='awal'
       ?'<span class="tag" style="background:rgba(6,182,212,.15);color:var(--cyan);font-size:9px;padding:2px 8px;border-radius:10px">Awal</span>'
       :'<span class="tag" style="background:rgba(245,158,11,.15);color:var(--amber);font-size:9px;padding:2px 8px;border-radius:10px">Akhir</span>';
@@ -843,9 +850,11 @@ function renderStockItem(stockF){
       <td class="td-dim">${r.nama||'—'}</td>
       <td>${tipeTag}</td>
       <td><span class="tag b sm">${cnt} item</span></td>
-      <td class="td-main" style="color:var(--amber)">${r.nilai?rp(r.nilai):'—'}</td>
+      <td style="font-weight:700;font-size:11px;color:var(--accent)">${r.nilaiPolos?rp(r.nilaiPolos):'—'}</td>
+      <td style="font-weight:700;font-size:11px;color:var(--gold)">${r.nilaiNonPolos?rp(r.nilaiNonPolos):'—'}</td>
+      <td class="td-main" style="color:var(--amber)">${total?rp(total):'—'}</td>
     </tr>`;
-  }).join(''):'<tr><td colspan="6" style="text-align:center;color:var(--t3);padding:32px">Belum ada data</td></tr>';
+  }).join(''):'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:32px">Belum ada data</td></tr>';
   if(tf)tf.innerHTML='';
 }
 function toggleStockDetail(tr, idx){
@@ -863,20 +872,29 @@ function toggleStockDetail(tr, idx){
     const b=brandOf(nm);(groups[b]||groups.O).push({nm,v});
   });
   let html='<td colspan="99" style="padding:8px 16px 14px;background:rgba(255,255,255,.015);border-top:none">';
-  ['NS','HILO','TS','O'].forEach(brand=>{
-    const list=groups[brand];if(!list.length)return;
-    const col=brand==='NS'?'var(--blue)':brand==='HILO'?'var(--gold)':brand==='TS'?'var(--t3)':'var(--t3)';
-    html+=`<div style="margin-bottom:8px"><div style="font-size:8px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:${col};margin-bottom:4px">${brand==='O'?'LAINNYA':brand}</div>`;
-    html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:3px">';
+  // Split into Polos and Non Polos
+  const polosList=[], nonPolosList=[];
+  Object.entries(items).sort(([a],[b])=>a.localeCompare(b)).forEach(([nm,v])=>{
+    (isPolosStock(nm)?polosList:nonPolosList).push({nm,v});
+  });
+  const renderSection=(list,label,col,showNilai)=>{
+    if(!list.length)return'';
+    let s=`<div style="margin-bottom:10px"><div style="font-size:8px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:${col};margin-bottom:5px;padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,.06)">${label}</div>`;
+    s+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:3px">';
     list.forEach(({nm,v})=>{
-      const short=nm.replace(/^(NS|HI LO|HILO|TS)\s+/i,'').trim();
-      html+=`<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;padding:3px 8px;border-radius:5px;background:rgba(255,255,255,.04)">
+      const short=nm.replace(/^(NS|HI LO|HILO|TS|L-MEN)\s+/i,'').trim().replace(/\s+PLS\s+.*/i,'').replace(/\s+\d+[A-Z]+X.*/i,'').slice(0,30);
+      const price=stockItemPrice(nm);
+      const nilai=price*(v.rncg||0);
+      s+=`<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;padding:4px 8px;border-radius:5px;background:rgba(255,255,255,.04)">
         <span style="color:var(--t2)">${short}</span>
-        <span style="color:${col};font-weight:700;white-space:nowrap;margin-left:8px">${v.krt||0} krt / ${v.rncg||0} rnc</span>
+        <span style="color:${col};font-weight:700;white-space:nowrap;margin-left:8px">${showNilai&&nilai?rp(nilai)+' · ':''}<span style="color:var(--t3)">${v.krt||0}krt / ${v.rncg||0}rnc</span></span>
       </div>`;
     });
-    html+='</div></div>';
-  });
+    s+='</div></div>';
+    return s;
+  };
+  html+=renderSection(polosList,'Polos (NS & HILO Renceng)','var(--accent)',true);
+  html+=renderSection(nonPolosList,'Non Polos','var(--gold)',false);
   html+='</td>';
   const det=document.createElement('tr');
   det.className='item-detail-row';
