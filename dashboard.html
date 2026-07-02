@@ -226,7 +226,13 @@ tr:hover td{background:rgba(255,255,255,.016);}
         <option value="week">7 Hari</option>
         <option value="30d">30 Hari</option>
         <option value="all" selected>Semua</option>
+        <option value="range">Range Tanggal</option>
       </select>
+      <span id="f-range-wrap" style="display:none;align-items:center;gap:4px">
+        <input type="date" id="f-date-from" class="fi" style="width:118px" oninput="setRangeDates()">
+        <span class="fl" style="opacity:.4">–</span>
+        <input type="date" id="f-date-to" class="fi" style="width:118px" oninput="setRangeDates()">
+      </span>
       <div class="fsep"></div>
       <span class="fl">Bulan</span>
       <select id="f-month-sel" class="month-sel" onchange="setMonthPill(+this.value||0)">
@@ -453,7 +459,7 @@ try{const FB={apiKey:"AIzaSyCtYc8uZICLzQrA1b7l00Yo_9V_rqNVOu0",authDomain:"mds-v
 firebase.initializeApp(FB);
 db=firebase.firestore();}catch(e){console.warn("Firebase init failed",e);}
 
-let RKA_ALL=[],BELI_ALL=[],TAB='rka',DF='',NM=0,MF='',SC='timestamp',SD=-1;
+let RKA_ALL=[],BELI_ALL=[],TAB='rka',DF='',NM=0,MF='',RF_FROM='',RF_TO='',SC='timestamp',SD=-1;
 let cAV=null,cTrend=null,cBrand=null,mcAV=null,mcBrand=null;
 
 // ── PIN ─────────────────────────────────────────────────────────────────────
@@ -573,6 +579,7 @@ function getCutoff(){
   if(DF==='week'){const d=new Date(now);d.setDate(d.getDate()-7);return d;}
   if(DF==='30d'){const d=new Date(now);d.setDate(d.getDate()-30);return d;}
   if(DF==='nmonths'&&NM>0){const d=new Date(now);d.setMonth(d.getMonth()-NM);return d;}
+  if(DF==='range'&&RF_FROM){const d=new Date(RF_FROM);d.setHours(0,0,0,0);return d;}
   return new Date(0);
 }
 function setDateFilter(f,el){
@@ -584,6 +591,13 @@ function setDateFilter(f,el){
 function setDateFilterSel(f){
   DF=f;NM=0;MF='';
   const sel=document.getElementById('f-month-sel');if(sel)sel.value='0';
+  const rw=document.getElementById('f-range-wrap');
+  if(rw)rw.style.display=f==='range'?'inline-flex':'none';
+  if(f!=='range'){RF_FROM='';RF_TO='';render();}
+}
+function setRangeDates(){
+  RF_FROM=document.getElementById('f-date-from').value;
+  RF_TO=document.getElementById('f-date-to').value;
   render();
 }
 function setMonthPill(mo){
@@ -600,21 +614,24 @@ function setMonthFilter(m){
   render();
 }
 function clearFilters(){
-  DF='';NM=0;MF='';
-  ['f-area','f-mds','f-store'].forEach(id=>document.getElementById(id).value='');
+  DF='';NM=0;MF='';RF_FROM='';RF_TO='';
+  ['f-area','f-mds','f-store','f-date-from','f-date-to'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.querySelectorAll('.pill[data-f],.pill[data-mn]').forEach(p=>p.classList.remove('on'));
   const ps=document.getElementById('f-period-sel');if(ps)ps.value='all';
+  const rw=document.getElementById('f-range-wrap');if(rw)rw.style.display='none';
   render();
 }
 function filtered(data){
   const cutoff=getCutoff();
+  let rangeEnd=null;
+  if(DF==='range'&&RF_TO){rangeEnd=new Date(RF_TO);rangeEnd.setHours(23,59,59,999);}
   const fa=document.getElementById('f-area').value.toLowerCase();
   const fm=document.getElementById('f-mds').value.toLowerCase();
   const fs=document.getElementById('f-store').value.toLowerCase();
   return data.filter(r=>{
     const ts=r.timestamp;
     if(MF){const k=`${ts.getFullYear()}-${String(ts.getMonth()+1).padStart(2,'0')}`;if(k!==MF)return false;}
-    else{if(ts<cutoff)return false;}
+    else{if(ts<cutoff)return false;if(rangeEnd&&ts>rangeEnd)return false;}
     if(fa&&!(r.area||'').toLowerCase().includes(fa))return false;
     if(fm&&!(r.mds||'').toLowerCase().includes(fm))return false;
     if(fs&&!(r.store||'').toLowerCase().includes(fs))return false;
