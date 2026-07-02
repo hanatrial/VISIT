@@ -1051,11 +1051,21 @@ function renderAnalisis(rkaF,beliF){
   });
 
   // ── 2. Who submitted beli in filtered period ──
-  const submittedByArea={};
+  const submittedByArea={}, areaVars={};
   beliF.forEach(r=>{
     const a=r.area||'—',m=r.mds||'—';
     if(!submittedByArea[a])submittedByArea[a]=new Set();
-    submittedByArea[a].add(m);
+    submittedByArea[a].add(m.toLowerCase());
+    if(!areaVars[a])areaVars[a]={jp:0,aso:0,nsOther:0,hilo:0};
+    if(!r.itemQty)return;
+    Object.entries(r.itemQty).forEach(([nm,qty])=>{
+      const q=Number(qty)||0; if(!q)return;
+      const nu=nm.toUpperCase();
+      if(isJP(nm))areaVars[a].jp+=q;
+      else if(isASO(nm))areaVars[a].aso+=q;
+      else if(nu.startsWith('NS '))areaVars[a].nsOther+=q;
+      else if(nu.startsWith('HI LO ')||nu.startsWith('HILO '))areaVars[a].hilo+=q;
+    });
   });
 
   // ── 3. Variant aggregation from itemQty ──
@@ -1089,10 +1099,13 @@ function renderAnalisis(rkaF,beliF){
   areas.forEach(area=>{
     const roster=[...rosterByArea[area]].sort();
     const submitted=submittedByArea[area]||new Set();
-    const done=roster.filter(m=>submitted.has(m));
-    const missing=roster.filter(m=>!submitted.has(m));
+    const done=roster.filter(m=>submitted.has(m.toLowerCase()));
+    const missing=roster.filter(m=>!submitted.has(m.toLowerCase()));
     const pct=roster.length?Math.round(done.length/roster.length*100):0;
     const barCol=pct===100?'var(--accent)':pct>=60?'var(--gold)':'var(--red)';
+    const av=areaVars[area]||{jp:0,aso:0,nsOther:0,hilo:0};
+    const nsTotal=av.jp+av.aso+av.nsOther;
+    const varBadge=(label,val,col)=>val?`<span style="font-size:9px;padding:2px 8px;border-radius:5px;background:${col}22;color:${col};font-weight:700">${label} ${val}rnc</span>`:'';
     cardsHtml+=`<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <span style="font-size:12px;font-weight:700;color:var(--t1)">${area}</span>
@@ -1102,7 +1115,8 @@ function renderAnalisis(rkaF,beliF){
         <div style="width:${pct}%;height:100%;background:${barCol};border-radius:6px;transition:width .4s"></div>
       </div>
       ${done.length?`<div style="margin-bottom:6px"><div style="font-size:8px;color:var(--accent);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Sudah isi (${done.length})</div><div style="display:flex;flex-wrap:wrap;gap:3px">${done.map(m=>`<span style="font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(16,214,106,.1);color:var(--accent)">${sn(m)}</span>`).join('')}</div></div>`:''}
-      ${missing.length?`<div><div style="font-size:8px;color:var(--red);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Belum isi (${missing.length})</div><div style="display:flex;flex-wrap:wrap;gap:3px">${missing.map(m=>`<span style="font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(239,68,68,.1);color:var(--red)">${sn(m)}</span>`).join('')}</div></div>`:'<div style="font-size:9px;color:var(--accent)">✅ Semua MDS sudah isi</div>'}
+      ${missing.length?`<div style="margin-bottom:6px"><div style="font-size:8px;color:var(--red);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px">Belum isi (${missing.length})</div><div style="display:flex;flex-wrap:wrap;gap:3px">${missing.map(m=>`<span style="font-size:9px;padding:2px 7px;border-radius:5px;background:rgba(239,68,68,.1);color:var(--red)">${sn(m)}</span>`).join('')}</div></div>`:'<div style="font-size:9px;color:var(--accent);margin-bottom:6px">✅ Semua MDS sudah isi</div>'}
+      ${nsTotal||av.hilo?`<div style="border-top:1px solid rgba(255,255,255,.06);padding-top:8px;margin-top:2px"><div style="font-size:8px;color:var(--t3);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px">Pengambilan</div><div style="display:flex;flex-wrap:wrap;gap:3px">${varBadge('JP',av.jp,'var(--accent)')}${varBadge('ASO',av.aso,'var(--blue)')}${av.nsOther?varBadge('NS Lain',av.nsOther,'var(--cyan)'):''}${varBadge('HILO',av.hilo,'var(--gold)')}</div></div>`:''}
     </div>`;
   });
   cardsHtml+='</div>';
