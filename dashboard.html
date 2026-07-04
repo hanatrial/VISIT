@@ -333,8 +333,8 @@ tr:hover td{background:rgba(255,255,255,.016);}
       </div>
       <div class="spotlight-shell"><div class="spotlight-inner">
         <div class="sp-header">
-          <div class="sp-badge">NS Item Spotlight</div>
-          <div class="sp-title">Beli Barang: NS ASO & NS Jeruk Peras — Total Renceng Beli</div>
+          <div class="sp-badge">NS & HILO Item Spotlight</div>
+          <div class="sp-title">Beli Barang: NS ASO, NS Jeruk Peras, HILO Creamy Matcha &amp; Total Renceng</div>
         </div>
         <div class="sp-grid">
           <div class="sp-item">
@@ -354,6 +354,18 @@ tr:hover td{background:rgba(255,255,255,.016);}
             <div class="sp-pct" id="sp-other-pct" style="color:var(--violet)">—</div>
             <div class="sp-bar-bg"><div class="sp-bar-fill" id="sp-other-bar" style="background:var(--violet);width:0%"></div></div>
             <div style="font-size:9px;color:var(--t3);margin-top:2px" id="sp-other-count">—</div>
+          </div>
+          <div class="sp-item">
+            <div class="sp-item-name">HILO Creamy Matcha</div>
+            <div class="sp-pct" id="sp-cm-pct" style="color:var(--green)">—</div>
+            <div class="sp-bar-bg"><div class="sp-bar-fill" id="sp-cm-bar" style="background:var(--green);width:0%"></div></div>
+            <div style="font-size:9px;color:var(--t3);margin-top:2px" id="sp-cm-count">—</div>
+          </div>
+          <div class="sp-item">
+            <div class="sp-item-name">Total HILO Renceng</div>
+            <div class="sp-pct" id="sp-hilo-pct" style="color:var(--amber)">—</div>
+            <div class="sp-bar-bg"><div class="sp-bar-fill" id="sp-hilo-bar" style="background:var(--amber);width:0%"></div></div>
+            <div style="font-size:9px;color:var(--t3);margin-top:2px" id="sp-hilo-count">—</div>
           </div>
           <div class="sp-note">Data dari <strong id="sp-visits">—</strong> transaksi Beli Barang.<br>Berdasarkan qty item (field <code>itemQty</code>).</div>
         </div>
@@ -694,19 +706,22 @@ function buildCharts(rkaF,beliF){
 }
 
 // ── NS SPOTLIGHT ─────────────────────────────────────────────────────────────
+function isCreamyMatcha(n){return n&&n.toUpperCase().includes('CREAMY MATCHA');}
 function buildSpotlight(rkaF,beliF){
-  let jpQty=0, asoQty=0, nsTotal=0, txCount=0;
+  let jpQty=0, asoQty=0, nsTotal=0, creamyMatchaQty=0, hiloTotal=0, txCount=0;
   beliF.forEach(r=>{
     const iq=r.itemQty;
     nsTotal+=(r.groupTotals&&r.groupTotals.NS||0);
+    hiloTotal+=(r.groupTotals&&r.groupTotals.HILO||0);
     if(!iq)return;
     txCount++;
     Object.entries(iq).forEach(([n,v])=>{
       if(isJP(n)) jpQty+=Number(v)||0;
       else if(isASO(n)) asoQty+=Number(v)||0;
+      else if(isCreamyMatcha(n)) creamyMatchaQty+=Number(v)||0;
     });
   });
-  const maxVal=Math.max(jpQty,asoQty,1);
+  const maxVal=Math.max(jpQty,asoQty,creamyMatchaQty,1);
   function setItem(idPct,idBar,idCount,qty,color,label){
     document.getElementById(idPct).textContent=qty?qty+' renceng':'—';
     document.getElementById(idPct).style.color=color;
@@ -716,11 +731,17 @@ function buildSpotlight(rkaF,beliF){
   }
   setItem('sp-jp-pct','sp-jp-bar','sp-jp-count',jpQty,'var(--accent)','NS JERUK PERAS PLS 18PX40SX14G');
   setItem('sp-aso-pct','sp-aso-bar','sp-aso-count',asoQty,'var(--blue)','NS ASO PLS 14GX18PX40S');
+  setItem('sp-cm-pct','sp-cm-bar','sp-cm-count',creamyMatchaQty,'var(--green)','HI LO DRINK CREAMY MATCHA PLS');
   document.getElementById('sp-other-pct').textContent=nsTotal?nsTotal+' renceng':'—';
   document.getElementById('sp-other-pct').style.color='var(--gold)';
   document.getElementById('sp-other-bar').style.width='100%';
   document.getElementById('sp-other-bar').style.background='var(--gold)';
   document.getElementById('sp-other-count').textContent=nsTotal?`Total semua NS dari ${beliF.length} transaksi`:'Tidak ada data';
+  document.getElementById('sp-hilo-pct').textContent=hiloTotal?hiloTotal+' renceng':'—';
+  document.getElementById('sp-hilo-pct').style.color='var(--amber)';
+  document.getElementById('sp-hilo-bar').style.width='100%';
+  document.getElementById('sp-hilo-bar').style.background='var(--amber)';
+  document.getElementById('sp-hilo-count').textContent=hiloTotal?`Total semua HILO dari ${beliF.length} transaksi`:'Tidak ada data';
   document.getElementById('sp-visits').textContent=txCount||beliF.length;
 }
 
