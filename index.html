@@ -808,7 +808,7 @@ input[type="file"]{display:none;}
           <label class="f-label">Nominal</label>
           <div class="rp-wrap">
             <div class="rp-pre">Rp</div>
-            <input type="number" class="rp-in" id="beli-nominal" placeholder="0" oninput="beliCheck(2)">
+            <input type="text" inputmode="numeric" class="rp-in" id="beli-nominal" placeholder="0" oninput="beliCheck(2)">
           </div>
         </div>
       </div>
@@ -24753,6 +24753,7 @@ function beliGoTo(step){
   beliCheck(step);
 }
 
+function parseNominal(v){return parseInt(String(v).replace(/[.,]/g,''),10)||0;}
 function beliCheck(step){
   let ok=false;
   if(step===0){
@@ -24768,7 +24769,7 @@ function beliCheck(step){
     ok=sel!==''||(box.classList.contains('open')&&nw!=='');
   } else if(step===2){
     const hasPhoto=B.photo!==null;
-    const hasNom=document.getElementById('beli-nominal').value!=='';
+    const hasNom=parseNominal(document.getElementById('beli-nominal').value)>0;
     ok=hasPhoto&&hasNom;
   } else if(step===3){
     ok=true; // allow submit even if all zero
@@ -24814,7 +24815,7 @@ async function submitBeli(){
   const now=new Date();
   const ds=now.toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'})+
     ' · '+now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
-  const nom=Number(document.getElementById('beli-nominal').value).toLocaleString('id-ID');
+  const nom=parseNominal(document.getElementById('beli-nominal').value).toLocaleString('id-ID');
 
   document.getElementById('beli-sid').textContent='ID: #'+id;
   document.getElementById('beli-sm-area').textContent=B.area;
@@ -24833,7 +24834,7 @@ async function submitBeli(){
   const totalRenceng=Object.values(groupTotals).reduce((s,v)=>s+v,0);
   try{
     const _beliLog=JSON.parse(localStorage.getItem('mds_beli_log')||'[]');
-    _beliLog.push({id,area:B.area,mds:B.mds,store:B.store,timestamp:now.toISOString(),nominal:Number(document.getElementById('beli-nominal').value),groupTotals:Object.assign({},groupTotals),totalRenceng});
+    _beliLog.push({id,area:B.area,mds:B.mds,store:B.store,timestamp:now.toISOString(),nominal:parseNominal(document.getElementById('beli-nominal').value),groupTotals:Object.assign({},groupTotals),totalRenceng});
     localStorage.setItem('mds_beli_log',JSON.stringify(_beliLog));
   }catch(e){console.warn('localStorage write failed',e);}
   document.getElementById('beli-sm-qty-hilo').textContent=(groupTotals['HILO']||0)+' renceng';
@@ -24859,7 +24860,7 @@ async function submitBeli(){
     if(typeof db==='undefined') throw new Error('db not initialized');
     const _iq={};BELI_FLAT.forEach((nm,ii)=>{if(B.qty[ii])_iq[nm]=B.qty[ii];});
     const _tout=new Promise((_,r)=>setTimeout(()=>r(new Error('Timeout — cek Firestore Rules')),15000));
-    await Promise.race([db.collection('beli_logs').add({id,area:B.area,mds:B.mds,store:B.store,timestamp:firebase.firestore.FieldValue.serverTimestamp(),nominal:Number(document.getElementById('beli-nominal').value),groupTotals:Object.assign({},groupTotals),totalRenceng,itemQty:_iq,...(photoData?{photoData}:{})}),_tout]);
+    await Promise.race([db.collection('beli_logs').add({id,area:B.area,mds:B.mds,store:B.store,timestamp:firebase.firestore.FieldValue.serverTimestamp(),nominal:parseNominal(document.getElementById('beli-nominal').value),groupTotals:Object.assign({},groupTotals),totalRenceng,itemQty:_iq,...(photoData?{photoData}:{})}),_tout]);
     document.getElementById('beli-sm-status').textContent='✅ Tersimpan ke server';
     document.getElementById('beli-sm-foto').textContent=photoData?'✅ Foto':'—';
   }catch(e){
