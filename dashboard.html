@@ -251,9 +251,14 @@ tr:hover td{background:rgba(255,255,255,.016);}
         <option value="12">Desember</option>
       </select>
       <div class="fsep"></div>
-      <input class="fi" id="f-area" placeholder="Area…" style="width:88px" oninput="render()">
+      <select class="fi" id="f-area" style="width:110px" onchange="render()">
+        <option value="">Semua Area</option>
+        <option>Bau Bau</option><option>Bone</option><option>Gorontalo</option><option>Kendari</option><option>Luwuk</option><option>Makassar</option><option>Mamuju</option><option>Manado</option><option>Palopo</option><option>Palu</option><option>Pare-Pare</option><option>Poso</option>
+      </select>
       <input class="fi" id="f-mds" placeholder="MDS…" style="width:100px" oninput="render()">
       <input class="fi" id="f-store" placeholder="Toko…" style="width:110px" oninput="render()">
+      <input class="fi" id="f-item" placeholder="Item Beli…" style="width:130px" list="item-beli-list" oninput="render()">
+      <datalist id="item-beli-list"></datalist>
       <span class="freset" onclick="clearFilters()">✕ Reset</span>
       <button class="exp-btn" onclick="exportCSV()">↓ Export CSV</button>
     </div></div>
@@ -542,6 +547,8 @@ function loadAll(){
 function initDash(){
   switchTab('rka');
   document.getElementById('tb-date').textContent=new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const dl=document.getElementById('item-beli-list');
+  if(dl)Object.keys(ITEM_PRICE).sort().forEach(k=>{const o=document.createElement('option');o.value=k;dl.appendChild(o);});
   loadAll();
   setInterval(loadAll,30000);
   db.collection('rka_logs').limit(2000).onSnapshot({includeMetadataChanges:true},s=>{
@@ -628,7 +635,7 @@ function setMonthFilter(m){
 }
 function clearFilters(){
   DF='';NM=0;MF='';RF_FROM='';RF_TO='';
-  ['f-area','f-mds','f-store','f-date-from','f-date-to'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['f-area','f-mds','f-store','f-item','f-date-from','f-date-to'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.querySelectorAll('.pill[data-f],.pill[data-mn]').forEach(p=>p.classList.remove('on'));
   const ps=document.getElementById('f-period-sel');if(ps)ps.value='all';
   const rw=document.getElementById('f-range-wrap');if(rw)rw.style.display='none';
@@ -774,7 +781,10 @@ function switchSubTab(main,sub){
 }
 
 function render(){
-  const rkaF=filtered(RKA_ALL), beliF=filtered(BELI_ALL);
+  const rkaF=filtered(RKA_ALL);
+  let beliF=filtered(BELI_ALL);
+  const fi=(document.getElementById('f-item')?.value||'').trim().toLowerCase();
+  if(fi)beliF=beliF.filter(r=>r.itemQty&&Object.keys(r.itemQty).some(k=>(Number(r.itemQty[k])||0)>0&&k.toLowerCase().includes(fi)));
 
   // KPI
   document.getElementById('ds-rka').textContent=rkaF.length||'—';
