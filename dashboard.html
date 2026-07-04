@@ -333,7 +333,7 @@ tr:hover td{background:rgba(255,255,255,.016);}
             <div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--pink),transparent 70%)"></div>
             <div class="kpi-label">Value Nominal</div>
             <div class="kpi-val sm" style="color:var(--pink)" id="ds-kalc">—</div>
-            <div class="kpi-sub">NS×11.250 + HILO×16.000 + HILO SCHOOL PLS×31.500</div>
+            <div class="kpi-sub" id="ds-kalc-sub">NS×11.250 + HILO×16.000 + HILO SCHOOL PLS×31.500</div>
           </div>
         </div>
       </div>
@@ -800,6 +800,8 @@ function render(){
     ?beliF.reduce((s,r)=>{if(!r.itemQty)return s;return s+Object.entries(r.itemQty).reduce((ss,[nm,v])=>nm.toLowerCase().includes(FI)?ss+(Number(v)||0)*(ITEM_PRICE[nm]?.pcs||0):ss,0);},0)
     :totNS*NS_PRICE+totHI*HILO_PRICE+totHILOPLS*HILOPLS_PRICE;
   document.getElementById('ds-kalc').textContent=k?rp(k):'—';
+  const sub=document.getElementById('ds-kalc-sub');
+  if(sub)sub.textContent=FI?`Value item: ${document.getElementById('f-item').value}`:'NS×11.250 + HILO×16.000 + HILO SCHOOL PLS×31.500';
 
   buildCharts(rkaF,beliF);
   buildSpotlight(rkaF,beliF);
@@ -1056,8 +1058,9 @@ function renderBeli(beliF){
     const ts=r.timestamp;
     const nsR=r.groupTotals&&r.groupTotals.NS||0;
     const hiR=r.groupTotals&&r.groupTotals.HILO||0;
-    const k=nsR*NS_PRICE+hiR*HILO_PRICE;
-    const nota=r.nominal||0, diff=k-nota;
+    const fullK=nsR*NS_PRICE+hiR*HILO_PRICE;
+    const k=FI&&r.itemQty?Object.entries(r.itemQty).reduce((s,[nm,v])=>nm.toLowerCase().includes(FI)?s+(Number(v)||0)*(ITEM_PRICE[nm]?.pcs||0):s,0):fullK;
+    const nota=r.nominal||0, diff=fullK-nota;
     const dTag=diff===0?'<span class="tag t sm">0</span>':diff>0?`<span class="tag g sm">+${rp(diff)}</span>`:`<span class="tag r sm">${rp(diff)}</span>`;
     const hasPhoto=!!(r.photoData||r.photoUrl);
     const bid=r.id||'';
