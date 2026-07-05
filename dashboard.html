@@ -1380,6 +1380,10 @@ function renderPjmdsDetail(beliF){
   if(!PJMDS_SEL){el.innerHTML='<div class="panel-shell"><div class="panel-body" style="text-align:center;padding:32px;color:var(--t3)">Pilih nama MDS di atas untuk lihat detail pengambilan barang.</div></div>';return;}
   const rows=beliF.filter(r=>r.mds===PJMDS_SEL).sort((a,b)=>b.timestamp-a.timestamp);
   const totNota=rows.reduce((s,r)=>s+(r.nominal||0),0);
+  const totValue=rows.reduce((s,r)=>{
+    const nsR=r.groupTotals&&r.groupTotals.NS||0,hiR=r.groupTotals&&r.groupTotals.HILO||0;
+    return s+nsR*NS_PRICE+hiR*HILO_PRICE;
+  },0);
   const storeMap={};
   rows.forEach(r=>{
     const k=r.store||'—';
@@ -1405,7 +1409,12 @@ function renderPjmdsDetail(beliF){
   el.innerHTML=`
     <div class="bento bento-4">
       <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(236,72,153,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 0% 0%,var(--pink),transparent 70%)"></div><div class="kpi-label">Total Pengambilan</div><div class="kpi-val" style="color:var(--pink)">${rows.length}</div><div class="kpi-sub">transaksi/nota pada periode ini</div></div></div>
-      <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(16,185,129,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 50% 0%,var(--green),transparent 70%)"></div><div class="kpi-label">Total Nilai Nota</div><div class="kpi-val sm" style="color:var(--green)">${totNota?rp(totNota):'—'}</div><div class="kpi-sub">akumulasi nominal nota</div></div></div>
+      <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(16,185,129,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 50% 0%,var(--green),transparent 70%)"></div><div class="kpi-label">Total Nilai Nota</div>
+        <div style="display:flex;gap:14px;margin-top:2px">
+          <div><div style="font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">Total Nota</div><div class="kpi-val sm" style="color:var(--green)">${totNota?rp(totNota):'—'}</div></div>
+          <div><div style="font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">Total Value</div><div class="kpi-val sm" style="color:var(--accent)">${totValue?rp(totValue):'—'}</div></div>
+        </div>
+        <div class="kpi-sub">dari data Beli Barang MDS</div></div></div>
       <div class="kpi-shell" style="cursor:pointer" onclick="togglePjmdsToko()"><div class="kpi-border" style="--gc:rgba(6,182,212,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--cyan),transparent 70%)"></div><div class="kpi-label">Toko Diambil</div><div class="kpi-val" style="color:var(--cyan)">${storeRows.length}${PJMDS_SHOW_TOKO?' ▲':' ▼'}</div><div class="kpi-sub">${kedaiCount?`dari ${kedaiCount} toko di database kedai · klik utk detail`:'klik utk lihat detail toko'}</div></div></div>
       <div class="kpi-shell"${totPenjualan===null?' style="opacity:.5"':''}><div class="kpi-border" style="--gc:rgba(139,92,246,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--violet),transparent 70%)"></div><div class="kpi-label">Total Penjualan</div><div class="kpi-val sm" style="color:var(--violet)">${totPenjualan===null?'—':rp(totPenjualan)}</div><div class="kpi-sub">${totPenjualan===null?'menunggu upload data Call':'omzet NS + HILO dari data Call'}</div></div></div>
     </div>
