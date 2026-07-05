@@ -523,6 +523,7 @@ dbSulawesi=sulawesiApp.firestore();}catch(e){console.warn("Firebase (sulawesi) i
 let RKA_ALL=[],BELI_ALL=[],TAB='rka',DF='',NM=0,MF='',RF_FROM='',RF_TO='',SC='timestamp',SD=-1,FI='';
 let _expandedRkaVid=null,_expandedBeliVid=null;
 let KEDAI_DB={stores:[],meta:null},PJMDS_SEL=null,PJMDS_SHOW_TOKO=false;
+let PJMDS_MANUAL_MATCH={};
 let cAV=null,cTrend=null,cBrand=null,mcAV=null,mcBrand=null;
 
 // ── PIN ─────────────────────────────────────────────────────────────────────
@@ -793,6 +794,7 @@ function pjWordsMatch(wordsA,wordsB){
 }
 function pjResolveMdsName(selName){
   if(!selName)return null;
+  if(PJMDS_MANUAL_MATCH[selName])return PJMDS_MANUAL_MATCH[selName];
   const target=pjNormName(selName);
   const targetWords=target.split(' ').filter(Boolean);
   const names=[...new Set(PJ_RAW.call.map(r=>r.NamaMDS).filter(Boolean))];
@@ -1332,9 +1334,19 @@ function renderPjmds(beliF){
     else if(!PJ_RAW.call.length){noteEl.innerHTML='<span style="color:var(--t3)">Data Call belum diupload — validasi nama menyusul setelah upload.</span>';}
     else{
       const resolved=pjResolveMdsName(PJMDS_SEL);
-      if(!resolved){noteEl.innerHTML=`<span style="color:var(--red)">⚠ "${PJMDS_SEL}" tidak ditemukan pasangannya di data penjualan (Call). Cek ejaan nama di kedua database.</span>`;}
+      if(!resolved){
+        const callNames=[...new Set(PJ_RAW.call.map(r=>r.NamaMDS).filter(Boolean))].sort();
+        noteEl.innerHTML=`<div style="color:var(--red);margin-bottom:6px">⚠ "${PJMDS_SEL}" tidak ditemukan pasangannya di data penjualan (Call). Pilih manual nama yang sesuai:</div>
+          <select class="fi" style="width:260px" onchange="setPjmdsManualMatch(this.value)">
+            <option value="">— Pilih nama di data Call —</option>
+            ${callNames.map(n=>`<option value="${n}">${n}</option>`).join('')}
+          </select>`;
+      }
       else if(pjNormName(resolved)===pjNormName(PJMDS_SEL)){noteEl.innerHTML=`<span style="color:var(--accent)">✓ Nama cocok persis dengan data penjualan.</span>`;}
-      else{noteEl.innerHTML=`<span style="color:var(--amber)">✓ "${PJMDS_SEL}" dicocokkan dengan data penjualan sebagai "<b>${resolved}</b>"</span>`;}
+      else{
+        const manualTag=PJMDS_MANUAL_MATCH[PJMDS_SEL]?' <span style="color:var(--t3)">(dipilih manual — <a href="#" onclick="setPjmdsManualMatch(\'\');return false;" style="color:var(--t3);text-decoration:underline">reset</a>)</span>':'';
+        noteEl.innerHTML=`<span style="color:var(--amber)">✓ "${PJMDS_SEL}" dicocokkan dengan data penjualan sebagai "<b>${resolved}</b>"</span>${manualTag}`;
+      }
     }
   }
   renderPjmdsDetail(beliF);
@@ -1342,6 +1354,12 @@ function renderPjmds(beliF){
 function selectPjmds(name){
   PJMDS_SEL=name||null;
   PJMDS_SHOW_TOKO=false;
+  render();
+}
+function setPjmdsManualMatch(callName){
+  if(!PJMDS_SEL)return;
+  if(callName)PJMDS_MANUAL_MATCH[PJMDS_SEL]=callName;
+  else delete PJMDS_MANUAL_MATCH[PJMDS_SEL];
   render();
 }
 function togglePjmdsToko(){
