@@ -10,6 +10,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 @property --a{syntax:'<angle>';initial-value:0deg;inherits:false;}
@@ -69,6 +70,8 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .nav-tab.on.beli{color:var(--violet);border-bottom-color:var(--violet);}
 .nav-tab.on.stock{color:var(--amber);border-bottom-color:var(--amber);}
 .nav-tab.on.stock .nav-badge{background:var(--amber-g);color:var(--amber);}
+.nav-tab.on.pjmds{color:var(--pink);border-bottom-color:var(--pink);}
+.nav-tab.on.pjmds .nav-badge{background:var(--pink-g);color:var(--pink);}
 .sub-tab.on.stock{color:var(--amber);border-bottom-color:var(--amber);}
 .bento-4{grid-template-columns:repeat(4,1fr);}
 .nav-badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:10px;font-size:9px;font-weight:800;padding:0 6px;transition:all .3s var(--ease);}
@@ -218,6 +221,7 @@ tr:hover td{background:rgba(255,255,255,.016);}
     <div class="nav-tab on rka" id="ntab-rka" onclick="switchTab('rka')">📋 Visit RKA <span class="nav-badge" id="nb-rka">—</span></div>
     <div class="nav-tab beli" id="ntab-beli" onclick="switchTab('beli')">🛒 Beli Barang <span class="nav-badge" id="nb-beli">—</span></div>
     <div class="nav-tab stock" id="ntab-stock" onclick="switchTab('stock')">📦 Stock Sell Out <span class="nav-badge" id="nb-stock">—</span></div>
+    <div class="nav-tab pjmds" id="ntab-pjmds" onclick="switchTab('pjmds')">💰 Penjualan MDS <span class="nav-badge" id="nb-pjmds">—</span></div>
   </div>
   <div class="main">
     <div class="filter-shell"><div class="filter-inner">
@@ -414,6 +418,40 @@ tr:hover td{background:rgba(255,255,255,.016);}
         <div class="tfoot-row" id="tfoot-stock"></div>
       </div></div>
     </div>
+
+    <!-- PENJUALAN MDS SECTION -->
+    <div id="sec-pjmds" style="display:none">
+      <div class="panel-shell"><div class="panel-body" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>
+          <div class="ch-label" style="margin-bottom:2px">📊 Data Penjualan (Call &amp; Order)</div>
+          <div id="pjdata-status" style="font-size:11px;color:var(--t3)">Memuat…</div>
+        </div>
+        <div>
+          <button class="exp-btn" onclick="document.getElementById('pjdata-file-input').click()">⟲ Update Data</button>
+          <input type="file" id="pjdata-file-input" accept=".xlsx,.xls" style="display:none">
+        </div>
+      </div></div>
+      <div class="panel-shell" style="margin-top:12px"><div class="panel-body" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>
+          <div class="ch-label" style="margin-bottom:2px">📋 Database Kedai</div>
+          <div id="kedai-status" style="font-size:11px;color:var(--t3)">Memuat…</div>
+        </div>
+        <div>
+          <button class="exp-btn" onclick="document.getElementById('kedai-file-input').click()">📋 Update Database Kedai</button>
+          <input type="file" id="kedai-file-input" accept=".xlsx,.xls" style="display:none">
+        </div>
+      </div></div>
+
+      <div class="panel-shell" style="margin-top:12px"><div class="panel-body">
+        <div class="ch-label" style="margin-bottom:10px">👤 Pilih MDS</div>
+        <select id="pjmds-select" class="fi" style="width:260px" onchange="selectPjmds(this.value)">
+          <option value="">— Pilih MDS —</option>
+        </select>
+        <div id="pjmds-match-note" style="font-size:11px;margin-top:8px"></div>
+      </div></div>
+
+      <div id="pjmds-detail" style="margin-top:12px"></div>
+    </div>
   </div>
 </div>
 
@@ -477,8 +515,14 @@ try{const FB={apiKey:"AIzaSyCtYc8uZICLzQrA1b7l00Yo_9V_rqNVOu0",authDomain:"mds-v
 firebase.initializeApp(FB);
 db=firebase.firestore();}catch(e){console.warn("Firebase init failed",e);}
 
+var dbSulawesi;
+try{const FB2={apiKey:"AIzaSyCA8Q8athqYIsY3By5wPxcU97GjDBR6DAs",authDomain:"mds-sulawesi.firebaseapp.com",projectId:"mds-sulawesi",storageBucket:"mds-sulawesi.firebasestorage.app",messagingSenderId:"511949021685",appId:"1:511949021685:web:bc32007af0555449e7c0bc"};
+const sulawesiApp=firebase.initializeApp(FB2,"sulawesi");
+dbSulawesi=sulawesiApp.firestore();}catch(e){console.warn("Firebase (sulawesi) init failed",e);}
+
 let RKA_ALL=[],BELI_ALL=[],TAB='rka',DF='',NM=0,MF='',RF_FROM='',RF_TO='',SC='timestamp',SD=-1,FI='';
 let _expandedRkaVid=null,_expandedBeliVid=null;
+let KEDAI_DB={stores:[],meta:null},PJMDS_SEL=null,PJMDS_SHOW_TOKO=false;
 let cAV=null,cTrend=null,cBrand=null,mcAV=null,mcBrand=null;
 
 // ── PIN ─────────────────────────────────────────────────────────────────────
@@ -506,6 +550,7 @@ function isJP(n){return n&&n.toUpperCase().includes('NS JERUK PERAS PLS');}
 function isASO(n){return n&&n.toUpperCase().includes('NS ASO PLS');}
 function kalc(r){return((r.groupTotals&&r.groupTotals.NS||0)*NS_PRICE)+((r.groupTotals&&r.groupTotals.HILO||0)*HILO_PRICE)+((r.groupTotals&&r.groupTotals.HILOPLS||0)*HILOPLS_PRICE);}
 function rp(n){return'Rp '+Math.round(n).toLocaleString('id-ID');}
+function fmtNum(n){return Math.round(n||0).toLocaleString('id-ID');}
 // Stock item category helpers
 const ITEM_PRICE={"TS BERAS PORANG INSTAN 12PCHX1000G":{"ctn":2112000,"pcs":176000},"TS BERAS PORANG INSTAN SACHET 12DX10SX40G":{"ctn":780000,"pcs":65000},"TS EXTRA VIRGIN OLIVE OIL 12BTLX500ML":{"ctn":1656000,"pcs":138000},"TS BERAS PORANG INSTAN GOLDEN UBE 12DX7SX40G":{"ctn":780000,"pcs":65000},"TS CANOLA OIL 12BTLX946ML":{"ctn":840000,"pcs":70000},"TS SWT CLASSIC IND 12PX125SX2.5G":{"ctn":900000,"pcs":75000},"HI LO PLATINUM ORIGINAL 12DX12SX30G":{"ctn":1272000,"pcs":106000},"TS SWT DIABTX 12DX100SX1.8G":{"ctn":936000,"pcs":78000},"HI LO PLATINUM SWISS CHOCOLATE 12DX12SX34G":{"ctn":1080000,"pcs":90000},"TS CORN OIL 12BTLX946ML":{"ctn":1080000,"pcs":90000},"TS CORN OIL REF 16PCHX1000ML":{"ctn":1520000,"pcs":95000},"TS SWT CLASSIC 12DX100SX2.5G":{"ctn":912000,"pcs":76000},"TS BERAS MERAH ORGANIK 12PCHX1000G":{"ctn":528000,"pcs":44000},"TS SWT CLASSIC 24DX50SX2.5G":{"ctn":960000,"pcs":40000},"TS SOY SAUCE 24BTLX200ML":{"ctn":636000,"pcs":26500},"TS HONEY 12BTLX350ML":{"ctn":744000,"pcs":62000},"TS COOKIES HOKKAIDO CHEESE 12DX5SX20G":{"ctn":276000,"pcs":23000},"TS CHOCOLATE SPREAD 12BTLX300G":{"ctn":1056000,"pcs":88000},"HI LO PLATINUM +HMB VANILLA 12DX8SX42G":{"ctn":1500000,"pcs":125000},"TS SUNFLOWER OIL 12BTLX946ML":{"ctn":912000,"pcs":76000},"HI LO SCHOOL VANILLA 12DX250G":{"ctn":480000,"pcs":40000},"TS SWT DIABTX 24DX50SX1.8G":{"ctn":1008000,"pcs":42000},"TS NFDM FIBER PRO 6DX500G":{"ctn":624000,"pcs":104000},"HI LO TEEN CHOCOLATE 12DX500G":{"ctn":960000,"pcs":80000},"TS PEANUT ALMOND BUTTER 12BTLX300G":{"ctn":816000,"pcs":68000},"TS STRAWBERRY JAM 12BTLX375G":{"ctn":816000,"pcs":68000},"TS SWT STEVIA 24DX50SX1.8G":{"ctn":1416000,"pcs":59000},"HI LO TEEN CHOCOLATE 6DX750G":{"ctn":696000,"pcs":116000},"HI LO SCHOOL CHOCOLATE 12DX500G":{"ctn":924000,"pcs":77000},"HI LO GOLD ORIGINAL 6DX750G":{"ctn":702000,"pcs":117000},"HI LO SCHOOL CHOCOLATE 6DX750G":{"ctn":684000,"pcs":114000},"L-MEN PLATINUM BASIC UNFLAVOURED 6PCHX800G":{"ctn":1980000,"pcs":330000},"TS GULA JAWA 12BTLX350ML":{"ctn":708000,"pcs":59000},"TS COLLAGEN DRINK STRAWBERRY 12KLRX200G":{"ctn":1980000,"pcs":165000},"NS AMERICAN SWEET ORANGE PLS 18PX40SX14G":{"ctn":810000,"pcs":11250},"TS KENTAL MANIS 24BTLX150ML":{"ctn":744000,"pcs":31000},"HI LO SCHOOL COKELAT SUSU PLS 12RX10SX30G":{"ctn":378000,"pcs":31500},"TS NFDM ORIGINAL 6DX1000G":{"ctn":1104000,"pcs":184000},"TS NFDM COFFEE 12DX500G":{"ctn":1248000,"pcs":104000},"HI LO TEEN VANILLA CARAMEL 6DX750G":{"ctn":696000,"pcs":116000},"NS JERUK PERAS PLS 18PX40SX14G":{"ctn":810000,"pcs":11250},"HI LO TEEN VANILLA CARAMEL 12DX500G":{"ctn":960000,"pcs":80000},"TS LOW FAT MILK VANILLA 12DX500G":{"ctn":936000,"pcs":78000},"TS RTD OAT DRINK VANILLICIOUS 24TPKX190ML":{"ctn":180000,"pcs":7500},"TS 7 FRUITS FIBER DAILY 12DX12SX15G":{"ctn":1224000,"pcs":102000},"HI LO SCHOOL VANILLA SUSU PLS 12RX10SX27G":{"ctn":378000,"pcs":31500},"L-MEN PROTEIN 2GO RTD CHOCOLATE 24TPKX200ML":{"ctn":276000,"pcs":11500},"TS DIABETAMIL SWT 24DX50SX1G":{"ctn":552000,"pcs":23000},"NS LEMON TEA PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"TS ROYAL MATCHA SPREAD 12BTLX300G":{"ctn":1080000,"pcs":90000},"HI LO SCHOOL STRAWBERRY CHEESECAKE 12DX500G":{"ctn":924000,"pcs":77000},"TS COOKIES CHOCOLATE 12DX10SX20G":{"ctn":540000,"pcs":45000},"HI LO SCHOOL HONEY 12DX500G":{"ctn":924000,"pcs":77000},"TS SWT CLASSIC 24DX25SX2.5G":{"ctn":528000,"pcs":22000},"HI LO PLATINUM +HMB CHOCO MOCHA 12DX8SX40G":{"ctn":1500000,"pcs":125000},"L-MEN PLATINUM CHOCO LATTE 6DX6SX38.5G":{"ctn":720000,"pcs":120000},"TS CAFE LATTE 12DX10SX14G":{"ctn":336000,"pcs":28000},"HI LO SCHOOL SUSU VANILLA 8GUSX10SX35G":{"ctn":384000,"pcs":48000},"TS RTD ALMOND DRINK CHOCOLICIOUS 24TPKX190ML":{"ctn":199200,"pcs":8300},"HI LO ACTIVE CHOCOLATE 6DX750G":{"ctn":630000,"pcs":105000},"TS NFDM CHOCOLATE 12DX500G":{"ctn":1248000,"pcs":104000},"TS SWT DIABTX 12DX25SX1.8G":{"ctn":276000,"pcs":23000},"TS DIABTX MILK VANILLA MALT 12DX500G":{"ctn":1236000,"pcs":103000},"NS MARKISA PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"NS LYCHEE TEA PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"L-MEN LOSE WEIGHT CHOCOLATE CEREAL 6DX12SX25G":{"ctn":792000,"pcs":132000},"NS BLACKCURRANT TEA PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"HI LO ACTIVE CHOCOLATE 12DX500G":{"ctn":900000,"pcs":75000},"TS BUMBU KALDU AYAM JAMUR 24PX100G":{"ctn":552000,"pcs":23000},"NS SWEET MANGO PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"HI LO ACTIVE HIPROTEIN BERRY FITSHAKE 12DX8SX33.5G":{"ctn":1440000,"pcs":120000},"L-MEN ADVANCE GOLD VANILLA 6DX500G":{"ctn":1080000,"pcs":180000},"TS WHITE COFFEE 12DX4SX15G":{"ctn":216000,"pcs":18000},"NS JERUK MANIS REF 12DX500G":{"ctn":420000,"pcs":35000},"L-MEN PROTEIN BAR CHOCOLATE 6SBX12SX22G":{"ctn":690000,"pcs":9583},"HI LO SCHOOL VANILLA VEGIBERI 6DX750G":{"ctn":684000,"pcs":114000},"TS SANTAN 24DX5SX20G":{"ctn":456000,"pcs":19000},"NS JERUK (EX) MANIS PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"L-MEN PROTEIN 2GO RTD CAPPUCCINO 24TPKX190ML":{"ctn":276000,"pcs":11500},"HI LO GOLD CHOCOLATE 12DX500G":{"ctn":960000,"pcs":80000},"TS COOKIES KOREAN GARLIC BUTTER 12DX5SX20G":{"ctn":276000,"pcs":23000},"HI LO SCHOOL VANILLA VEGIBERI 12DX500G":{"ctn":924000,"pcs":77000},"TS WAFER KOREAN STRAWBERRY CHEESE 12DX5SX20G":{"ctn":264000,"pcs":22000},"L-MEN GAINMASS CHOCOLATE 6DX500G":{"ctn":912000,"pcs":152000},"L-MEN GAINMASS CHOCOLATE 12DX225G":{"ctn":900000,"pcs":75000},"TS RTD COLLAGEN SHOT PEACH BLOSSOM 24TPKX190ML":{"ctn":180000,"pcs":7500},"TS SYRUP COCOPANDAN 12BTLX750ML":{"ctn":360000,"pcs":30000},"NS ANGGUR PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"HI LO ACTIVE VANILLA 12DX500G":{"ctn":900000,"pcs":75000},"TS SYRUP LYCHEE 12BTLX750ML":{"ctn":360000,"pcs":30000},"NS PREMIUM JUS MANGGA PLS 12RX10SX15G":{"ctn":192000,"pcs":16000},"TS AVOCADO COFFEE 12DX4SX14G":{"ctn":192000,"pcs":16000},"TS SWT CLASSIC REF 24DX100G":{"ctn":672000,"pcs":28000},"TS COOKIES KLEPON 12DX5SX20G":{"ctn":276000,"pcs":23000},"TS COOKIES KOREAN GOGUMA 12DX5SX20G":{"ctn":276000,"pcs":23000},"NS W'DANK SEREH JAHE NIPIS PLS 12RX10SX11G":{"ctn":192000,"pcs":16000},"HI LO SCHOOL SUSU COKELAT 8GUSX10SX35G":{"ctn":384000,"pcs":48000},"HI LO TEEN CHOCOLATE 12DX250G":{"ctn":504000,"pcs":42000},"HI LO TEEN VANILLA CARAMEL 12DX250G":{"ctn":504000,"pcs":42000},"HI LO ACTIVE CLEAR PROTEIN PEACH 12PX8SX30G":{"ctn":1500000,"pcs":125000},"TS SWT GULA AREN 24DX50SX2G":{"ctn":972000,"pcs":40500},"NS PEACH TEA PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"NS JERUK MANIS REF 12DX250G":{"ctn":240000,"pcs":20000},"TS COLLAGEN DRINK STRAWBERRY STICK 12DX6SX12G":{"ctn":720000,"pcs":60000},"TS SAUS TIRAM 24BTLX200ML":{"ctn":720000,"pcs":30000},"HI LO SCHOOL CHOCOLATE 12DX250G":{"ctn":468000,"pcs":39000},"TS SYRUP ORANGE 12BTLX750ML":{"ctn":360000,"pcs":30000},"TS LOW FAT MILK KOREAN STRAWBERRY 12DX500G":{"ctn":936000,"pcs":78000},"L-MEN PROTEIN BAR STRONGBERY 6SBX12SX20G":{"ctn":690000,"pcs":9583},"HI LO DRINK RTD CHOCOFIT 24TPKX200ML":{"ctn":264000,"pcs":11000},"NS RTD JAMBU BIJI 24TPKX200ML":{"ctn":141600,"pcs":5900},"HI LO DRINK CHOCO MALT PLS 8RX10SX14G":{"ctn":128000,"pcs":16000},"NS JERUK PERAS REF 12BAGX500G":{"ctn":420000,"pcs":35000},"HI LO ACTIVE VANILLA 12DX200G":{"ctn":408000,"pcs":34000},"TS SWT CLASSIC REF 12DX500G":{"ctn":1212000,"pcs":101000},"TS RTD ALMOND DRINK BANANA DELIGHT 24TPKX190ML":{"ctn":199200,"pcs":8300},"TS SALTY SOY SAUCE 24BTLX200ML":{"ctn":588000,"pcs":24500},"HI LO SCHOOL BUBBLE GUM 12DX500G":{"ctn":924000,"pcs":77000},"HI LO 3IN1 SUSU COKLAT BELGIA PLS 12RX10SX25G":{"ctn":378000,"pcs":31500},"HI LO SCHOOL STRAWBERRY PLS 12RX10SX27G":{"ctn":378000,"pcs":31500},"HI LO SCHOOL RTD COKELAT 24TPKX200ML":{"ctn":163200,"pcs":6800},"NS RTD JERUK MADU 24TPKX200ML":{"ctn":141600,"pcs":5900},"NS APPLE TEA PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"NS ORANGE TEA PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"NS JERUK NIPIS PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"TS LOW FAT MILK VANILLA 12DX180G":{"ctn":420000,"pcs":35000},"TS DIABTX MILK VANILLA MALT 12DX150G":{"ctn":414000,"pcs":34500},"HI LO DRINK SWISS CHOCOLATE PLS 8RX10SX28G":{"ctn":152000,"pcs":19000},"TS MINT COCOA 12DX4SX15G":{"ctn":204000,"pcs":17000},"NS LOKALATE KOPI GULA AREN PLS 12RX10SX15G":{"ctn":192000,"pcs":16000},"HI LO TEEN HIPROTEIN MELON 12DX400G":{"ctn":960000,"pcs":80000},"HI LO TEEN HIPROTEIN ORIGINAL 12DX10SX33G":{"ctn":960000,"pcs":80000},"L-MEN ADVANCE CHOCO VANILLA 6DX500G":{"ctn":960000,"pcs":160000},"HI LO GOLD ORIGINAL 12DX500G":{"ctn":936000,"pcs":78000},"HI LO ACTIVE POWERMELON 12DX7SX32G":{"ctn":936000,"pcs":78000},"HI LO SCHOOL COTTON CANDY 12DX500G":{"ctn":924000,"pcs":77000},"NS SEMANGKA PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"TS BALI ARTISAN SEA SALT 12BTLX300G":{"ctn":600000,"pcs":50000},"L-MEN PROTEIN 2GO RTD OGURA 24TPKX190ML":{"ctn":288000,"pcs":12000},"NS W'DANK JAHE KAYU MANIS 24DX4SX15G":{"ctn":288000,"pcs":12000},"NS RTD SQUEEZED ORANGE 24TPKX200ML":{"ctn":141600,"pcs":5900},"HI LO ACTIVE BELGIAN CHOCOLATE 8GUSX10SX30G":{"ctn":424000,"pcs":53000},"NS FLORIDA ORANGE PLS 18PX40SX11G":{"ctn":810000,"pcs":11250},"NS MILKY ORANGE PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"NS LESS SUGAR JERUK PONTIANAK PLS 4PX40SX6G":{"ctn":180000,"pcs":11250},"NS MELON PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"TS RTD OAT DRINK CANTALOUPE MELON 24TPKX190ML":{"ctn":180000,"pcs":7500},"HI LO DRINK CHOCO HAZELNUT PLS 15RX10SX14G":{"ctn":240000,"pcs":16000},"L-MEN DAILY CHOCOLATE 12DX250G":{"ctn":708000,"pcs":59000},"HI LO GOLD CHOCOLATE 6DX750G":{"ctn":702000,"pcs":117000},"TS SWEET ORANGE 12DX10SX6G":{"ctn":234000,"pcs":19500},"TS SWT CLASSIC REF 12DX250G":{"ctn":696000,"pcs":58000},"TS DRIP COFFEE SEVILLE ORANGE 12DX4SX12G":{"ctn":660000,"pcs":55000},"HI LO TEEN RTD COKELAT 24TPKX200ML":{"ctn":163200,"pcs":6800},"L-MEN ISOPOWER STARGIZING 6DX30SX7.8G":{"ctn":618000,"pcs":103000},"L-MEN ADVANCE CAPPUCINO 12DX250G":{"ctn":1056000,"pcs":88000},"HI LO ACTIVE GRANOLA BERRY BERRY HONEY 12PX150G":{"ctn":600000,"pcs":50000},"NS LOKALATE KOPI ALPUKAT PLS 12RX10SX15G":{"ctn":192000,"pcs":16000},"HI LO ACTIVE BELGIAN CHOCOLATE 14GUSX4SX30G":{"ctn":315000,"pcs":22500},"TS SWT LEMON 12DX25SX2.5G":{"ctn":288000,"pcs":24000},"NS LECI PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"NS MADU LEMON PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"NS JERUK MAROKO PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"HI LO DRINK THAI TEA PLS 8RX10SX15G":{"ctn":128000,"pcs":16000},"HI LO GOLD CHOCOLATE 12DX250G":{"ctn":504000,"pcs":42000},"HI LO TEEN KOREAN BANANA 12DX250G":{"ctn":504000,"pcs":42000},"HI LO TEEN RTD COFFEE TIRAMISU 24TPKX200ML":{"ctn":163200,"pcs":6800},"HI LO DRINK CHOCOLATE PLS 15RX10SX14G":{"ctn":240000,"pcs":16000},"HI LO DRINK CREAMY MARIE PLS 15RX10SX14G":{"ctn":240000,"pcs":16000},"NS AMERICAN SWEET ORANGE FC 72OX10SX14G":{"ctn":936000,"pcs":13000},"NS FLORIDA ORANGE FC 72OX10SX11G":{"ctn":936000,"pcs":13000},"NS JERUK NIPIS 72OX10SX11G":{"ctn":936000,"pcs":13000},"HI LO ACTIVE CHOCOLATE 12DX250G":{"ctn":456000,"pcs":38000},"HI LO GOLD VANILLA 12DX500G":{"ctn":936000,"pcs":78000},"HI LO GOLD VANILLA 12DX200G":{"ctn":444000,"pcs":37000},"NS W'DANK BAJIGUR 24DX4SX15G":{"ctn":288000,"pcs":12000},"NS KELAPA MUDA PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"NS LESS SUGAR JERUK SONKIT PLS 4PX40SX6G":{"ctn":180000,"pcs":11250},"NS NANAS PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"NS SIRSAK PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"NS SWEET GUAVA PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"NS ANGGUR HIJAU PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"HI LO DRINK RTD MILKY BROWN SUGAR 24TPKX200ML":{"ctn":163200,"pcs":6800},"NS JERUK JEJU FC 72OX10SX11G":{"ctn":1152000,"pcs":16000},"TS SWT I SWEET 12DX25SX1.5G":{"ctn":288000,"pcs":24000},"HI LO DRINK TEH TARIK PLS 8RX10SX15G":{"ctn":128000,"pcs":16000},"L-MEN PROTEIN CRUNCH BBQ BEEF 20BAGX20G":{"ctn":250000,"pcs":12500},"HI LO DRINK CHOCOLATE BANANA PLS 15RX10SX14G":{"ctn":240000,"pcs":16000},"HI LO DRINK CHOCOLATE TARO PLS 15RX10SX14G":{"ctn":240000,"pcs":16000},"HI LO GOLD ORIGINAL 12DX200G":{"ctn":444000,"pcs":37000},"HI LO DRINK WHITE CHOCOLATE PLS 15RX10SX14G":{"ctn":240000,"pcs":16000},"HI LO DRINK CHOCO HAZELNUT 8GUSX10SX14G":{"ctn":220000,"pcs":27500},"NS JERUK PERAS 72GUSX5SX14G":{"ctn":590400,"pcs":8200},"NS MANGGA GANDARIA PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"NS COCOPANDAN PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"NS STRAWBERRY PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"NS BLEWAH PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"NS LOKALATE KOPI SHOWBERRY 24DX4SX15G":{"ctn":288000,"pcs":12000},"NS MADU JERUK PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"NS BRAZILIAN SWEET ORANGE FC 72OX10SX11G":{"ctn":936000,"pcs":13000},"NS APEL JERUK PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"HI LO SCHOOL RTD VEGIBERI 24TPKX200ML":{"ctn":163200,"pcs":6800},"HI LO DRINK RTD CHOCOLATE TARO 24TPKX200ML":{"ctn":141600,"pcs":5900},"TS SWT GULA BUAH 24DX50SX2.5G":{"ctn":984000,"pcs":41000},"HI LO DRINK RTD PROTEIN BERRYFIT 24TPKX190ML":{"ctn":264000,"pcs":11000},"TS SHIRATAKI NOODLES 40OX71G":{"ctn":740000,"pcs":18500},"NS JERUK JEJU PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"NS YUZU ORANGE PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"HI LO SCHOOL HONEY 12DX250G":{"ctn":480000,"pcs":40000},"HI LO DRINK CREAMY MATCHA PLS 8RX10SX20G":{"ctn":136000,"pcs":17000},"HI LO DRINK AVOCADO CHOCOLATE PLS 15RX10SX14G":{"ctn":240000,"pcs":16000},"HI LO DRINK ES KETAN HITAM PLS 8RX10SX14G":{"ctn":128000,"pcs":16000},"HI LO SCHOOL ORIGINAL 12DX12SX25G":{"ctn":924000,"pcs":77000},"HI LO TEEN POPCORN CARAMEL 12DX500G":{"ctn":960000,"pcs":80000},"L-MEN GAINMASS BANANA 12DX225G":{"ctn":900000,"pcs":75000},"L-MEN PLANTPROTEIN OGURA 12DX216G":{"ctn":1200000,"pcs":100000},"L-MEN PLATINUM NOODLE SEMUR DAGING 18BAGX56.5G":{"ctn":405000,"pcs":22500},"NS ISOTONIK REFRESHING CITRUS PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"NS JERUK PERAS FC 72OX10SX14G":{"ctn":792000,"pcs":11000},"NS LESS SUGAR BELIMBING PLS 4PX40SX6G":{"ctn":180000,"pcs":11250},"NS LYCHEE TEA REF PLS 12BAGX400G":{"ctn":402000,"pcs":33500},"NS MILKY PEACH PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"NS PREMIUM JUS MANGGA REF PLS 12BAGX420G":{"ctn":456000,"pcs":38000},"NS W'DANK BAJIGUR PLS 12RX10SX15G":{"ctn":192000,"pcs":16000},"NS W'DANK BANDREK PLS 12RX10SX15G":{"ctn":192000,"pcs":16000},"NS ES CINCAU PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"NS ES RUJAK PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"NS LESS SUGAR JERUK BALI PLS 4PX40SX6G":{"ctn":180000,"pcs":11250},"NS JERUK MANADO PLS 4PX40SX11G":{"ctn":180000,"pcs":11250},"TS SWT DIABTX PLS 10PX80SX1.8G":{"ctn":530000,"pcs":53000},"TS DIABETAMIL SWT PLS 10PX80SX1G":{"ctn":300000,"pcs":30000},"TS BERAS PORANG INSTAN NASI GORENG 12DX7SX38.5G":{"ctn":780000,"pcs":65000},"TS MAYO ROASTED SESAME 24BTLX200ML":{"ctn":588000,"pcs":24500},"TS SOY LATTE 12DX10SX15G":{"ctn":480000,"pcs":40000},"TS SWT STEVIA 12DX100SX1.8G":{"ctn":1296000,"pcs":108000}};
 function isPolosStock(name){if(!name)return false;const n=name.toUpperCase();if(n.startsWith('NS ')&&n.includes('PLS'))return true;if((n.startsWith('HI LO ')||n.startsWith('HILO '))&&n.includes('PLS')&&!n.includes('RTD'))return true;return false;}
@@ -520,6 +565,399 @@ function tenure(d){
   if(days<30)return days+' hari';
   if(days<365)return Math.floor(days/30)+' bln';
   return(days/365).toFixed(1)+' thn';
+}
+
+// ── PENJUALAN MDS: DATA CALL/ORDER ──────────────────────────────────────────
+const PJ_COLLECTION='pjmds_data', PJ_CHUNK_SIZE=700000;
+const PJ_TARGET={tea:2500000,hilo:3000000,call:550,ea:200,sekolah:35};
+const PJ_SEKOLAH_EXCLUDE=new Set(['BUKAN SEKOLAH','OTHERS','BUKAN SEKOLA','TIDAK ADA']);
+const PJ_ASO_JUPE_ITEMS=new Set(['NS JERUK PERAS PLS 18PX40SX14G','NS ASO PLS 14GX18PX40S','NS AMERICAN SWEET ORANGE PLS 18PX40SX14G']);
+let PJ_RAW={call:[],order:[],meta:null};
+function pjIsJP(n){return n&&n.toUpperCase().includes('JERUK PERAS');}
+function pjIsASO(n){return n&&(n.toUpperCase().includes(' ASO ')||n.toUpperCase().includes('AMERICAN SWEET ORANGE'));}
+function pjMode(arr){const f={};let best='',bc=0;arr.forEach(v=>{if(!v)return;f[v]=(f[v]||0)+1;if(f[v]>bc){bc=f[v];best=v;}});return best;}
+function pjToDate(v){if(v instanceof Date)return v;if(typeof v==='string'){const d=new Date(v);return isNaN(d)?null:d;}return null;}
+function pjIsoWeek(date){
+  const d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()));
+  const dayNum=(d.getUTCDay()+6)%7;
+  d.setUTCDate(d.getUTCDate()-dayNum+3);
+  const firstThursday=new Date(Date.UTC(d.getUTCFullYear(),0,4));
+  const weekNum=1+Math.round(((d-firstThursday)/86400000-3+((firstThursday.getUTCDay()+6)%7))/7);
+  return d.getUTCFullYear()*100+weekNum;
+}
+function findSheetPj(wb,name){
+  const exact=wb.Sheets[name];if(exact)return exact;
+  const key=wb.SheetNames.find(n=>n.trim().toLowerCase()===name.toLowerCase());
+  return key?wb.Sheets[key]:null;
+}
+let ITEM_PRICE_NORM=null;
+function pjBuildItemPriceNorm(){
+  ITEM_PRICE_NORM={};
+  Object.keys(ITEM_PRICE).forEach(k=>{ITEM_PRICE_NORM[k.toUpperCase().trim().replace(/\s+/g,' ')]=ITEM_PRICE[k].pcs;});
+}
+function pjExpandSynonyms(s){
+  return String(s||'').replace(/\bASO\b/g,'AMERICAN SWEET ORANGE');
+}
+function pjCoreName(s){
+  return pjExpandSynonyms(String(s||'').toUpperCase().trim().replace(/[.,]/g,'').replace(/\s+/g,' '))
+    .split(' ').filter(tok=>tok&&!/\d/.test(tok)).join(' ');
+}
+let ITEM_PRICE_CORE=null;
+function pjBuildItemPriceCore(){
+  ITEM_PRICE_CORE={};
+  Object.keys(ITEM_PRICE).forEach(k=>{
+    const core=pjCoreName(k);
+    if(!core)return;
+    if(!ITEM_PRICE_CORE[core])ITEM_PRICE_CORE[core]=[];
+    ITEM_PRICE_CORE[core].push(ITEM_PRICE[k].pcs);
+  });
+}
+function pjCoreNoPls(core){return core.split(' ').filter(t=>t!=='PLS').join(' ');}
+let ITEM_PRICE_CORE_NOPLS=null;
+function pjBuildItemPriceCoreNoPls(){
+  if(!ITEM_PRICE_CORE)pjBuildItemPriceCore();
+  ITEM_PRICE_CORE_NOPLS={};
+  Object.keys(ITEM_PRICE_CORE).forEach(core=>{
+    const c2=pjCoreNoPls(core);
+    if(!ITEM_PRICE_CORE_NOPLS[c2])ITEM_PRICE_CORE_NOPLS[c2]=[];
+    ITEM_PRICE_CORE_NOPLS[c2].push(...ITEM_PRICE_CORE[core]);
+  });
+}
+function pjItemPrice(name){
+  if(!name)return 0;
+  if(ITEM_PRICE[name])return ITEM_PRICE[name].pcs||0;
+  if(!ITEM_PRICE_NORM)pjBuildItemPriceNorm();
+  const norm=String(name).toUpperCase().trim().replace(/\s+/g,' ');
+  if(ITEM_PRICE_NORM[norm])return ITEM_PRICE_NORM[norm];
+  if(!ITEM_PRICE_CORE)pjBuildItemPriceCore();
+  const core=pjCoreName(name);
+  const arr=ITEM_PRICE_CORE[core];
+  if(arr&&arr.length)return Math.round(arr.reduce((a,b)=>a+b,0)/arr.length);
+  if(!ITEM_PRICE_CORE_NOPLS)pjBuildItemPriceCoreNoPls();
+  const core2=pjCoreNoPls(core);
+  const arr2=ITEM_PRICE_CORE_NOPLS[core2];
+  if(arr2&&arr2.length)return Math.round(arr2.reduce((a,b)=>a+b,0)/arr2.length);
+  return 0;
+}
+function pjOrderValue(r){return(r.Qty||0)*pjItemPrice(r.NamaItem);}
+function pjPeriodDays(){
+  if(MF)return 31;
+  if(DF==='today')return 1;
+  if(DF==='week')return 7;
+  if(DF==='30d')return 30;
+  if(DF==='range'&&RF_FROM){
+    const a=new Date(RF_FROM),b=RF_TO?new Date(RF_TO):new Date();
+    return Math.max(1,Math.round((b-a)/864e5)+1);
+  }
+  return 9999;
+}
+function pjAnchorDate(){
+  let max=null;
+  PJ_RAW.call.forEach(r=>{const d=pjToDate(r.Tanggal);if(d&&(!max||d>max))max=d;});
+  return max||new Date();
+}
+function pjGetCutoff(){
+  const anchor=pjAnchorDate();
+  if(DF==='today'){const d=new Date(anchor);d.setHours(0,0,0,0);return d;}
+  if(DF==='week'){const d=new Date(anchor);d.setDate(d.getDate()-7);return d;}
+  if(DF==='30d'){const d=new Date(anchor);d.setDate(d.getDate()-30);return d;}
+  if(DF==='nmonths'&&NM>0){const d=new Date(anchor);d.setMonth(d.getMonth()-NM);return d;}
+  if(DF==='range'&&RF_FROM){const d=new Date(RF_FROM);d.setHours(0,0,0,0);return d;}
+  return new Date(0);
+}
+function pjPeriodFilterCall(rows){
+  const cutoff=pjGetCutoff();
+  let rangeEnd=null;
+  if(DF==='range'&&RF_TO){rangeEnd=new Date(RF_TO);rangeEnd.setHours(23,59,59,999);}
+  return rows.filter(r=>{
+    const d=pjToDate(r.Tanggal);
+    if(!d)return true;
+    if(MF){const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;if(k!==MF)return false;}
+    else{if(d<cutoff)return false;if(rangeEnd&&d>rangeEnd)return false;}
+    return true;
+  });
+}
+function pjPeriodFilterOrder(orderRows,filteredCallRows){
+  const hasDates=orderRows.some(r=>pjToDate(r.Tanggal));
+  if(hasDates){
+    const cutoff=pjGetCutoff();
+    let rangeEnd=null;
+    if(DF==='range'&&RF_TO){rangeEnd=new Date(RF_TO);rangeEnd.setHours(23,59,59,999);}
+    return orderRows.filter(r=>{
+      const d=pjToDate(r.Tanggal);
+      if(!d)return true;
+      if(MF){const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;if(k!==MF)return false;}
+      else{if(d<cutoff)return false;if(rangeEnd&&d>rangeEnd)return false;}
+      return true;
+    });
+  }
+  if(MF){
+    const monthNum=Number(MF.split('-')[1]);
+    return orderRows.filter(r=>r.Bulan===monthNum);
+  }
+  const allowedMonths=new Set(filteredCallRows.map(r=>r.Bulan));
+  if(!allowedMonths.size)return orderRows;
+  return orderRows.filter(r=>allowedMonths.has(r.Bulan));
+}
+async function pjStorageSet(value){
+  try{
+    const chunks=[];
+    for(let i=0;i<value.length;i+=PJ_CHUNK_SIZE)chunks.push(value.slice(i,i+PJ_CHUNK_SIZE));
+    const oldMetaSnap=await dbSulawesi.collection(PJ_COLLECTION).doc('meta').get();
+    const oldCount=oldMetaSnap.exists?(oldMetaSnap.data().chunkCount||0):0;
+    await Promise.all(chunks.map((chunk,i)=>dbSulawesi.collection(PJ_COLLECTION).doc('chunk_'+i).set({data:chunk})));
+    for(let i=chunks.length;i<oldCount;i++)await dbSulawesi.collection(PJ_COLLECTION).doc('chunk_'+i).delete();
+    await dbSulawesi.collection(PJ_COLLECTION).doc('meta').set({chunkCount:chunks.length,updatedAt:new Date().toISOString()});
+    return true;
+  }catch(e){console.error('pjStorageSet failed',e);return false;}
+}
+async function pjStorageGet(){
+  try{
+    const metaSnap=await dbSulawesi.collection(PJ_COLLECTION).doc('meta').get();
+    if(!metaSnap.exists)return null;
+    const n=metaSnap.data().chunkCount||0;
+    let full='';
+    for(let i=0;i<n;i++){const snap=await dbSulawesi.collection(PJ_COLLECTION).doc('chunk_'+i).get();full+=snap.exists?(snap.data().data||''):'';}
+    return full||null;
+  }catch(e){console.error('pjStorageGet failed',e);return null;}
+}
+async function loadPjmdsData(){
+  const el=document.getElementById('pjdata-status');
+  if(!dbSulawesi){if(el)el.textContent='Cloud belum terhubung.';return;}
+  try{
+    const raw=await pjStorageGet();
+    if(raw){
+      const parsed=JSON.parse(raw);
+      PJ_RAW={call:parsed.call||[],order:parsed.order||[],meta:parsed.meta||null};
+      if(el)el.textContent=`Data tersimpan: ${PJ_RAW.meta?.filename||'file sebelumnya'} · ${PJ_RAW.call.length} baris call, ${PJ_RAW.order.length} baris order`;
+    }else if(el){
+      el.textContent='Belum ada data Call/Order diupload — klik "⟲ Update Data".';
+    }
+  }catch(e){console.error('loadPjmdsData failed',e);if(el)el.textContent='Gagal memuat data tersimpan.';}
+  render();
+}
+async function handlePjmdsDataFile(file){
+  const el=document.getElementById('pjdata-status');
+  el.textContent='<span class="spinner"></span>Membaca '+file.name+'…';
+  try{
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array',cellDates:true});
+    const callSheet=findSheetPj(wb,'Call');
+    const orderSheet=findSheetPj(wb,'Order');
+    if(!callSheet){el.textContent='Sheet "Call" tidak ditemukan. Sheet yang ada: '+wb.SheetNames.join(', ');return;}
+    const callRaw=XLSX.utils.sheet_to_json(callSheet,{defval:null});
+    const orderRaw=orderSheet?XLSX.utils.sheet_to_json(orderSheet,{defval:null}):[];
+    const call=callRaw.map(r=>({
+      Bulan:Number(r['Bulan']),Tanggal:r['Tanggal']instanceof Date?r['Tanggal'].toISOString():r['Tanggal'],
+      NamaMDS:r['Nama MDS'],PIC:r['PIC'],Provinsi:r['Provinsi'],
+      KodeCustomer:String(r['Kode Customer']),NamaCustomer:r['Nama Customer'],Kabupaten:r['Kabupaten'],
+      Klasifikasi:r['Klasifikasi'],Sekolah:r['Sekolah'],StatusSekolah:r['Status Sekolah']===true,
+      OmzetNS:Number(r['Omzet NS'])||0,OmzetHILO:Number(r['Omzet HILO'])||0,TotalOrder:Number(r['Total Order'])||0
+    }));
+    const order=orderRaw.map(r=>{
+      const qty=Number(r['Qty'])||0;
+      const nm=r['Nama Item']||'';
+      const price=pjItemPrice(nm);
+      return{
+        Bulan:Number(r['Bulan']),Tanggal:r['Tanggal']instanceof Date?r['Tanggal'].toISOString():r['Tanggal'],
+        NamaMDS:r['Nama MDS'],KodeCustomer:String(r['Kode Customer']),
+        NamaCustomer:r['Nama Customer'],Kabupaten:r['Kabupaten'],Klasifikasi:r['Klasifikasi'],
+        Brand:r['Brand'],NamaItem:nm,Qty:qty,Value:qty*price
+      };
+    });
+    PJ_RAW={call,order,meta:{filename:file.name,uploadedAt:new Date().toISOString()}};
+    el.textContent=`Berhasil diproses: ${file.name} · ${call.length} baris call, ${order.length} baris order`;
+    render();
+    const payload=JSON.stringify(PJ_RAW);
+    const sizeMB=(new TextEncoder().encode(payload)).length/1024/1024;
+    el.textContent+=` (${sizeMB.toFixed(1)}MB, menyimpan ke cloud dalam ${Math.ceil(payload.length/PJ_CHUNK_SIZE)} bagian…)`;
+    const ok=await pjStorageSet(payload);
+    el.textContent+=ok?' · tersimpan di cloud, semua device sinkron':' (upload ke cloud gagal, data cuma untuk sesi ini)';
+  }catch(err){
+    console.error(err);
+    el.textContent='Gagal membaca file: '+(err.message||err);
+  }
+}
+function pjNormName(s){return String(s||'').toUpperCase().trim().replace(/[.,]/g,'').replace(/\s+/g,' ');}
+function pjTokenMatch(a,b){
+  if(a===b)return true;
+  const min=Math.min(a.length,b.length);
+  if(min<3)return false;
+  return a.startsWith(b)||b.startsWith(a);
+}
+function pjWordsMatch(wordsA,wordsB){
+  const shorter=wordsA.length<=wordsB.length?wordsA:wordsB;
+  const longer=wordsA.length<=wordsB.length?wordsB:wordsA;
+  if(!shorter.length)return false;
+  return shorter.every(sw=>longer.some(lw=>pjTokenMatch(sw,lw)));
+}
+function pjResolveMdsName(selName){
+  if(!selName)return null;
+  const target=pjNormName(selName);
+  const targetWords=target.split(' ').filter(Boolean);
+  const names=[...new Set(PJ_RAW.call.map(r=>r.NamaMDS).filter(Boolean))];
+  let found=names.find(n=>pjNormName(n)===target);
+  if(found)return found;
+  const candidates=names.filter(n=>pjWordsMatch(targetWords,pjNormName(n).split(' ').filter(Boolean)));
+  if(!candidates.length)return null;
+  if(candidates.length===1)return candidates[0];
+  candidates.sort((a,b)=>pjNormName(a).split(' ').length-pjNormName(b).split(' ').length);
+  return candidates[0];
+}
+function computePjmdsMdsData(selName){
+  const resolvedName=pjResolveMdsName(selName);
+  const mds=resolvedName||selName;
+  const cAll=PJ_RAW.call.filter(r=>r.NamaMDS===mds);
+  const oAll=PJ_RAW.order.filter(r=>r.NamaMDS===mds);
+  const c=pjPeriodFilterCall(cAll);
+  const o=pjPeriodFilterOrder(oAll,c);
+  if(!c.length)return null;
+  const provinsi=pjMode(c.map(r=>r.Provinsi));
+  const omzetOf=r=>(r.OmzetNS||0)+(r.OmzetHILO||0);
+
+  const custMap={};
+  c.forEach(r=>{
+    const k=r.KodeCustomer;
+    if(!custMap[k])custMap[k]={nama:r.NamaCustomer,klas:[],kab:r.Kabupaten,omzet:0,visits:0,totalOrder:0};
+    custMap[k].klas.push(r.Klasifikasi);custMap[k].omzet+=omzetOf(r);custMap[k].visits+=1;custMap[k].totalOrder+=(r.TotalOrder||0);
+  });
+  const custList=Object.values(custMap).map(x=>({nama:x.nama,klasifikasi:pjMode(x.klas),kabupaten:x.kab,omzet:x.omzet,visits:x.visits}));
+  const topCustomer=[...custList].sort((a,b)=>b.omzet-a.omzet).slice(0,10);
+  const eaCount=Object.values(custMap).filter(x=>x.totalOrder>0).length;
+
+  const sekMap={};
+  c.filter(r=>!PJ_SEKOLAH_EXCLUDE.has(String(r.Sekolah||'').trim().toUpperCase())).forEach(r=>{
+    const key=String(r.Sekolah||'').trim().toUpperCase();
+    if(!key)return;
+    if(!sekMap[key])sekMap[key]={namaList:[],kabList:[],omzet:0,dates:new Set(),kantinCodes:new Set()};
+    sekMap[key].namaList.push(r.Sekolah);sekMap[key].kabList.push(r.Kabupaten);sekMap[key].omzet+=omzetOf(r);
+    const dd=pjToDate(r.Tanggal);if(dd)sekMap[key].dates.add(dd.toISOString().slice(0,10));
+    sekMap[key].kantinCodes.add(r.KodeCustomer);
+  });
+  const topSekolah=Object.values(sekMap).map(x=>({nama:pjMode(x.namaList),kabupaten:pjMode(x.kabList),omzet:x.omzet,visits:x.dates.size,kantin:x.kantinCodes.size}))
+    .sort((a,b)=>b.omzet-a.omzet).slice(0,5);
+
+  const itemMap={};
+  o.filter(r=>!String(r.NamaItem).toUpperCase().startsWith('BONUS')).forEach(r=>{
+    const k=r.KodeCustomer;if(!itemMap[k])itemMap[k]=new Set();itemMap[k].add(r.NamaItem);
+  });
+  const singleSku=[];
+  Object.keys(itemMap).forEach(k=>{
+    const items=[...itemMap[k]];
+    if(items.length===1&&(pjIsJP(items[0])||pjIsASO(items[0]))){
+      const crows=c.filter(r=>r.KodeCustomer===k);
+      const orows=o.filter(r=>r.KodeCustomer===k&&!String(r.NamaItem).toUpperCase().startsWith('BONUS'));
+      const nama=crows[0]?crows[0].NamaCustomer:(orows[0]?orows[0].NamaCustomer:k);
+      const kab=crows[0]?crows[0].Kabupaten:(orows[0]?orows[0].Kabupaten:'');
+      const klas=pjMode(crows.map(r=>r.Klasifikasi));
+      const qty=orows.reduce((s,r)=>s+r.Qty,0),val=orows.reduce((s,r)=>s+pjOrderValue(r),0);
+      singleSku.push({nama,kabupaten:kab,klasifikasi:klas,item:pjIsJP(items[0])?'Jeruk Peras':'ASO',qty,omzet:val});
+    }
+  });
+  singleSku.sort((a,b)=>b.omzet-a.omzet);
+
+  const nd=c.filter(r=>r.Klasifikasi!=='Retail'&&r.Klasifikasi!=='Grosir');
+  const perCust={};
+  nd.forEach(r=>{
+    const d=pjToDate(r.Tanggal);if(!d)return;
+    const dateKey=d.toISOString().slice(0,10),wk=pjIsoWeek(d),k=r.KodeCustomer;
+    if(!perCust[k])perCust[k]={datesAll:new Set(),weekDates:{}};
+    perCust[k].datesAll.add(dateKey);
+    if(!perCust[k].weekDates[wk])perCust[k].weekDates[wk]=new Set();
+    perCust[k].weekDates[wk].add(dateKey);
+  });
+  const periodDays=pjPeriodDays();
+  const efektivitas=[];
+  Object.keys(perCust).forEach(k=>{
+    const info=perCust[k];
+    const totalDates=info.datesAll.size;
+    const maxWeekDates=Math.max(...Object.values(info.weekDates).map(s=>s.size));
+    const flagged=periodDays<30?totalDates>2:(maxWeekDates>2||totalDates>4);
+    if(flagged){
+      const crows=nd.filter(r=>r.KodeCustomer===k);
+      efektivitas.push({nama:crows[0].NamaCustomer,kabupaten:crows[0].Kabupaten,klasifikasi:pjMode(crows.map(r=>r.Klasifikasi)),
+        total_visit:totalDates,max_minggu:maxWeekDates,omzet:crows.reduce((s,r)=>s+omzetOf(r),0)});
+    }
+  });
+  efektivitas.sort((a,b)=>b.total_visit-a.total_visit);
+
+  const allItemMap={};
+  o.filter(r=>!String(r.NamaItem).toUpperCase().startsWith('BONUS')).forEach(r=>{
+    const k=r.KodeCustomer;if(!allItemMap[k])allItemMap[k]=new Set();allItemMap[k].add(r.NamaItem);
+  });
+  const nooPengembangan=[];
+  if(KEDAI_DB.stores.length){
+    const kodeSet=new Set(KEDAI_DB.stores.map(s=>String(s.kode||'').trim().toLowerCase()));
+    Object.keys(custMap).forEach(k=>{
+      const x=custMap[k],skuCount=allItemMap[k]?allItemMap[k].size:0;
+      const isNewCode=!kodeSet.has(String(k||'').trim().toLowerCase());
+      if(isNewCode&&x.omzet>0&&skuCount>=3){
+        nooPengembangan.push({nama:x.nama,kabupaten:x.kab,klasifikasi:pjMode(x.klas),sku_count:skuCount,omzet:x.omzet});
+      }
+    });
+  }
+  nooPengembangan.sort((a,b)=>b.omzet-a.omzet);
+
+  const teaVolume=o.filter(r=>r.Brand==='NUTRISARI'&&String(r.NamaItem).toUpperCase().includes('TEA')).reduce((s,r)=>s+pjOrderValue(r),0);
+  const hiloVolume=c.reduce((s,r)=>s+(r.OmzetHILO||0),0);
+  const totalPenjualan=o.reduce((s,r)=>s+pjOrderValue(r),0);
+  const singleSkuCount=singleSku.length;
+  const singleSkuTotalValue=singleSku.reduce((s,r)=>s+r.omzet,0);
+
+  return{
+    provinsi,resolvedName,
+    kpi:{total_call:c.length,total_customer:eaCount,total_sekolah:Object.keys(sekMap).length,tea_volume:teaVolume,hilo_volume:hiloVolume,total_penjualan:totalPenjualan},
+    top_customer:topCustomer,top_sekolah:topSekolah,single_sku_aso_jupe:singleSku,single_sku_count:singleSkuCount,single_sku_total_value:singleSkuTotalValue,
+    noo_pengembangan:nooPengembangan,efektivitas
+  };
+}
+function pjKpiCard(label,value,target,fmt){
+  const pct=target>0?(value/target)*100:0,cls=pct>=100?'g':'r',barW=Math.min(pct,100);
+  return`<div class="kpi-shell"><div class="kpi-inner" style="padding:12px 14px">
+    <div class="kpi-label" style="margin-bottom:4px">${label}</div>
+    <div class="kpi-val" style="font-size:16px">${fmt(value)}</div>
+    <div class="kpi-sub">Target: ${fmt(target)}</div>
+    <div class="av-bg" style="margin-top:6px"><div class="av-fill" style="width:${barW}%;background:${cls==='g'?'var(--accent)':'var(--red)'}"></div></div>
+    <div style="font-size:11px;font-weight:700;margin-top:4px;color:${cls==='g'?'var(--accent)':'var(--red)'}">${pct.toFixed(0)}%</div>
+  </div></div>`;
+}
+function pjTable(headers,rows,rowFn,emptyMsg){
+  if(!rows.length)return`<div class="empty-state">${emptyMsg}</div>`;
+  return`<table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(rowFn).join('')}</tbody></table>`;
+}
+function renderPjmdsSalesDetail(mds){
+  const d=computePjmdsMdsData(mds);
+  if(!d){
+    return`<div class="panel-shell" style="margin-top:12px"><div class="panel-body" style="text-align:center;padding:24px;color:var(--t3)">Belum ada data Call/Order untuk MDS ini. Upload lewat "⟲ Update Data".</div></div>`;
+  }
+  const nameNote=d.resolvedName&&d.resolvedName!==mds?` <span style="color:var(--t3);font-weight:500">(dicocokkan sbg "${d.resolvedName}")</span>`:'';
+  let html=`<div class="ch-label" style="margin:16px 0 10px">📊 Laporan Aktivitas — ${mds}${nameNote} <span style="color:var(--t3);font-weight:500">· ${d.provinsi||'-'}</span></div>`;
+  html+=`<div class="bento" style="grid-template-columns:repeat(5,1fr)">
+    ${pjKpiCard('Volume NS Tea',d.kpi.tea_volume,PJ_TARGET.tea,rp)}
+    ${pjKpiCard('Volume HILO',d.kpi.hilo_volume,PJ_TARGET.hilo,rp)}
+    ${pjKpiCard('Call',d.kpi.total_call,PJ_TARGET.call,fmtNum)}
+    ${pjKpiCard('EA / Total Customer',d.kpi.total_customer,PJ_TARGET.ea,fmtNum)}
+    ${pjKpiCard('Sekolah Dikunjungi',d.kpi.total_sekolah,PJ_TARGET.sekolah,fmtNum)}
+  </div>`;
+  html+=`<div class="ch-label" style="margin:16px 0 8px">Top 10 Customer</div><div class="panel-shell"><div class="panel-body">
+    ${pjTable(['','Customer','Klasifikasi','Kabupaten','Visit','Omzet'],d.top_customer,(r,i)=>`<tr><td>${i+1}</td><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.visits}x</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada data customer.')}
+  </div></div>`;
+  html+=`<div class="ch-label" style="margin:16px 0 8px">Top 5 Sekolah</div><div class="panel-shell"><div class="panel-body">
+    ${pjTable(['','Nama Sekolah','Kabupaten','Kantin','Visit','Omzet'],d.top_sekolah,(r,i)=>`<tr><td>${i+1}</td><td class="td-main">${r.nama}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.kantin}</td><td>${r.visits}x</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada data sekolah.')}
+  </div></div>`;
+  html+=`<div class="ch-label" style="margin:16px 0 8px">Customer Hanya Beli 1 SKU (Jeruk Peras / ASO)</div><div class="panel-shell"><div class="panel-body">
+    <div class="bento bento-2">
+      <div class="kpi-shell"><div class="kpi-inner" style="padding:12px 14px"><div class="kpi-label">Jumlah Customer</div><div class="kpi-val" style="font-size:18px;color:var(--gold)">${d.single_sku_count}</div></div></div>
+      <div class="kpi-shell"><div class="kpi-inner" style="padding:12px 14px"><div class="kpi-label">Total Value</div><div class="kpi-val" style="font-size:18px;color:var(--accent)">${d.single_sku_total_value?rp(d.single_sku_total_value):'—'}</div></div></div>
+    </div>
+  </div></div>`;
+  html+=`<div class="ch-label" style="margin:16px 0 8px">NOO Pengembangan (${d.noo_pengembangan.length} customer) ${KEDAI_DB.stores.length?'':'<span style="color:var(--t3);font-weight:500">(upload database kedai dulu)</span>'}</div><div class="panel-shell"><div class="panel-body">
+    ${KEDAI_DB.stores.length?pjTable(['Customer','Klasifikasi','Kabupaten','Jumlah SKU','Omzet'],d.noo_pengembangan,r=>`<tr><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.sku_count} SKU</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada customer NOO Pengembangan.'):'<div class="empty-state">Belum ada database kedai diupload.</div>'}
+  </div></div>`;
+  html+=`<div class="ch-label" style="margin:16px 0 8px">Efektivitas Kunjungan</div><div class="panel-shell"><div class="panel-body">
+    ${pjTable(['Customer','Klasifikasi','Kabupaten','Total Visit','Max/Minggu','Omzet'],d.efektivitas,r=>`<tr><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.total_visit}x</td><td>${r.max_minggu}x</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada customer yang ditandai tidak efektif. ✅')}
+  </div></div>`;
+  return html;
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
@@ -545,11 +983,59 @@ function loadAll(){
     render();
   }).catch(e=>console.error('stock_logs FAILED',e.code,e.message));
 }
+function loadKedaiDb(){
+  if(!dbSulawesi)return;
+  dbSulawesi.collection('kedai_db').doc('main').get().then(doc=>{
+    if(doc.exists){
+      const v=doc.data();
+      KEDAI_DB={stores:v.stores||[],meta:v.meta||null};
+    }
+    renderKedaiStatus();
+  }).catch(e=>{console.error('kedai_db load failed',e.code,e.message);renderKedaiStatus();});
+}
+function renderKedaiStatus(){
+  const el=document.getElementById('kedai-status');if(!el)return;
+  if(KEDAI_DB.stores.length){
+    el.textContent=`Tersimpan: ${KEDAI_DB.meta?.filename||'file sebelumnya'} · ${KEDAI_DB.stores.length} toko (update ${KEDAI_DB.meta?.uploadedAt?new Date(KEDAI_DB.meta.uploadedAt).toLocaleDateString('id-ID'):'-'})`;
+  }else{
+    el.textContent='Belum ada database kedai diupload.';
+  }
+}
+async function handleKedaiFile(file){
+  const el=document.getElementById('kedai-status');
+  el.textContent='Membaca '+file.name+'…';
+  try{
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    const sheet=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(sheet,{defval:null});
+    const stores=rows.map(r=>({
+      kode:String(r['Kode Customer']||r['Kode Toko']||r['Kode']||'').trim(),
+      nama:String(r['Nama Customer']||r['Nama Toko']||r['Nama']||'').trim(),
+      mds:String(r['Nama MDS']||r['MDS']||'').trim(),
+      area:String(r['Area']||r['Kabupaten']||'').trim()
+    })).filter(s=>s.kode||s.nama);
+    const meta={filename:file.name,uploadedAt:new Date().toISOString(),rowCount:stores.length};
+    KEDAI_DB={stores,meta};
+    await dbSulawesi.collection('kedai_db').doc('main').set({stores,meta});
+    el.textContent=`Berhasil: ${file.name} · ${stores.length} toko tersimpan.`;
+    render();
+  }catch(err){
+    console.error(err);
+    el.textContent='Gagal membaca file: '+(err.message||err);
+  }
+}
 function initDash(){
   switchTab('rka');
   document.getElementById('tb-date').textContent=new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   const dl=document.getElementById('item-beli-list');
   if(dl)Object.keys(ITEM_PRICE).sort().forEach(k=>{const o=document.createElement('option');o.value=k;dl.appendChild(o);});
+  const kf=document.getElementById('kedai-file-input');
+  if(kf)kf.addEventListener('change',e=>{if(e.target.files[0])handleKedaiFile(e.target.files[0]);});
+  const pf=document.getElementById('pjdata-file-input');
+  if(pf)pf.addEventListener('change',e=>{if(e.target.files[0])handlePjmdsDataFile(e.target.files[0]);});
+  loadKedaiDb();
+  loadPjmdsData();
   loadAll();
   setInterval(loadAll,30000);
   db.collection('rka_logs').limit(2000).onSnapshot({includeMetadataChanges:true},s=>{
@@ -758,13 +1244,14 @@ let STOCK_ALL=[], SUBTAB_STOCK='log';
 let SUBTAB_RKA='log', SUBTAB_BELI='log';
 function switchTab(t){
   TAB=t;
-  ['rka','beli','stock'].forEach(x=>{
+  ['rka','beli','stock','pjmds'].forEach(x=>{
     const el=document.getElementById('ntab-'+x);
     if(el){el.classList.toggle('on',x===t);el.classList.toggle(x,true);}
   });
   document.getElementById('sec-rka').style.display=t==='rka'?'block':'none';
   document.getElementById('sec-beli').style.display=t==='beli'?'block':'none';
   const ss=document.getElementById('sec-stock');if(ss)ss.style.display=t==='stock'?'block':'none';
+  const sp=document.getElementById('sec-pjmds');if(sp)sp.style.display=t==='pjmds'?'block':'none';
   render();
 }
 function switchSubTab(main,sub){
@@ -816,10 +1303,89 @@ function render(){
   }else if(TAB==='stock'){
     if(SUBTAB_STOCK==='log')renderStockLog(stockF);
     else renderStockItem(stockF);
-  }else{
+  }else if(TAB==='beli'){
     if(SUBTAB_BELI==='log')renderBeli(beliF);
     else renderAnalisis(rkaF,beliF);
+  }else if(TAB==='pjmds'){
+    renderPjmds(beliF);
   }
+}
+
+// ── PENJUALAN MDS ────────────────────────────────────────────────────────────
+function allMdsNames(){
+  const set=new Set();
+  Object.values(MDS_BY_AREA).forEach(list=>list.forEach(n=>set.add(n)));
+  return[...set].sort();
+}
+function renderPjmds(beliF){
+  renderKedaiStatus();
+  const sel=document.getElementById('pjmds-select');
+  if(sel&&sel.dataset.built!=='1'){
+    sel.innerHTML='<option value="">— Pilih MDS —</option>'+allMdsNames().map(m=>`<option value="${m}">${m}</option>`).join('');
+    sel.dataset.built='1';
+  }
+  if(sel)sel.value=PJMDS_SEL||'';
+  const nb=document.getElementById('nb-pjmds');if(nb)nb.textContent=beliF.length||'—';
+  const noteEl=document.getElementById('pjmds-match-note');
+  if(noteEl){
+    if(!PJMDS_SEL){noteEl.innerHTML='';}
+    else if(!PJ_RAW.call.length){noteEl.innerHTML='<span style="color:var(--t3)">Data Call belum diupload — validasi nama menyusul setelah upload.</span>';}
+    else{
+      const resolved=pjResolveMdsName(PJMDS_SEL);
+      if(!resolved){noteEl.innerHTML=`<span style="color:var(--red)">⚠ "${PJMDS_SEL}" tidak ditemukan pasangannya di data penjualan (Call). Cek ejaan nama di kedua database.</span>`;}
+      else if(pjNormName(resolved)===pjNormName(PJMDS_SEL)){noteEl.innerHTML=`<span style="color:var(--accent)">✓ Nama cocok persis dengan data penjualan.</span>`;}
+      else{noteEl.innerHTML=`<span style="color:var(--amber)">✓ "${PJMDS_SEL}" dicocokkan dengan data penjualan sebagai "<b>${resolved}</b>"</span>`;}
+    }
+  }
+  renderPjmdsDetail(beliF);
+}
+function selectPjmds(name){
+  PJMDS_SEL=name||null;
+  PJMDS_SHOW_TOKO=false;
+  render();
+}
+function togglePjmdsToko(){
+  if(!PJMDS_SEL)return;
+  PJMDS_SHOW_TOKO=!PJMDS_SHOW_TOKO;
+  render();
+}
+function renderPjmdsDetail(beliF){
+  const el=document.getElementById('pjmds-detail');
+  if(!el)return;
+  if(!PJMDS_SEL){el.innerHTML='<div class="panel-shell"><div class="panel-body" style="text-align:center;padding:32px;color:var(--t3)">Pilih nama MDS di atas untuk lihat detail pengambilan barang.</div></div>';return;}
+  const rows=beliF.filter(r=>r.mds===PJMDS_SEL).sort((a,b)=>b.timestamp-a.timestamp);
+  const totNota=rows.reduce((s,r)=>s+(r.nominal||0),0);
+  const storeMap={};
+  rows.forEach(r=>{
+    const k=r.store||'—';
+    if(!storeMap[k])storeMap[k]={store:k,area:r.area||'—',count:0,nota:0};
+    storeMap[k].count++;storeMap[k].nota+=(r.nominal||0);
+  });
+  const storeRows=Object.values(storeMap).sort((a,b)=>b.count-a.count);
+  const kedaiCount=KEDAI_DB.stores.filter(s=>s.mds===PJMDS_SEL).length;
+  const pjData=computePjmdsMdsData(PJMDS_SEL);
+  const totPenjualan=pjData?pjData.kpi.total_penjualan:null;
+
+  let tokoDetailHtml='';
+  if(PJMDS_SHOW_TOKO){
+    tokoDetailHtml=`<div class="panel-shell" style="margin-top:12px"><div class="panel-body">
+      <div class="ch-label" style="margin-bottom:10px">🏪 Toko yang Diambil — ${PJMDS_SEL}</div>
+      <table><thead><tr><th>Toko</th><th>Area</th><th>Pengambilan</th><th>Total Nota</th></tr></thead><tbody>
+        ${storeRows.length?storeRows.map(s=>`<tr><td class="td-mid">${s.store}</td><td class="td-dim">${s.area}</td><td><span class="tag t sm">${s.count}x</span></td><td class="td-dim">${s.nota?rp(s.nota):'—'}</td></tr>`).join(''):'<tr><td colspan="4"><div class="empty-state">Belum ada toko yang diambil pada periode ini.</div></td></tr>'}
+      </tbody></table>
+      <div class="tfoot-row">${storeRows.length} toko</div>
+    </div></div>`;
+  }
+
+  el.innerHTML=`
+    <div class="bento bento-4">
+      <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(236,72,153,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 0% 0%,var(--pink),transparent 70%)"></div><div class="kpi-label">Total Pengambilan</div><div class="kpi-val" style="color:var(--pink)">${rows.length}</div><div class="kpi-sub">transaksi/nota pada periode ini</div></div></div>
+      <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(16,185,129,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 50% 0%,var(--green),transparent 70%)"></div><div class="kpi-label">Total Nilai Nota</div><div class="kpi-val sm" style="color:var(--green)">${totNota?rp(totNota):'—'}</div><div class="kpi-sub">akumulasi nominal nota</div></div></div>
+      <div class="kpi-shell" style="cursor:pointer" onclick="togglePjmdsToko()"><div class="kpi-border" style="--gc:rgba(6,182,212,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--cyan),transparent 70%)"></div><div class="kpi-label">Toko Diambil</div><div class="kpi-val" style="color:var(--cyan)">${storeRows.length}${PJMDS_SHOW_TOKO?' ▲':' ▼'}</div><div class="kpi-sub">${kedaiCount?`dari ${kedaiCount} toko di database kedai · klik utk detail`:'klik utk lihat detail toko'}</div></div></div>
+      <div class="kpi-shell"${totPenjualan===null?' style="opacity:.5"':''}><div class="kpi-border" style="--gc:rgba(139,92,246,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--violet),transparent 70%)"></div><div class="kpi-label">Total Penjualan</div><div class="kpi-val sm" style="color:var(--violet)">${totPenjualan===null?'—':rp(totPenjualan)}</div><div class="kpi-sub">${totPenjualan===null?'menunggu upload data Call':'omzet NS + HILO dari data Call'}</div></div></div>
+    </div>
+    ${tokoDetailHtml}
+    ${renderPjmdsSalesDetail(PJMDS_SEL)}`;
 }
 
 // ── STOCK HELPERS ───────────────────────────────────────────────────────────
