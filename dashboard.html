@@ -427,7 +427,7 @@ tr:hover td{background:rgba(255,255,255,.016);}
           <div id="pjdata-status" style="font-size:11px;color:var(--t3)">Memuat…</div>
         </div>
         <div>
-          <button class="exp-btn" onclick="document.getElementById('pjdata-file-input').click()">⟲ Update Data</button>
+          <button class="exp-btn" onclick="pjGuardedClick('pjdata-file-input')">⟲ Update Data</button>
           <input type="file" id="pjdata-file-input" accept=".xlsx,.xls" style="display:none">
         </div>
       </div></div>
@@ -437,7 +437,7 @@ tr:hover td{background:rgba(255,255,255,.016);}
           <div id="kedai-status" style="font-size:11px;color:var(--t3)">Memuat…</div>
         </div>
         <div>
-          <button class="exp-btn" onclick="document.getElementById('kedai-file-input').click()">📋 Update Database Kedai</button>
+          <button class="exp-btn" onclick="pjGuardedClick('kedai-file-input')">📋 Update Database Kedai</button>
           <input type="file" id="kedai-file-input" accept=".xlsx,.xls" style="display:none">
         </div>
       </div></div>
@@ -570,6 +570,13 @@ function tenure(d){
 
 // ── PENJUALAN MDS: DATA CALL/ORDER ──────────────────────────────────────────
 const PJ_COLLECTION='pjmds_data', PJ_CHUNK_SIZE=700000;
+const PJ_UPDATE_PASSWORD='1';
+function pjGuardedClick(inputId){
+  const pw=prompt('Masukkan password untuk melanjutkan:');
+  if(pw===null)return;
+  if(pw!==PJ_UPDATE_PASSWORD){alert('Password salah.');return;}
+  document.getElementById(inputId).click();
+}
 const PJ_TARGET={tea:2500000,hilo:3000000,call:550,ea:200,sekolah:35};
 const PJ_SEKOLAH_EXCLUDE=new Set(['BUKAN SEKOLAH','OTHERS','BUKAN SEKOLA','TIDAK ADA']);
 const PJ_ASO_JUPE_ITEMS=new Set(['NS JERUK PERAS PLS 18PX40SX14G','NS ASO PLS 14GX18PX40S','NS AMERICAN SWEET ORANGE PLS 18PX40SX14G']);
