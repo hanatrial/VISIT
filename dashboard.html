@@ -787,31 +787,14 @@ async function handlePjmdsDataFile(file){
   }
 }
 function pjNormName(s){return String(s||'').toUpperCase().trim().replace(/[.,]/g,'').replace(/\s+/g,' ');}
-function pjTokenMatch(a,b){
-  if(a===b)return true;
-  const min=Math.min(a.length,b.length);
-  if(min<3)return false;
-  return a.startsWith(b)||b.startsWith(a);
-}
-function pjWordsMatch(wordsA,wordsB){
-  const shorter=wordsA.length<=wordsB.length?wordsA:wordsB;
-  const longer=wordsA.length<=wordsB.length?wordsB:wordsA;
-  if(!shorter.length)return false;
-  return shorter.every(sw=>longer.some(lw=>pjTokenMatch(sw,lw)));
-}
 function pjResolveMdsName(selName){
   if(!selName)return null;
   if(PJMDS_MANUAL_MATCH[selName])return PJMDS_MANUAL_MATCH[selName];
   const target=pjNormName(selName);
-  const targetWords=target.split(' ').filter(Boolean);
   const names=[...new Set(PJ_RAW.call.map(r=>r.NamaMDS).filter(Boolean))];
-  let found=names.find(n=>pjNormName(n)===target);
+  const found=names.find(n=>pjNormName(n)===target);
   if(found)return found;
-  const candidates=names.filter(n=>pjWordsMatch(targetWords,pjNormName(n).split(' ').filter(Boolean)));
-  if(!candidates.length)return null;
-  if(candidates.length===1)return candidates[0];
-  candidates.sort((a,b)=>pjNormName(a).split(' ').length-pjNormName(b).split(' ').length);
-  return candidates[0];
+  return null;
 }
 function computePjmdsMdsData(selName){
   const resolvedName=pjResolveMdsName(selName);
