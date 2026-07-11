@@ -1734,14 +1734,28 @@ async function handleTxImportFile(file){
     const buf=await file.arrayBuffer();
     const wb=XLSX.read(buf,{type:'array'});
     const sheet=wb.Sheets[wb.SheetNames[0]];
-    const rows=XLSX.utils.sheet_to_json(sheet,{defval:null});
-    TX_ALL=rows.map(r=>({
-      customer:String(r['Customer SO Group Area']||'').trim(),
-      month:String(r['Month of Invoice Date SO']||'').trim(),
-      day:Number(r['Day of Invoice Date SO'])||0,
-      item:String(r['Item Group']||'').trim(),
-      value:Number(r['Value'])||0
-    })).filter(r=>r.customer);
+    const rows=XLSX.utils.sheet_to_json(sheet,{defval:null,raw:true});
+    const findKey=(obj,names)=>Object.keys(obj).find(k=>names.some(n=>k.trim().toLowerCase()===n.toLowerCase()));
+    const parseVal=v=>{
+      if(v==null)return 0;
+      if(typeof v==='number')return v;
+      const cleaned=String(v).replace(/[^0-9.\-]/g,'');
+      return parseFloat(cleaned)||0;
+    };
+    TX_ALL=rows.map(r=>{
+      const kCust=findKey(r,['Customer SO Group Area','Customer']);
+      const kMonth=findKey(r,['Month of Invoice Date SO','Month']);
+      const kDay=findKey(r,['Day of Invoice Date SO','Day']);
+      const kItem=findKey(r,['Item Group','Item']);
+      const kVal=findKey(r,['Value','Nilai']);
+      return{
+        customer:String(r[kCust]||'').trim(),
+        month:String(r[kMonth]||'').trim(),
+        day:parseVal(r[kDay]),
+        item:String(r[kItem]||'').trim(),
+        value:parseVal(r[kVal])
+      };
+    }).filter(r=>r.customer);
     TX_SELECTED_STORE='';TX_SELECTED_DATES=new Set();
     if(el)el.textContent=`Berhasil diimpor: ${TX_ALL.length} baris transaksi, ${new Set(TX_ALL.map(r=>r.customer)).size} toko/customer.`;
     populateTxStoreSelect();
