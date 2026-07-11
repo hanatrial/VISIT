@@ -1838,7 +1838,8 @@ function renderAnalisis(rkaF,beliF){
   rkaF.forEach(r=>{const m=r.mds||'—';if(!mds[m])mds[m]={name:m,area:r.area||'—',fd:r.timestamp,visits:0,a:0,t:0,ns:0,hi:0,nom:0,beli:0,stores:new Set()};mds[m].visits++;mds[m].a+=(r.avail||0);mds[m].t+=(r.avail||0)+(r.unavail||0);mds[m].stores.add(r.store||'?');});
   beliF.forEach(r=>{const m=r.mds||'—';if(!mds[m])mds[m]={name:m,area:r.area||'—',fd:new Date(),visits:0,a:0,t:0,ns:0,hi:0,nom:0,beli:0,stores:new Set()};mds[m].ns+=(r.groupTotals&&r.groupTotals.NS||0);mds[m].hi+=(r.groupTotals&&r.groupTotals.HILO||0);mds[m].nom+=(r.nominal||0);mds[m].beli++;mds[m].stores.add(r.store||'?');});
   let entries=Object.values(mds).map(v=>({...v,storesCnt:v.stores.size,av:v.t?Math.round(v.a/v.t*100):null,k:v.ns*NS_PRICE+v.hi*HILO_PRICE,tdays:Math.floor((new Date()-v.fd)/864e5)}));
-  entries.sort((a,b)=>b.visits-a.visits);
+  const analysisFields=['name','tdays','visits','av','ns','hi','k','nom','beli'];
+  entries=analysisFields.includes(SC)?doSort(entries):entries.sort((a,b)=>b.visits-a.visits);
 
   document.getElementById('table-head-beli').innerHTML=`<tr>
     <th onclick="sortBy('name')">MDS${ar('name')}</th><th>Area</th>
