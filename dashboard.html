@@ -520,6 +520,38 @@ tr:hover td{background:var(--ov1);}
           </div>
         </div></div>
 
+        <div class="panel-shell" style="margin-bottom:16px"><div class="panel-body" style="padding:14px 18px">
+          <div class="ch-label" style="margin-bottom:8px">🧮 Kalkulasi Sell Out Manual</div>
+          <div style="font-size:10px;color:var(--t3);margin-bottom:10px">Pilih data Stock Awal (toko + bulan), Stock Akhir (toko + bulan), dan In Transit — lalu simpan sebagai baris kalkulasi baru. In Transit bisa diambil dari total tanggal terpilih di atas atau diketik manual.</div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
+            <div>
+              <div style="font-size:9px;color:var(--t3);margin-bottom:4px">STOCK AWAL (toko · bulan · nilai)</div>
+              <select id="fc-awal" class="fi" style="width:280px" onchange="fcPreview()"><option value="">— Pilih —</option></select>
+            </div>
+            <div>
+              <div style="font-size:9px;color:var(--t3);margin-bottom:4px">STOCK AKHIR (toko · bulan · nilai)</div>
+              <select id="fc-akhir" class="fi" style="width:280px" onchange="fcPreview()"><option value="">— Pilih —</option></select>
+            </div>
+            <div>
+              <div style="font-size:9px;color:var(--t3);margin-bottom:4px">IN TRANSIT (Rp)</div>
+              <input type="text" inputmode="numeric" id="fc-transit" class="fi" style="width:130px" placeholder="0" oninput="fcPreview()">
+            </div>
+            <button class="exp-btn" onclick="fcUseTxTotal()">⤓ Ambil dari tanggal terpilih</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:16px;padding-top:10px;border-top:1px solid var(--border)">
+            <div><div style="font-size:9px;color:var(--t3)">Hasil Sell Out</div><div style="font-size:18px;font-weight:800;color:var(--green)" id="fc-preview-val">—</div></div>
+            <button class="exp-btn" onclick="fcSave()">➕ Simpan Kalkulasi</button>
+          </div>
+        </div></div>
+
+        <div class="panel-shell" style="margin-bottom:16px"><div class="panel-body">
+          <div class="ch-label" style="padding:12px 14px 0">📌 Hasil Kalkulasi Tersimpan</div>
+          <table><thead><tr>
+            <th>Toko</th><th>Stock Awal</th><th>In Transit</th><th>Stock Akhir</th><th>Sell Out</th><th></th>
+          </tr></thead><tbody id="fc-body"></tbody></table>
+          <div class="tfoot-row" id="fc-tfoot"></div>
+        </div></div>
+
         <div class="panel-shell"><div class="panel-body">
           <table><thead id="table-head-formula"><tr>
             <th>Toko</th><th>Area</th><th>Bulan</th><th>Stock Awal</th><th>Stock Akhir</th><th>In Transit</th><th>Sell Out</th>
@@ -1760,6 +1792,9 @@ function renderFormula(stockF){
   set('fm-awal',totalAwal);set('fm-akhir',totalAkhir);set('fm-transit',totalTransit);set('fm-sellout',totalSellOut);
   const nbF=document.getElementById('nb-formula');if(nbF)nbF.textContent=rows.length||'—';
   const tf=document.getElementById('tfoot-formula');if(tf)tf.textContent=`${rows.length} toko · Sell Out = Stock Awal + In Transit − Stock Akhir`;
+  populateFcSelects();
+  renderFcTable();
+  fcPreview();
 }
 function downloadFormulaTemplate(){
   const stockF=filteredStock();
@@ -1916,6 +1951,101 @@ function applyTxToStore(){
   saveInTransitItems();
   render();
   alert(`In Transit untuk "${TX_SELECTED_STORE}" diset ke ${rp(val)} (${Object.keys(itemMap).length} item). Cek baris toko ini di tabel Sell Out Formula, atau lihat detail per item di sub-tab "Detail Item per Toko".`);
+}
+
+// ── Manual Sell Out calculation composer ─────────────────────────────────────
+let SELLOUT_CALCS=[];
+try{SELLOUT_CALCS=JSON.parse(localStorage.getItem('mds_sellout_calcs')||'[]');}catch(e){SELLOUT_CALCS=[];}
+function saveSelloutCalcs(){localStorage.setItem('mds_sellout_calcs',JSON.stringify(SELLOUT_CALCS));}
+let _FC_COMBOS=[];
+function buildStockCombos(){
+  const map={};
+  STOCK_ALL.forEach(r=>{
+    if(!r.stockType)return;
+    const store=r.store||'—';
+    const mk=r.timestamp?monthKey(r.timestamp):'';
+    const key=r.stockType+'|'+store+'|'+mk;
+    if(!map[key])map[key]={type:r.stockType,store,mk,value:0};
+    let val=storeStockValue(r.items);
+    if(!val&&r.totalNilai)val=r.totalNilai;
+    map[key].value+=val;
+  });
+  _FC_COMBOS=Object.values(map).sort((a,b)=>a.store.localeCompare(b.store)||a.mk.localeCompare(b.mk));
+}
+function populateFcSelects(){
+  buildStockCombos();
+  const fill=(id,type)=>{
+    const sel=document.getElementById(id);
+    if(!sel)return;
+    const cur=sel.value;
+    const opts=_FC_COMBOS.map((c,i)=>({c,i})).filter(({c})=>c.type===type);
+    sel.innerHTML='<option value="">— Pilih —</option>'+opts.map(({c,i})=>`<option value="${i}" ${String(i)===cur?'selected':''}>${c.store} · ${monthLabel(c.mk)} · ${rp(c.value)}</option>`).join('');
+  };
+  fill('fc-awal','awal');
+  fill('fc-akhir','akhir');
+}
+function fcGet(id){const v=document.getElementById(id)?.value;return v===''?null:_FC_COMBOS[+v];}
+function fcPreview(){
+  const awal=fcGet('fc-awal'),akhir=fcGet('fc-akhir');
+  const transit=parseNum(document.getElementById('fc-transit')?.value||'');
+  const el=document.getElementById('fc-preview-val');
+  if(!el)return;
+  if(!awal&&!akhir&&!transit){el.textContent='—';return;}
+  const sellOut=(awal?awal.value:0)+transit-(akhir?akhir.value:0);
+  el.textContent=rp(sellOut);
+  el.style.color=sellOut>=0?'var(--green)':'var(--red)';
+}
+function fcUseTxTotal(){
+  const btn=document.getElementById('tx-apply-btn');
+  const val=Number(btn?.dataset.value)||0;
+  if(!val){alert('Belum ada tanggal terpilih di panel "Hitung In Transit dari Detail Transaksi" di atas. Pilih toko dan centang tanggal dulu.');return;}
+  document.getElementById('fc-transit').value=val;
+  fcPreview();
+}
+function fcSave(){
+  const awal=fcGet('fc-awal'),akhir=fcGet('fc-akhir');
+  const transit=parseNum(document.getElementById('fc-transit')?.value||'');
+  if(!awal&&!akhir){alert('Pilih minimal Stock Awal atau Stock Akhir dulu.');return;}
+  const store=awal?awal.store:akhir.store;
+  SELLOUT_CALCS.push({
+    store,
+    awalLabel:awal?`${monthLabel(awal.mk)}`:'—',
+    awalVal:awal?awal.value:0,
+    transitVal:transit,
+    akhirLabel:akhir?`${monthLabel(akhir.mk)} (${akhir.store})`:'—',
+    akhirVal:akhir?akhir.value:0,
+    savedAt:new Date().toISOString()
+  });
+  saveSelloutCalcs();
+  renderFcTable();
+  document.getElementById('fc-awal').value='';
+  document.getElementById('fc-akhir').value='';
+  document.getElementById('fc-transit').value='';
+  fcPreview();
+}
+function fcDelete(i){
+  SELLOUT_CALCS.splice(i,1);
+  saveSelloutCalcs();
+  renderFcTable();
+}
+function renderFcTable(){
+  const tb=document.getElementById('fc-body');
+  if(!tb)return;
+  let tA=0,tT=0,tK=0,tS=0;
+  tb.innerHTML=SELLOUT_CALCS.length?SELLOUT_CALCS.map((r,i)=>{
+    const sellOut=r.awalVal+r.transitVal-r.akhirVal;
+    tA+=r.awalVal;tT+=r.transitVal;tK+=r.akhirVal;tS+=sellOut;
+    return`<tr>
+      <td class="td-main">${r.store}</td>
+      <td class="td-dim">${r.awalVal?rp(r.awalVal):'—'} <span style="font-size:9px;color:var(--t3)">${r.awalLabel}</span></td>
+      <td class="td-dim">${r.transitVal?rp(r.transitVal):'—'}</td>
+      <td class="td-dim">${r.akhirVal?rp(r.akhirVal):'—'} <span style="font-size:9px;color:var(--t3)">${r.akhirLabel}</span></td>
+      <td style="font-weight:800;color:${sellOut>=0?'var(--accent)':'var(--red)'}">${rp(sellOut)}</td>
+      <td><span style="cursor:pointer;color:var(--red);font-size:11px" onclick="fcDelete(${i})">✕</span></td>
+    </tr>`;
+  }).join(''):`<tr><td colspan="6"><div class="empty-state">Belum ada kalkulasi tersimpan. Pilih Stock Awal, Stock Akhir, dan In Transit di atas lalu klik Simpan.</div></td></tr>`;
+  const tf=document.getElementById('fc-tfoot');
+  if(tf)tf.textContent=SELLOUT_CALCS.length?`${SELLOUT_CALCS.length} kalkulasi · Total: Awal ${rp(tA)} + In Transit ${rp(tT)} − Akhir ${rp(tK)} = Sell Out ${rp(tS)}`:'';
 }
 function populateFdStoreSelect(stockF){
   const sel=document.getElementById('fd-store-select');
