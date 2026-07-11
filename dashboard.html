@@ -87,6 +87,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .nav-tab.on.formula{color:var(--cyan);border-bottom-color:var(--cyan);}
 .nav-tab.on.formula .nav-badge{background:var(--cyan-g);color:var(--cyan);}
 .sub-tab.on.stock{color:var(--amber);border-bottom-color:var(--amber);}
+.sub-tab.on.formula{background:rgba(6,182,212,.1);border-color:rgba(6,182,212,.25);color:var(--cyan);}
 .bento-4{grid-template-columns:repeat(4,1fr);}
 .nav-badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:10px;font-size:9px;font-weight:800;padding:0 6px;transition:all .3s var(--ease);}
 .nav-tab.on.rka .nav-badge{background:var(--green-g);color:var(--green);}
@@ -483,38 +484,60 @@ tr:hover td{background:var(--ov1);}
           Stock Awal &amp; Stock Akhir diambil otomatis dari data <em>Stock Sell Out</em> (sesuai filter periode/area di atas). In Transit diisi manual atau diimport dari Excel (barang yang masuk ke toko selama periode berjalan).
         </div>
       </div></div>
-      <div class="panel-shell"><div class="panel-body" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 18px">
-        <div class="ch-label" style="margin-bottom:0">📥 Import Nilai In Transit</div>
-        <div>
-          <button class="exp-btn" onclick="downloadFormulaTemplate()">↓ Download Template</button>
-          <button class="exp-btn" onclick="document.getElementById('formula-import-input').click()">↑ Import Excel</button>
-          <input type="file" id="formula-import-input" accept=".xlsx,.xls,.csv" style="display:none">
-        </div>
-      </div></div>
-      <div id="formula-import-status" style="font-size:10px;color:var(--t3);margin:6px 2px 12px"></div>
 
-      <div class="panel-shell" style="margin-bottom:16px"><div class="panel-body" style="padding:14px 18px">
-        <div class="ch-label" style="margin-bottom:8px">📆 Hitung In Transit dari Detail Transaksi (pilih tanggal)</div>
-        <div style="font-size:10px;color:var(--t3);margin-bottom:10px">Import file Excel transaksi (kolom: Customer SO Group Area, Month of Invoice Date SO, Day of Invoice Date SO, Item Group, Value) — lalu pilih toko dan tanggal-tanggal pengiriman yang mau dihitung sebagai In Transit. Data ini hanya tersimpan sementara di sesi ini (perlu diimport ulang jika halaman di-refresh).</div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
-          <button class="exp-btn" onclick="document.getElementById('tx-import-input').click()">↑ Import Excel Transaksi</button>
-          <input type="file" id="tx-import-input" accept=".xlsx,.xls,.csv" style="display:none">
-          <select id="tx-store-select" class="fi" style="width:260px" onchange="selectTxStore(this.value)"><option value="">— Import file dulu —</option></select>
-        </div>
-        <div id="tx-import-status" style="font-size:10px;color:var(--t3);margin-bottom:8px"></div>
-        <div id="tx-dates-wrap"></div>
-        <div id="tx-sum-box" style="display:none;align-items:center;gap:14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
-          <div><div style="font-size:9px;color:var(--t3)">Total In Transit Terpilih</div><div style="font-size:18px;font-weight:800;color:var(--violet)" id="tx-sum-val">—</div><div style="font-size:9px;color:var(--t3)" id="tx-sum-count"></div></div>
-          <button class="exp-btn" id="tx-apply-btn" onclick="applyTxToStore()">✓ Terapkan ke Toko Ini</button>
-        </div>
-      </div></div>
+      <div class="sub-nav">
+        <div class="sub-tab on formula" id="stab-formula-summary" onclick="switchSubTab('formula','summary')">📊 Ringkasan per Toko</div>
+        <div class="sub-tab formula" id="stab-formula-detail" onclick="switchSubTab('formula','detail')">🧾 Detail Item per Toko</div>
+      </div>
 
-      <div class="panel-shell"><div class="panel-body">
-        <table><thead id="table-head-formula"><tr>
-          <th>Toko</th><th>Area</th><th>Stock Awal</th><th>Stock Akhir</th><th>In Transit</th><th>Sell Out</th>
-        </tr></thead><tbody id="table-body-formula"></tbody></table>
-        <div class="tfoot-row" id="tfoot-formula"></div>
-      </div></div>
+      <div id="formula-summary-wrap">
+        <div class="panel-shell"><div class="panel-body" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 18px">
+          <div class="ch-label" style="margin-bottom:0">📥 Import Nilai In Transit</div>
+          <div>
+            <button class="exp-btn" onclick="downloadFormulaTemplate()">↓ Download Template</button>
+            <button class="exp-btn" onclick="document.getElementById('formula-import-input').click()">↑ Import Excel</button>
+            <input type="file" id="formula-import-input" accept=".xlsx,.xls,.csv" style="display:none">
+          </div>
+        </div></div>
+        <div id="formula-import-status" style="font-size:10px;color:var(--t3);margin:6px 2px 12px"></div>
+
+        <div class="panel-shell" style="margin-bottom:16px"><div class="panel-body" style="padding:14px 18px">
+          <div class="ch-label" style="margin-bottom:8px">📆 Hitung In Transit dari Detail Transaksi (pilih tanggal)</div>
+          <div style="font-size:10px;color:var(--t3);margin-bottom:10px">Import file Excel transaksi (kolom: Customer SO Group Area, Month of Invoice Date SO, Day of Invoice Date SO, Item Group, Value) — lalu pilih toko dan tanggal-tanggal pengiriman yang mau dihitung sebagai In Transit. Data ini hanya tersimpan sementara di sesi ini (perlu diimport ulang jika halaman di-refresh).</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+            <button class="exp-btn" onclick="document.getElementById('tx-import-input').click()">↑ Import Excel Transaksi</button>
+            <input type="file" id="tx-import-input" accept=".xlsx,.xls,.csv" style="display:none">
+            <select id="tx-store-select" class="fi" style="width:260px" onchange="selectTxStore(this.value)"><option value="">— Import file dulu —</option></select>
+          </div>
+          <div id="tx-import-status" style="font-size:10px;color:var(--t3);margin-bottom:8px"></div>
+          <div id="tx-dates-wrap"></div>
+          <div id="tx-sum-box" style="display:none;align-items:center;gap:14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+            <div><div style="font-size:9px;color:var(--t3)">Total In Transit Terpilih</div><div style="font-size:18px;font-weight:800;color:var(--violet)" id="tx-sum-val">—</div><div style="font-size:9px;color:var(--t3)" id="tx-sum-count"></div></div>
+            <button class="exp-btn" id="tx-apply-btn" onclick="applyTxToStore()">✓ Terapkan ke Toko Ini</button>
+          </div>
+        </div></div>
+
+        <div class="panel-shell"><div class="panel-body">
+          <table><thead id="table-head-formula"><tr>
+            <th>Toko</th><th>Area</th><th>Stock Awal</th><th>Stock Akhir</th><th>In Transit</th><th>Sell Out</th>
+          </tr></thead><tbody id="table-body-formula"></tbody></table>
+          <div class="tfoot-row" id="tfoot-formula"></div>
+        </div></div>
+      </div>
+
+      <div id="formula-detail-wrap" style="display:none">
+        <div class="panel-shell" style="margin-bottom:16px"><div class="panel-body" style="padding:14px 18px">
+          <div class="ch-label" style="margin-bottom:8px">👤 Pilih Toko</div>
+          <select id="fd-store-select" class="fi" style="width:280px" onchange="renderFormulaDetail()"><option value="">— Pilih Toko —</option></select>
+          <div style="font-size:10px;color:var(--t3);margin-top:8px">Menampilkan mapping per item: Stock Awal + In Transit − Stock Akhir = Sell Out. In Transit per item diisi dari tanggal yang dipilih &amp; diterapkan di tab "Ringkasan per Toko".</div>
+        </div></div>
+        <div class="panel-shell"><div class="panel-body">
+          <table><thead id="table-head-formula-detail"><tr>
+            <th>Item</th><th>Stock Awal</th><th>In Transit</th><th>Stock Akhir</th><th>Sell Out (Qty)</th><th>Sell Out (Value)</th>
+          </tr></thead><tbody id="table-body-formula-detail"></tbody></table>
+          <div class="tfoot-row" id="tfoot-formula-detail"></div>
+        </div></div>
+      </div>
     </div>
   </div>
 </div>
@@ -1325,7 +1348,7 @@ function buildSpotlight(rkaF,beliF){
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 let STOCK_ALL=[], SUBTAB_STOCK='log';
-let SUBTAB_RKA='log', SUBTAB_BELI='log';
+let SUBTAB_RKA='log', SUBTAB_BELI='log', SUBTAB_FORMULA='summary';
 function switchTab(t){
   TAB=t;
   ['rka','beli','stock','pjmds','formula'].forEach(x=>{
@@ -1346,6 +1369,11 @@ function switchSubTab(main,sub){
   }else if(main==='stock'){
     SUBTAB_STOCK=sub;
     ['log','item'].forEach(s=>{const el=document.getElementById('stab-stock-'+s);if(el)el.classList.toggle('on',s===sub);});
+  }else if(main==='formula'){
+    SUBTAB_FORMULA=sub;
+    ['summary','detail'].forEach(s=>{const el=document.getElementById('stab-formula-'+s);if(el)el.classList.toggle('on',s===sub);});
+    const sw=document.getElementById('formula-summary-wrap');if(sw)sw.style.display=sub==='summary'?'block':'none';
+    const dw=document.getElementById('formula-detail-wrap');if(dw)dw.style.display=sub==='detail'?'block':'none';
   }else{
     SUBTAB_BELI=sub;
     ['log','analisis'].forEach(s=>{const el=document.getElementById('stab-beli-'+s);if(el)el.classList.toggle('on',s===sub);});
@@ -1394,7 +1422,8 @@ function render(){
   }else if(TAB==='pjmds'){
     renderPjmds(beliF);
   }else if(TAB==='formula'){
-    renderFormula(stockF);
+    if(SUBTAB_FORMULA==='summary')renderFormula(stockF);
+    else{populateFdStoreSelect(stockF);renderFormulaDetail(stockF);}
   }
 }
 
@@ -1648,6 +1677,26 @@ function storeStockValue(items){
   });
   return val;
 }
+let IN_TRANSIT_ITEMS={};
+try{IN_TRANSIT_ITEMS=JSON.parse(localStorage.getItem('mds_in_transit_items')||'{}');}catch(e){IN_TRANSIT_ITEMS={};}
+function saveInTransitItems(){localStorage.setItem('mds_in_transit_items',JSON.stringify(IN_TRANSIT_ITEMS));}
+function storeItemBreakdown(stockF,store){
+  const awal={},akhir={};
+  stockF.forEach(r=>{
+    if((r.store||'—')!==store||!r.items)return;
+    const target=r.stockType==='awal'?awal:r.stockType==='akhir'?akhir:null;
+    if(!target)return;
+    Object.entries(r.items).forEach(([nm,v])=>{
+      const ip=ITEM_PRICE[nm]||{};
+      const val=(v.krt||0)*(ip.ctn||0)+(v.rncg||0)*(ip.pcs||0);
+      const rncgEquiv=(v.rncg||0)+(v.krt||0)*((ip.ctn&&ip.pcs)?Math.round(ip.ctn/ip.pcs):0);
+      if(!target[nm])target[nm]={val:0,rncg:0};
+      target[nm].val+=val;
+      target[nm].rncg+=rncgEquiv;
+    });
+  });
+  return{awal,akhir};
+}
 function computeStoreStockMap(stockF){
   const map={};
   stockF.forEach(r=>{
@@ -1820,10 +1869,56 @@ function applyTxToStore(){
   const btn=document.getElementById('tx-apply-btn');
   const val=Number(btn.dataset.value)||0;
   if(!TX_SELECTED_STORE)return;
-  IN_TRANSIT[TX_SELECTED_STORE.toLowerCase()]=val;
+  const key=TX_SELECTED_STORE.toLowerCase();
+  IN_TRANSIT[key]=val;
   saveInTransit();
+  const rowsForStore=TX_ALL.filter(r=>r.customer===TX_SELECTED_STORE&&TX_SELECTED_DATES.has(r.month+'-'+r.day));
+  const itemMap={};
+  rowsForStore.forEach(r=>{
+    const nm=r.item||'—';
+    itemMap[nm]=(itemMap[nm]||0)+r.value;
+  });
+  IN_TRANSIT_ITEMS[key]=itemMap;
+  saveInTransitItems();
   render();
-  alert(`In Transit untuk "${TX_SELECTED_STORE}" diset ke ${rp(val)}. Cek baris toko ini di tabel Sell Out Formula di bawah.`);
+  alert(`In Transit untuk "${TX_SELECTED_STORE}" diset ke ${rp(val)} (${Object.keys(itemMap).length} item). Cek baris toko ini di tabel Sell Out Formula, atau lihat detail per item di sub-tab "Detail Item per Toko".`);
+}
+function populateFdStoreSelect(stockF){
+  const sel=document.getElementById('fd-store-select');
+  if(!sel)return;
+  const cur=sel.value;
+  const stores=[...new Set(stockF.map(r=>r.store||'—'))].sort();
+  sel.innerHTML='<option value="">— Pilih Toko —</option>'+stores.map(s=>`<option value="${s.replace(/"/g,'&quot;')}" ${s===cur?'selected':''}>${s}</option>`).join('');
+}
+function renderFormulaDetail(stockF){
+  stockF=stockF||filteredStock();
+  const store=document.getElementById('fd-store-select')?.value||'';
+  const tb=document.getElementById('table-body-formula-detail');
+  const tf=document.getElementById('tfoot-formula-detail');
+  if(!tb)return;
+  if(!store){tb.innerHTML=`<tr><td colspan="6"><div class="empty-state">Pilih toko untuk melihat detail per item.</div></td></tr>`;if(tf)tf.textContent='';return;}
+  const{awal,akhir}=storeItemBreakdown(stockF,store);
+  const transitItems=IN_TRANSIT_ITEMS[store.toLowerCase()]||{};
+  const allItems=[...new Set([...Object.keys(awal),...Object.keys(akhir),...Object.keys(transitItems)])].sort();
+  let totAwal=0,totTransit=0,totAkhir=0,totSellOutVal=0,totSellOutQty=0;
+  tb.innerHTML=allItems.length?allItems.map(nm=>{
+    const a=awal[nm]||{val:0,rncg:0};
+    const k=akhir[nm]||{val:0,rncg:0};
+    const tVal=transitItems[nm]||0;
+    const sellOutVal=a.val+tVal-k.val;
+    const sellOutQty=a.rncg-k.rncg;
+    totAwal+=a.val;totTransit+=tVal;totAkhir+=k.val;totSellOutVal+=sellOutVal;totSellOutQty+=sellOutQty;
+    const short=nm.replace(/\s+\d+[A-Z]+X.*/i,'').slice(0,40);
+    return`<tr>
+      <td class="td-main">${short}</td>
+      <td class="td-dim">${a.val?rp(a.val):'—'}</td>
+      <td class="td-dim">${tVal?rp(tVal):'—'}</td>
+      <td class="td-dim">${k.val?rp(k.val):'—'}</td>
+      <td><span class="tag ${sellOutQty>=0?'g':'r'} sm">${sellOutQty}</span></td>
+      <td style="font-weight:800;color:${sellOutVal>=0?'var(--accent)':'var(--red)'}">${rp(sellOutVal)}</td>
+    </tr>`;
+  }).join(''):`<tr><td colspan="6"><div class="empty-state">Belum ada data stock/in transit untuk toko ini.</div></td></tr>`;
+  if(tf)tf.textContent=allItems.length?`${allItems.length} item · Total: Stock Awal ${rp(totAwal)} + In Transit ${rp(totTransit)} − Stock Akhir ${rp(totAkhir)} = Sell Out ${rp(totSellOutVal)} (${totSellOutQty} rnc)`:'';
 }
 
 // ── TAB: Visit RKA ─────────────────────────────────────────────────────────
