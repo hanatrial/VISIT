@@ -534,7 +534,7 @@ tr:hover td{background:var(--ov1);}
             </div>
             <div>
               <div style="font-size:9px;color:var(--t3);margin-bottom:4px">IN TRANSIT (Rp)</div>
-              <input type="text" inputmode="numeric" id="fc-transit" class="fi" style="width:130px" placeholder="0" oninput="fcPreview()">
+              <input type="text" inputmode="numeric" id="fc-transit" class="fi" style="width:130px" placeholder="0" oninput="_FC_TRANSIT_ITEMS={};fcPreview()">
             </div>
             <button class="exp-btn" onclick="fcUseTxTotal()">⤓ Ambil dari tanggal terpilih</button>
           </div>
@@ -1965,10 +1965,15 @@ function buildStockCombos(){
     const store=r.store||'—';
     const mk=r.timestamp?monthKey(r.timestamp):'';
     const key=r.stockType+'|'+store+'|'+mk;
-    if(!map[key])map[key]={type:r.stockType,store,mk,value:0};
+    if(!map[key])map[key]={type:r.stockType,store,mk,value:0,items:{}};
     let val=storeStockValue(r.items);
     if(!val&&r.totalNilai)val=r.totalNilai;
     map[key].value+=val;
+    if(r.items)Object.entries(r.items).forEach(([nm,v])=>{
+      const ip=ITEM_PRICE[nm]||{};
+      const iv=(v.krt||0)*(ip.ctn||0)+(v.rncg||0)*(ip.pcs||0);
+      map[key].items[nm]=(map[key].items[nm]||0)+iv;
+    });
   });
   _FC_COMBOS=Object.values(map).sort((a,b)=>a.store.localeCompare(b.store)||a.mk.localeCompare(b.mk));
 }
@@ -1995,11 +2000,17 @@ function fcPreview(){
   el.textContent=rp(sellOut);
   el.style.color=sellOut>=0?'var(--green)':'var(--red)';
 }
+let _FC_TRANSIT_ITEMS={};
 function fcUseTxTotal(){
   const btn=document.getElementById('tx-apply-btn');
   const val=Number(btn?.dataset.value)||0;
   if(!val){alert('Belum ada tanggal terpilih di panel "Hitung In Transit dari Detail Transaksi" di atas. Pilih toko dan centang tanggal dulu.');return;}
   document.getElementById('fc-transit').value=val;
+  _FC_TRANSIT_ITEMS={};
+  TX_ALL.filter(r=>r.customer===TX_SELECTED_STORE&&TX_SELECTED_DATES.has(r.month+'-'+r.day)).forEach(r=>{
+    const nm=r.item||'—';
+    _FC_TRANSIT_ITEMS[nm]=(_FC_TRANSIT_ITEMS[nm]||0)+r.value;
+  });
   fcPreview();
 }
 function fcSave(){
@@ -2014,6 +2025,9 @@ function fcSave(){
     transitVal:transit,
     akhirLabel:akhir?`${monthLabel(akhir.mk)} (${akhir.store})`:'—',
     akhirVal:akhir?akhir.value:0,
+    awalItems:awal?awal.items:{},
+    akhirItems:akhir?akhir.items:{},
+    transitItems:transit?_FC_TRANSIT_ITEMS:{},
     savedAt:new Date().toISOString()
   });
   saveSelloutCalcs();
@@ -2021,6 +2035,7 @@ function fcSave(){
   document.getElementById('fc-awal').value='';
   document.getElementById('fc-akhir').value='';
   document.getElementById('fc-transit').value='';
+  _FC_TRANSIT_ITEMS={};
   fcPreview();
 }
 function fcDelete(i){
@@ -2041,11 +2056,35 @@ function renderFcTable(){
       <td class="td-dim">${r.transitVal?rp(r.transitVal):'—'}</td>
       <td class="td-dim">${r.akhirVal?rp(r.akhirVal):'—'} <span style="font-size:9px;color:var(--t3)">${r.akhirLabel}</span></td>
       <td style="font-weight:800;color:${sellOut>=0?'var(--accent)':'var(--red)'}">${rp(sellOut)}</td>
-      <td><span style="cursor:pointer;color:var(--red);font-size:11px" onclick="fcDelete(${i})">✕</span></td>
+      <td style="white-space:nowrap"><span style="cursor:pointer;color:var(--cyan);font-size:10px;font-weight:700;margin-right:10px" onclick="exportFcCsv(${i})">⬇ CSV</span><span style="cursor:pointer;color:var(--red);font-size:11px" onclick="fcDelete(${i})">✕</span></td>
     </tr>`;
   }).join(''):`<tr><td colspan="6"><div class="empty-state">Belum ada kalkulasi tersimpan. Pilih Stock Awal, Stock Akhir, dan In Transit di atas lalu klik Simpan.</div></td></tr>`;
   const tf=document.getElementById('fc-tfoot');
   if(tf)tf.textContent=SELLOUT_CALCS.length?`${SELLOUT_CALCS.length} kalkulasi · Total: Awal ${rp(tA)} + In Transit ${rp(tT)} − Akhir ${rp(tK)} = Sell Out ${rp(tS)}`:'';
+}
+function exportFcCsv(i){
+  const r=SELLOUT_CALCS[i];
+  if(!r)return;
+  const awalItems=r.awalItems||{},transitItems=r.transitItems||{},akhirItems=r.akhirItems||{};
+  const allItems=[...new Set([...Object.keys(awalItems),...Object.keys(transitItems),...Object.keys(akhirItems)])].sort();
+  const q=s=>`"${String(s).replace(/"/g,'""')}"`;
+  let csv=`Toko,${q(r.store)}\nStock Awal,${q(r.awalLabel)}\nStock Akhir,${q(r.akhirLabel)}\n\n`;
+  csv+='Item,Stock Awal,In Transit,Stock Akhir,Sell Out\n';
+  let tA=0,tT=0,tK=0;
+  csv+=allItems.map(nm=>{
+    const a=awalItems[nm]||0,t=transitItems[nm]||0,k=akhirItems[nm]||0;
+    tA+=a;tT+=t;tK+=k;
+    return[q(nm),a,t,k,a+t-k].join(',');
+  }).join('\n');
+  if(allItems.length)csv+='\n';
+  csv+=['TOTAL',r.awalVal||tA,r.transitVal||tT,r.akhirVal||tK,(r.awalVal||tA)+(r.transitVal||tT)-(r.akhirVal||tK)].join(',');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`SellOut_${r.store.replace(/[^\w-]+/g,'_')}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 function populateFdStoreSelect(stockF){
   const sel=document.getElementById('fd-store-select');
