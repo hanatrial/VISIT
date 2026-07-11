@@ -1807,6 +1807,8 @@ async function handleTxImportFile(file){
     const wb=XLSX.read(buf,{type:'array'});
     const sheet=wb.Sheets[wb.SheetNames[0]];
     const rows=XLSX.utils.sheet_to_json(sheet,{defval:null,raw:true});
+    window._TX_DEBUG_RAW=rows.slice(0,3);
+    window._TX_DEBUG_HEADERS=XLSX.utils.sheet_to_json(sheet,{header:1,defval:null})[0];
     const findKey=(obj,names)=>Object.keys(obj).find(k=>names.some(n=>k.trim().toLowerCase()===n.toLowerCase()));
     const parseVal=v=>{
       if(v==null)return 0;
