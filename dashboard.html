@@ -1806,32 +1806,41 @@ async function handleTxImportFile(file){
     const buf=await file.arrayBuffer();
     const wb=XLSX.read(buf,{type:'array'});
     const sheet=wb.Sheets[wb.SheetNames[0]];
-    const rows=XLSX.utils.sheet_to_json(sheet,{defval:null,raw:true});
-    window._TX_DEBUG_RAW=rows.slice(0,3);
-    window._TX_DEBUG_HEADERS=XLSX.utils.sheet_to_json(sheet,{header:1,defval:null})[0];
-    const findKey=(obj,names)=>Object.keys(obj).find(k=>names.some(n=>k.trim().toLowerCase()===n.toLowerCase()));
+    const aoa=XLSX.utils.sheet_to_json(sheet,{header:1,defval:null,raw:true});
+    if(!aoa.length)throw new Error('Sheet kosong');
     const parseVal=v=>{
       if(v==null)return 0;
       if(typeof v==='number')return v;
       const cleaned=String(v).replace(/[^0-9.\-]/g,'');
       return parseFloat(cleaned)||0;
     };
-    TX_ALL=rows.map(r=>{
-      const kCust=findKey(r,['Customer SO Group Area','Customer']);
-      const kMonth=findKey(r,['Month of Invoice Date SO','Month']);
-      const kDay=findKey(r,['Day of Invoice Date SO','Day']);
-      const kItem=findKey(r,['Item Group','Item']);
-      const kVal=findKey(r,['Value','Nilai']);
-      return{
-        customer:String(r[kCust]||'').trim(),
-        month:String(r[kMonth]||'').trim(),
-        day:parseVal(r[kDay]),
-        item:String(r[kItem]||'').trim(),
-        value:parseVal(r[kVal])
-      };
-    }).filter(r=>r.customer);
+    // find the header row (first row containing a cell with "customer")
+    let hdrIdx=aoa.findIndex(row=>row&&row.some(c=>String(c||'').toLowerCase().includes('customer')));
+    if(hdrIdx<0)hdrIdx=0;
+    const hdr=aoa[hdrIdx].map(c=>String(c||'').trim().toLowerCase());
+    const findCol=(subs,fallback)=>{
+      for(const s of subs){const i=hdr.findIndex(h=>h.includes(s));if(i>=0)return i;}
+      return fallback;
+    };
+    const iCust=findCol(['customer'],0);
+    const iMonth=findCol(['month','bulan'],1);
+    const iDay=findCol(['day','tanggal'],2);
+    const iItem=findCol(['item'],3);
+    let iVal=findCol(['value','nilai','total'],-1);
+    if(iVal<0)iVal=hdr.length-1; // fallback: last column
+    window._TX_DEBUG_HEADERS=aoa[hdrIdx];
+    window._TX_DEBUG_COLS={iCust,iMonth,iDay,iItem,iVal};
+    TX_ALL=aoa.slice(hdrIdx+1).filter(row=>row&&String(row[iCust]||'').trim()).map(row=>({
+      customer:String(row[iCust]||'').trim(),
+      month:String(row[iMonth]||'').trim(),
+      day:parseVal(row[iDay]),
+      item:String(row[iItem]||'').trim(),
+      value:parseVal(row[iVal])
+    }));
+    window._TX_DEBUG_RAW=TX_ALL.slice(0,3);
     TX_SELECTED_STORE='';TX_SELECTED_DATES=new Set();
-    if(el)el.textContent=`Berhasil diimpor: ${TX_ALL.length} baris transaksi, ${new Set(TX_ALL.map(r=>r.customer)).size} toko/customer.`;
+    const grandTotal=TX_ALL.reduce((s,r)=>s+r.value,0);
+    if(el)el.textContent=`Berhasil diimpor: ${TX_ALL.length} baris transaksi, ${new Set(TX_ALL.map(r=>r.customer)).size} toko/customer · Total value: ${rp(grandTotal)}`;
     populateTxStoreSelect();
     renderTxDates();
   }catch(e){
