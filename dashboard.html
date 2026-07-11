@@ -519,7 +519,7 @@ tr:hover td{background:var(--ov1);}
 
         <div class="panel-shell"><div class="panel-body">
           <table><thead id="table-head-formula"><tr>
-            <th>Toko</th><th>Area</th><th>Stock Awal</th><th>Stock Akhir</th><th>In Transit</th><th>Sell Out</th>
+            <th>Toko</th><th>Area</th><th>Bulan</th><th>Stock Awal</th><th>Stock Akhir</th><th>In Transit</th><th>Sell Out</th>
           </tr></thead><tbody id="table-body-formula"></tbody></table>
           <div class="tfoot-row" id="tfoot-formula"></div>
         </div></div>
@@ -1697,17 +1697,29 @@ function storeItemBreakdown(stockF,store){
   });
   return{awal,akhir};
 }
+const BULAN_ID=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+function monthKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+function monthLabel(key){if(!key)return'—';const[y,m]=key.split('-');return`${BULAN_ID[+m-1]||m} ${y}`;}
+let MONTH_OVERRIDE={};
+try{MONTH_OVERRIDE=JSON.parse(localStorage.getItem('mds_month_override')||'{}');}catch(e){MONTH_OVERRIDE={};}
+function saveMonthOverride(){localStorage.setItem('mds_month_override',JSON.stringify(MONTH_OVERRIDE));}
+function updateMonthOverride(el){
+  MONTH_OVERRIDE[el.dataset.store]=el.value;
+  saveMonthOverride();
+  render();
+}
 function computeStoreStockMap(stockF){
   const map={};
   stockF.forEach(r=>{
     const store=r.store||'—', area=r.area||'—';
-    if(!map[store])map[store]={store,area,awal:0,akhir:0};
+    if(!map[store])map[store]={store,area,awal:0,akhir:0,lastTs:null};
     let val=storeStockValue(r.items);
     if(!val&&r.totalNilai)val=r.totalNilai;
     if(r.stockType==='awal')map[store].awal+=val;
     else if(r.stockType==='akhir')map[store].akhir+=val;
+    if(r.timestamp&&(!map[store].lastTs||r.timestamp>map[store].lastTs))map[store].lastTs=r.timestamp;
   });
-  return Object.values(map).sort((a,b)=>a.store.localeCompare(b.store));
+  return Object.values(map).map(r=>({...r,monthKey:r.lastTs?monthKey(r.lastTs):null})).sort((a,b)=>a.store.localeCompare(b.store));
 }
 function updateInTransit(el){
   IN_TRANSIT[el.dataset.store]=parseNum(el.value);
@@ -1716,6 +1728,7 @@ function updateInTransit(el){
 }
 function renderFormula(stockF){
   const rows=computeStoreStockMap(stockF);
+  const allMonthKeys=[...new Set(stockF.filter(r=>r.timestamp).map(r=>monthKey(r.timestamp)))].sort();
   let totalAwal=0,totalAkhir=0,totalTransit=0,totalSellOut=0;
   const tb=document.getElementById('table-body-formula');
   if(!tb)return;
@@ -1724,15 +1737,22 @@ function renderFormula(stockF){
     const transit=IN_TRANSIT[key]||0;
     const sellOut=r.awal+transit-r.akhir;
     totalAwal+=r.awal;totalAkhir+=r.akhir;totalTransit+=transit;totalSellOut+=sellOut;
+    const curMonth=MONTH_OVERRIDE[key]||r.monthKey||'';
+    const monthOpts=[...new Set([...allMonthKeys,curMonth].filter(Boolean))].sort();
+    const monthSelect=`<select class="fi" style="width:130px" data-store="${key}" onchange="updateMonthOverride(this)">
+      ${!curMonth?'<option value="" selected>—</option>':''}
+      ${monthOpts.map(mk=>`<option value="${mk}" ${mk===curMonth?'selected':''}>${monthLabel(mk)}</option>`).join('')}
+    </select>`;
     return`<tr>
       <td class="td-main">${r.store}</td>
       <td class="td-dim">${r.area}</td>
+      <td>${monthSelect}</td>
       <td class="td-dim">${r.awal?rp(r.awal):'—'}</td>
       <td class="td-dim">${r.akhir?rp(r.akhir):'—'}</td>
       <td><input type="text" inputmode="numeric" class="fi" style="width:110px" value="${transit||''}" placeholder="0" data-store="${key}" onchange="updateInTransit(this)"></td>
       <td style="font-weight:800;color:${sellOut>=0?'var(--accent)':'var(--red)'}">${rp(sellOut)}</td>
     </tr>`;
-  }).join(''):`<tr><td colspan="6"><div class="empty-state">Belum ada data stock untuk periode/filter ini.</div></td></tr>`;
+  }).join(''):`<tr><td colspan="7"><div class="empty-state">Belum ada data stock untuk periode/filter ini.</div></td></tr>`;
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v?rp(v):'—';};
   set('fm-awal',totalAwal);set('fm-akhir',totalAkhir);set('fm-transit',totalTransit);set('fm-sellout',totalSellOut);
   const nbF=document.getElementById('nb-formula');if(nbF)nbF.textContent=rows.length||'—';
