@@ -492,6 +492,23 @@ tr:hover td{background:var(--ov1);}
         </div>
       </div></div>
       <div id="formula-import-status" style="font-size:10px;color:var(--t3);margin:6px 2px 12px"></div>
+
+      <div class="panel-shell" style="margin-bottom:16px"><div class="panel-body" style="padding:14px 18px">
+        <div class="ch-label" style="margin-bottom:8px">📆 Hitung In Transit dari Detail Transaksi (pilih tanggal)</div>
+        <div style="font-size:10px;color:var(--t3);margin-bottom:10px">Import file Excel transaksi (kolom: Customer SO Group Area, Month of Invoice Date SO, Day of Invoice Date SO, Item Group, Value) — lalu pilih toko dan tanggal-tanggal pengiriman yang mau dihitung sebagai In Transit. Data ini hanya tersimpan sementara di sesi ini (perlu diimport ulang jika halaman di-refresh).</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+          <button class="exp-btn" onclick="document.getElementById('tx-import-input').click()">↑ Import Excel Transaksi</button>
+          <input type="file" id="tx-import-input" accept=".xlsx,.xls,.csv" style="display:none">
+          <select id="tx-store-select" class="fi" style="width:260px" onchange="selectTxStore(this.value)"><option value="">— Import file dulu —</option></select>
+        </div>
+        <div id="tx-import-status" style="font-size:10px;color:var(--t3);margin-bottom:8px"></div>
+        <div id="tx-dates-wrap"></div>
+        <div id="tx-sum-box" style="display:none;align-items:center;gap:14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+          <div><div style="font-size:9px;color:var(--t3)">Total In Transit Terpilih</div><div style="font-size:18px;font-weight:800;color:var(--violet)" id="tx-sum-val">—</div><div style="font-size:9px;color:var(--t3)" id="tx-sum-count"></div></div>
+          <button class="exp-btn" id="tx-apply-btn" onclick="applyTxToStore()">✓ Terapkan ke Toko Ini</button>
+        </div>
+      </div></div>
+
       <div class="panel-shell"><div class="panel-body">
         <table><thead id="table-head-formula"><tr>
           <th>Toko</th><th>Area</th><th>Stock Awal</th><th>Stock Akhir</th><th>In Transit</th><th>Sell Out</th>
@@ -1092,6 +1109,8 @@ function initDash(){
   if(pf)pf.addEventListener('change',e=>{if(e.target.files[0])handlePjmdsDataFile(e.target.files[0]);});
   const ff=document.getElementById('formula-import-input');
   if(ff)ff.addEventListener('change',e=>{if(e.target.files[0])handleFormulaImportFile(e.target.files[0]);e.target.value='';});
+  const tf=document.getElementById('tx-import-input');
+  if(tf)tf.addEventListener('change',e=>{if(e.target.files[0])handleTxImportFile(e.target.files[0]);e.target.value='';});
   loadKedaiDb();
   loadPjmdsData();
   loadAll();
@@ -1702,6 +1721,95 @@ async function handleFormulaImportFile(file){
     console.error('Import in transit failed',e);
     if(el)el.textContent='Gagal membaca file: '+e.message;
   }
+}
+
+// ── In Transit from transaction detail (pick dates) ─────────────────────────
+let TX_ALL=[], TX_SELECTED_STORE='', TX_SELECTED_DATES=new Set();
+const MONTH_ORDER={January:1,February:2,March:3,April:4,May:5,June:6,July:7,August:8,September:9,October:10,November:11,December:12,
+  Januari:1,Februari:2,Maret:3,Mei:5,Juni:6,Juli:7,Agustus:8,Oktober:10,Desember:12};
+async function handleTxImportFile(file){
+  const el=document.getElementById('tx-import-status');
+  if(el)el.textContent='Membaca '+file.name+'…';
+  try{
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    const sheet=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(sheet,{defval:null});
+    TX_ALL=rows.map(r=>({
+      customer:String(r['Customer SO Group Area']||'').trim(),
+      month:String(r['Month of Invoice Date SO']||'').trim(),
+      day:Number(r['Day of Invoice Date SO'])||0,
+      item:String(r['Item Group']||'').trim(),
+      value:Number(r['Value'])||0
+    })).filter(r=>r.customer);
+    TX_SELECTED_STORE='';TX_SELECTED_DATES=new Set();
+    if(el)el.textContent=`Berhasil diimpor: ${TX_ALL.length} baris transaksi, ${new Set(TX_ALL.map(r=>r.customer)).size} toko/customer.`;
+    populateTxStoreSelect();
+    renderTxDates();
+  }catch(e){
+    console.error('Import transaksi failed',e);
+    if(el)el.textContent='Gagal membaca file: '+e.message;
+  }
+}
+function populateTxStoreSelect(){
+  const sel=document.getElementById('tx-store-select');
+  if(!sel)return;
+  const stores=[...new Set(TX_ALL.map(r=>r.customer))].sort();
+  sel.innerHTML='<option value="">— Pilih Toko —</option>'+stores.map(s=>`<option value="${s.replace(/"/g,'&quot;')}">${s}</option>`).join('');
+}
+function selectTxStore(store){
+  TX_SELECTED_STORE=store;
+  TX_SELECTED_DATES=new Set();
+  renderTxDates();
+}
+function renderTxDates(){
+  const wrap=document.getElementById('tx-dates-wrap');
+  if(!wrap)return;
+  if(!TX_SELECTED_STORE){wrap.innerHTML='';const box=document.getElementById('tx-sum-box');if(box)box.style.display='none';return;}
+  const rowsForStore=TX_ALL.filter(r=>r.customer===TX_SELECTED_STORE);
+  const dateMap={};
+  rowsForStore.forEach(r=>{
+    const key=r.month+'-'+r.day;
+    if(!dateMap[key])dateMap[key]={month:r.month,day:r.day,total:0,count:0};
+    dateMap[key].total+=r.value;
+    dateMap[key].count++;
+  });
+  const dates=Object.values(dateMap).sort((a,b)=>(MONTH_ORDER[a.month]||99)-(MONTH_ORDER[b.month]||99)||a.day-b.day);
+  wrap.innerHTML=dates.map(d=>{
+    const key=d.month+'-'+d.day;
+    const checked=TX_SELECTED_DATES.has(key)?'checked':'';
+    return`<label style="display:inline-flex;align-items:center;gap:5px;background:${ov(3)};border:1px solid var(--border);border-radius:8px;padding:5px 10px;margin:3px 4px 3px 0;font-size:10px;cursor:pointer">
+      <input type="checkbox" ${checked} onchange="toggleTxDate('${key}')" style="cursor:pointer">
+      <span style="color:var(--t1)">${d.month.slice(0,3)} ${d.day}</span>
+      <span style="color:var(--t3)">(${rp(d.total)})</span>
+    </label>`;
+  }).join('');
+  updateTxSum();
+}
+function toggleTxDate(key){
+  if(TX_SELECTED_DATES.has(key))TX_SELECTED_DATES.delete(key);
+  else TX_SELECTED_DATES.add(key);
+  updateTxSum();
+}
+function updateTxSum(){
+  const box=document.getElementById('tx-sum-box');
+  if(!box)return;
+  if(!TX_SELECTED_STORE||!TX_SELECTED_DATES.size){box.style.display='none';return;}
+  const rowsForStore=TX_ALL.filter(r=>r.customer===TX_SELECTED_STORE&&TX_SELECTED_DATES.has(r.month+'-'+r.day));
+  const total=rowsForStore.reduce((s,r)=>s+r.value,0);
+  box.style.display='flex';
+  document.getElementById('tx-sum-val').textContent=rp(total);
+  document.getElementById('tx-sum-count').textContent=`${TX_SELECTED_DATES.size} tanggal · ${rowsForStore.length} baris item`;
+  document.getElementById('tx-apply-btn').dataset.value=total;
+}
+function applyTxToStore(){
+  const btn=document.getElementById('tx-apply-btn');
+  const val=Number(btn.dataset.value)||0;
+  if(!TX_SELECTED_STORE)return;
+  IN_TRANSIT[TX_SELECTED_STORE.toLowerCase()]=val;
+  saveInTransit();
+  render();
+  alert(`In Transit untuk "${TX_SELECTED_STORE}" diset ke ${rp(val)}. Cek baris toko ini di tabel Sell Out Formula di bawah.`);
 }
 
 // ── TAB: Visit RKA ─────────────────────────────────────────────────────────
