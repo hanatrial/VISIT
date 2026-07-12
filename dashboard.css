@@ -137,6 +137,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .sub-tab:hover:not(.on){border-color:var(--border2);color:var(--t2);}
 .sub-tab.on.rka{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.25);color:var(--green);}
 .sub-tab.on.beli{background:rgba(139,92,246,.1);border-color:rgba(139,92,246,.25);color:var(--violet);}
+.sub-tab.on.pjmds{background:rgba(236,72,153,.1);border-color:rgba(236,72,153,.25);color:var(--pink);}
 .panel-shell{background:var(--ov2);border:1px solid var(--border);border-radius:20px;overflow:hidden;}
 .panel-body{overflow-x:auto;background:var(--bg2);border-radius:0 0 20px 20px;}
 table{width:100%;border-collapse:collapse;font-size:11.5px;}

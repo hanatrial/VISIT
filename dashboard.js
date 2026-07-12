@@ -773,7 +773,7 @@ function buildSpotlight(rkaF,beliF){
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 let STOCK_ALL=[], SUBTAB_STOCK='log';
-let SUBTAB_RKA='log', SUBTAB_BELI='log', SUBTAB_FORMULA='summary';
+let SUBTAB_RKA='log', SUBTAB_BELI='log', SUBTAB_FORMULA='summary', SUBTAB_PJMDS='mds';
 function switchTab(t){
   TAB=t;
   ['rka','beli','stock','pjmds','formula'].forEach(x=>{
@@ -800,6 +800,11 @@ function switchSubTab(main,sub){
     const sw=document.getElementById('formula-summary-wrap');if(sw)sw.style.display=sub==='summary'?'block':'none';
     const cw=document.getElementById('formula-calc-wrap');if(cw)cw.style.display=sub==='calc'?'block':'none';
     const dw=document.getElementById('formula-detail-wrap');if(dw)dw.style.display=sub==='detail'?'block':'none';
+  }else if(main==='pjmds'){
+    SUBTAB_PJMDS=sub;
+    ['mds','scorecard'].forEach(s=>{const el=document.getElementById('stab-pjmds-'+s);if(el)el.classList.toggle('on',s===sub);});
+    const mw=document.getElementById('pjmds-mds-wrap');if(mw)mw.style.display=sub==='mds'?'block':'none';
+    const sw2=document.getElementById('pjmds-scorecard-wrap');if(sw2)sw2.style.display=sub==='scorecard'?'block':'none';
   }else{
     SUBTAB_BELI=sub;
     ['log','analisis'].forEach(s=>{const el=document.getElementById('stab-beli-'+s);if(el)el.classList.toggle('on',s===sub);});
@@ -847,6 +852,7 @@ function render(){
     else renderAnalisis(rkaF,beliF);
   }else if(TAB==='pjmds'){
     renderPjmds(beliF);
+    if(SUBTAB_PJMDS==='scorecard')renderScorecard();
   }else if(TAB==='formula'){
     if(SUBTAB_FORMULA==='summary')renderFormula(stockF);
     else if(SUBTAB_FORMULA==='calc'){populateFcSelects();renderInTransitImports();renderFcTable();fcPreview();}
@@ -2171,10 +2177,9 @@ function mdsAreaOf(name){
   for(const[a,list]of Object.entries(MDS_BY_AREA))if(list.some(m=>m.toLowerCase()===name.toLowerCase()))return a;
   return '—';
 }
-function exportMdsScorecard(){
-  if(!PJ_RAW.call.length){alert('Data Penjualan (Call & Order) belum diupload — scorecard butuh data itu untuk kolom Omzet.');return;}
+function computeScorecardRows(){
   const beliF=filtered(BELI_ALL);
-  const rows=allMdsNames().map(name=>{
+  return allMdsNames().map(name=>{
     const nLow=name.toLowerCase();
     const beli=beliF.filter(r=>(r.mds||'').toLowerCase()===nLow);
     const trx=beli.length;
@@ -2195,6 +2200,50 @@ function exportMdsScorecard(){
     const omzet=omzetNS+omzetHILO;
     return{name,area:mdsAreaOf(name),trx,stores,ns,hilo,beliVal,nota,callCount,custCount,omzetNS,omzetHILO,omzet,selisih:omzet-beliVal,matched:!!resolved};
   }).filter(r=>r.trx>0||r.omzet>0);
+}
+let SC_SORT='omzet',SC_DIR=-1;
+function scSortBy(c){if(SC_SORT===c)SC_DIR*=-1;else{SC_SORT=c;SC_DIR=-1;}renderScorecard();}
+function renderScorecard(){
+  const tb=document.getElementById('sc-body');
+  if(!tb)return;
+  const rows=computeScorecardRows();
+  rows.sort((a,b)=>{
+    const av=a[SC_SORT],bv=b[SC_SORT];
+    if(typeof av==='number')return SC_DIR*(av-bv);
+    return SC_DIR*String(av||'').localeCompare(String(bv||''));
+  });
+  const maxOmzet=Math.max(...rows.map(r=>r.omzet),1);
+  let tB=0,tO=0,unmatched=0;
+  tb.innerHTML=rows.length?rows.map(r=>{
+    tB+=r.beliVal;tO+=r.omzet;if(!r.matched&&r.trx>0)unmatched++;
+    const dTag=r.selisih===0?'<span class="tag t sm">0</span>':r.selisih>0?`<span class="tag g sm">+${rp(r.selisih)}</span>`:`<span class="tag r sm">${rp(r.selisih)}</span>`;
+    const barW=Math.round(r.omzet/maxOmzet*100);
+    return`<tr class="clickrow" onclick="selectPjmds('${r.name.replace(/'/g,"\\'")}');switchSubTab('pjmds','mds')">
+      <td class="td-main">${r.name} ${r.matched?'':'<span style="font-size:8px;color:var(--red)" title="Nama tidak ketemu di data Penjualan">⚠</span>'}</td>
+      <td class="td-dim">${r.area}</td>
+      <td><span class="tag p sm">${r.trx||'—'}</span></td>
+      <td><span class="tag b sm">${r.ns}</span></td>
+      <td><span class="tag au sm">${r.hilo}</span></td>
+      <td style="color:var(--violet);font-weight:700;font-size:11px">${r.beliVal?rp(r.beliVal):'—'}</td>
+      <td class="td-dim">${r.nota?rp(r.nota):'—'}</td>
+      <td><span class="tag t sm">${r.custCount||'—'}</span></td>
+      <td><div style="font-weight:800;color:var(--pink);font-size:11px">${r.omzet?rp(r.omzet):'—'}</div><div class="av-bg" style="margin-top:3px;max-width:90px"><div class="av-fill" style="width:${barW}%;background:var(--pink)"></div></div></td>
+      <td>${dTag}</td>
+    </tr>`;
+  }).join(''):`<tr><td colspan="10"><div class="empty-state">Tidak ada data untuk periode/filter ini.${PJ_RAW.call.length?'':' Upload data Penjualan (Call & Order) untuk kolom Omzet.'}</div></td></tr>`;
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  set('sc-beli',tB?rp(tB):'—');
+  set('sc-omzet',tO?rp(tO):'—');
+  const diffEl=document.getElementById('sc-diff');
+  if(diffEl){diffEl.textContent=(tO-tB)?rp(tO-tB):'—';diffEl.style.color=(tO-tB)>=0?'var(--green)':'var(--red)';}
+  set('sc-count',rows.length||'—');
+  set('sc-unmatched',unmatched?`⚠ ${unmatched} MDS belum match nama Penjualan`:'semua nama match');
+  const tf=document.getElementById('sc-tfoot');
+  if(tf)tf.textContent=`${rows.length} MDS · klik baris untuk buka detail · klik judul kolom untuk sortir`;
+}
+function exportMdsScorecard(){
+  if(!PJ_RAW.call.length){alert('Data Penjualan (Call & Order) belum diupload — scorecard butuh data itu untuk kolom Omzet.');return;}
+  const rows=computeScorecardRows();
   if(!rows.length){alert('Tidak ada data untuk periode/filter ini.');return;}
   rows.sort((a,b)=>b.omzet-a.omzet);
   const header=['MDS','Area','Trx Beli','Toko Beli','NS Rnc','HILO Rnc','Value Beli (Rp)','Nota (Rp)','Call Penjualan','Customer','Omzet NS (Rp)','Omzet HILO (Rp)','Total Omzet (Rp)','Selisih Omzet-Beli (Rp)','Match Nama'];

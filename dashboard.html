@@ -14,7 +14,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="dashboard.css?v=1">
+<link rel="stylesheet" href="dashboard.css?v=2">
 </head>
 <body>
 <div id="pin-screen">
@@ -267,15 +267,42 @@
         </div>
       </div></div>
 
-      <div class="panel-shell" style="margin-top:12px"><div class="panel-body">
-        <div class="ch-label" style="margin-bottom:10px">👤 Pilih MDS</div>
-        <select id="pjmds-select" class="fi" style="width:260px" onchange="selectPjmds(this.value)">
-          <option value="">— Pilih MDS —</option>
-        </select>
-        <div id="pjmds-match-note" style="font-size:11px;margin-top:8px"></div>
-      </div></div>
+      <div class="sub-nav" style="margin-top:12px">
+        <div class="sub-tab on pjmds" id="stab-pjmds-mds" onclick="switchSubTab('pjmds','mds')">👤 Per MDS</div>
+        <div class="sub-tab pjmds" id="stab-pjmds-scorecard" onclick="switchSubTab('pjmds','scorecard')">🏆 Scorecard</div>
+      </div>
 
-      <div id="pjmds-detail" style="margin-top:12px"></div>
+      <div id="pjmds-mds-wrap">
+        <div class="panel-shell"><div class="panel-body">
+          <div class="ch-label" style="margin-bottom:10px">👤 Pilih MDS</div>
+          <select id="pjmds-select" class="fi" style="width:260px" onchange="selectPjmds(this.value)">
+            <option value="">— Pilih MDS —</option>
+          </select>
+          <div id="pjmds-match-note" style="font-size:11px;margin-top:8px"></div>
+        </div></div>
+        <div id="pjmds-detail" style="margin-top:12px"></div>
+      </div>
+
+      <div id="pjmds-scorecard-wrap" style="display:none">
+        <div class="bento bento-4" id="sc-kpis">
+          <div class="kpi-shell"><div class="kpi-inner"><div class="kpi-label">Total Value Beli</div><div class="kpi-val sm" style="color:var(--violet)" id="sc-beli">—</div><div class="kpi-sub">dari Beli Barang (filter aktif)</div></div></div>
+          <div class="kpi-shell"><div class="kpi-inner"><div class="kpi-label">Total Omzet</div><div class="kpi-val sm" style="color:var(--pink)" id="sc-omzet">—</div><div class="kpi-sub">dari data Call &amp; Order</div></div></div>
+          <div class="kpi-shell"><div class="kpi-inner"><div class="kpi-label">Selisih Omzet − Beli</div><div class="kpi-val sm" id="sc-diff">—</div><div class="kpi-sub">positif = omzet lebih besar</div></div></div>
+          <div class="kpi-shell"><div class="kpi-inner"><div class="kpi-label">MDS Aktif</div><div class="kpi-val" style="color:var(--cyan)" id="sc-count">—</div><div class="kpi-sub" id="sc-unmatched">—</div></div></div>
+        </div>
+        <div class="panel-shell"><div class="panel-body">
+          <table><thead><tr>
+            <th onclick="scSortBy('name')">MDS</th><th>Area</th>
+            <th onclick="scSortBy('trx')">Trx Beli</th>
+            <th onclick="scSortBy('ns')">NS Rnc</th><th onclick="scSortBy('hilo')">HILO Rnc</th>
+            <th onclick="scSortBy('beliVal')">Value Beli</th><th onclick="scSortBy('nota')">Nota</th>
+            <th onclick="scSortBy('custCount')">Customer</th>
+            <th onclick="scSortBy('omzet')">Total Omzet</th>
+            <th onclick="scSortBy('selisih')">Selisih</th>
+          </tr></thead><tbody id="sc-body"></tbody></table>
+          <div class="tfoot-row" id="sc-tfoot"></div>
+        </div></div>
+      </div>
     </div>
 
     <!-- SELL OUT FORMULA SECTION -->
@@ -429,6 +456,6 @@
   </div></div>
 </div>
 
-<script src="dashboard.js?v=2"></script>
+<script src="dashboard.js?v=3"></script>
 </body>
 </html>
