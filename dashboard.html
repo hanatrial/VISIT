@@ -490,12 +490,13 @@ tr:hover td{background:var(--ov1);}
 
       <div class="sub-nav">
         <div class="sub-tab on formula" id="stab-formula-summary" onclick="switchSubTab('formula','summary')">📊 Ringkasan per Toko</div>
+        <div class="sub-tab formula" id="stab-formula-calc" onclick="switchSubTab('formula','calc')">🧮 Kalkulasi Manual</div>
         <div class="sub-tab formula" id="stab-formula-detail" onclick="switchSubTab('formula','detail')">🧾 Detail Item per Toko</div>
       </div>
 
       <div id="formula-summary-wrap">
         <div class="panel-shell"><div class="panel-body" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 18px">
-          <div class="ch-label" style="margin-bottom:0">📥 Import Nilai In Transit</div>
+          <div class="ch-label" style="margin-bottom:0">📥 Import Nilai In Transit (langsung ke baris toko)</div>
           <div>
             <button class="exp-btn" onclick="downloadFormulaTemplate()">↓ Download Template</button>
             <button class="exp-btn" onclick="document.getElementById('formula-import-input').click()">↑ Import Excel</button>
@@ -503,7 +504,17 @@ tr:hover td{background:var(--ov1);}
           </div>
         </div></div>
         <div id="formula-import-status" style="font-size:10px;color:var(--t3);margin:6px 2px 12px"></div>
+        <div style="font-size:10px;color:var(--t3);margin:0 2px 16px">Nama toko di file Excel harus persis sama dengan nama toko di data Stock Sell Out agar otomatis masuk ke baris yang benar di bawah. Kolom "In Transit" di setiap baris toko juga bisa diisi manual langsung.</div>
 
+        <div class="panel-shell"><div class="panel-body">
+          <table><thead id="table-head-formula"><tr>
+            <th>Toko</th><th>Area</th><th>Bulan</th><th>Stock Awal</th><th>Stock Akhir</th><th>In Transit</th><th>Sell Out</th>
+          </tr></thead><tbody id="table-body-formula"></tbody></table>
+          <div class="tfoot-row" id="tfoot-formula"></div>
+        </div></div>
+      </div>
+
+      <div id="formula-calc-wrap" style="display:none">
         <div class="panel-shell" style="margin-bottom:16px"><div class="panel-body" style="padding:14px 18px">
           <div class="ch-label" style="margin-bottom:8px">📆 Hitung In Transit dari Detail Transaksi (pilih tanggal)</div>
           <div style="font-size:10px;color:var(--t3);margin-bottom:10px">Import file Excel transaksi (kolom: Customer SO Group Area, Month of Invoice Date SO, Day of Invoice Date SO, Item Group, Value) — lalu pilih toko dan tanggal-tanggal pengiriman yang mau dihitung sebagai In Transit. Data ini hanya tersimpan sementara di sesi ini (perlu diimport ulang jika halaman di-refresh).</div>
@@ -516,27 +527,39 @@ tr:hover td{background:var(--ov1);}
           <div id="tx-dates-wrap"></div>
           <div id="tx-sum-box" style="display:none;align-items:center;gap:14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
             <div><div style="font-size:9px;color:var(--t3)">Total In Transit Terpilih</div><div style="font-size:18px;font-weight:800;color:var(--violet)" id="tx-sum-val">—</div><div style="font-size:9px;color:var(--t3)" id="tx-sum-count"></div></div>
-            <button class="exp-btn" id="tx-apply-btn" onclick="applyTxToStore()">✓ Terapkan ke Toko Ini</button>
+            <button class="exp-btn" id="tx-apply-btn" onclick="applyTxToStore()">✓ Simpan sebagai In Transit (baris terpisah)</button>
           </div>
+        </div></div>
+
+        <div class="panel-shell" style="margin-bottom:16px"><div class="panel-body">
+          <div class="ch-label" style="padding:12px 14px 0">📥 In Transit Tersimpan (dari Excel, baris terpisah)</div>
+          <div style="font-size:10px;color:var(--t3);margin:2px 14px 10px">Setiap "Simpan" di atas menambah baris baru di sini — nama toko diambil apa adanya dari file Excel, tidak dicocokkan otomatis ke toko manapun. Pilih sendiri pasangannya di kalkulator di bawah.</div>
+          <table><thead><tr>
+            <th>Toko (dari Excel)</th><th>Tanggal</th><th>Item</th><th>Nilai</th><th></th>
+          </tr></thead><tbody id="ti-body"></tbody></table>
+          <div class="tfoot-row" id="ti-tfoot"></div>
         </div></div>
 
         <div class="panel-shell" style="margin-bottom:16px"><div class="panel-body" style="padding:14px 18px">
           <div class="ch-label" style="margin-bottom:8px">🧮 Kalkulasi Sell Out Manual</div>
-          <div style="font-size:10px;color:var(--t3);margin-bottom:10px">Pilih data Stock Awal (toko + bulan), Stock Akhir (toko + bulan), dan In Transit — lalu simpan sebagai baris kalkulasi baru. In Transit bisa diambil dari total tanggal terpilih di atas atau diketik manual.</div>
+          <div style="font-size:10px;color:var(--t3);margin-bottom:10px">Pilih data Stock Awal (toko + bulan), Stock Akhir (toko + bulan), dan In Transit — lalu simpan sebagai baris kalkulasi baru. In Transit bisa dipilih dari daftar tersimpan di atas, diambil langsung dari tanggal terpilih, atau diketik manual.</div>
           <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
             <div>
               <div style="font-size:9px;color:var(--t3);margin-bottom:4px">STOCK AWAL (toko · bulan · nilai)</div>
-              <select id="fc-awal" class="fi" style="width:280px" onchange="fcPreview()"><option value="">— Pilih —</option></select>
+              <select id="fc-awal" class="fi" style="width:260px" onchange="fcPreview()"><option value="">— Pilih —</option></select>
             </div>
             <div>
               <div style="font-size:9px;color:var(--t3);margin-bottom:4px">STOCK AKHIR (toko · bulan · nilai)</div>
-              <select id="fc-akhir" class="fi" style="width:280px" onchange="fcPreview()"><option value="">— Pilih —</option></select>
+              <select id="fc-akhir" class="fi" style="width:260px" onchange="fcPreview()"><option value="">— Pilih —</option></select>
             </div>
             <div>
-              <div style="font-size:9px;color:var(--t3);margin-bottom:4px">IN TRANSIT (Rp)</div>
-              <input type="text" inputmode="numeric" id="fc-transit" class="fi" style="width:130px" placeholder="0" oninput="_FC_TRANSIT_ITEMS={};fcPreview()">
+              <div style="font-size:9px;color:var(--t3);margin-bottom:4px">IN TRANSIT TERSIMPAN</div>
+              <select id="fc-transit-select" class="fi" style="width:220px" onchange="fcUseSavedTransit(this.value)"><option value="">— Pilih dari daftar —</option></select>
             </div>
-            <button class="exp-btn" onclick="fcUseTxTotal()">⤓ Ambil dari tanggal terpilih</button>
+            <div>
+              <div style="font-size:9px;color:var(--t3);margin-bottom:4px">ATAU IN TRANSIT MANUAL (Rp)</div>
+              <input type="text" inputmode="numeric" id="fc-transit" class="fi" style="width:130px" placeholder="0" oninput="_FC_TRANSIT_ITEMS={};document.getElementById('fc-transit-select').value='';fcPreview()">
+            </div>
           </div>
           <div style="display:flex;align-items:center;gap:16px;padding-top:10px;border-top:1px solid var(--border)">
             <div><div style="font-size:9px;color:var(--t3)">Hasil Sell Out</div><div style="font-size:18px;font-weight:800;color:var(--green)" id="fc-preview-val">—</div></div>
@@ -551,20 +574,13 @@ tr:hover td{background:var(--ov1);}
           </tr></thead><tbody id="fc-body"></tbody></table>
           <div class="tfoot-row" id="fc-tfoot"></div>
         </div></div>
-
-        <div class="panel-shell"><div class="panel-body">
-          <table><thead id="table-head-formula"><tr>
-            <th>Toko</th><th>Area</th><th>Bulan</th><th>Stock Awal</th><th>Stock Akhir</th><th>In Transit</th><th>Sell Out</th>
-          </tr></thead><tbody id="table-body-formula"></tbody></table>
-          <div class="tfoot-row" id="tfoot-formula"></div>
-        </div></div>
       </div>
 
       <div id="formula-detail-wrap" style="display:none">
         <div class="panel-shell" style="margin-bottom:16px"><div class="panel-body" style="padding:14px 18px">
           <div class="ch-label" style="margin-bottom:8px">👤 Pilih Toko</div>
           <select id="fd-store-select" class="fi" style="width:280px" onchange="renderFormulaDetail()"><option value="">— Pilih Toko —</option></select>
-          <div style="font-size:10px;color:var(--t3);margin-top:8px">Menampilkan mapping per item: Stock Awal + In Transit − Stock Akhir = Sell Out. In Transit per item diisi dari tanggal yang dipilih &amp; diterapkan di tab "Ringkasan per Toko".</div>
+          <div style="font-size:10px;color:var(--t3);margin-top:8px">Menampilkan mapping per item: Stock Awal + In Transit − Stock Akhir = Sell Out, berdasarkan In Transit yang diketik/diimport langsung di baris toko pada tab "Ringkasan per Toko".</div>
         </div></div>
         <div class="panel-shell"><div class="panel-body">
           <table><thead id="table-head-formula-detail"><tr>
@@ -1406,8 +1422,9 @@ function switchSubTab(main,sub){
     ['log','item'].forEach(s=>{const el=document.getElementById('stab-stock-'+s);if(el)el.classList.toggle('on',s===sub);});
   }else if(main==='formula'){
     SUBTAB_FORMULA=sub;
-    ['summary','detail'].forEach(s=>{const el=document.getElementById('stab-formula-'+s);if(el)el.classList.toggle('on',s===sub);});
+    ['summary','calc','detail'].forEach(s=>{const el=document.getElementById('stab-formula-'+s);if(el)el.classList.toggle('on',s===sub);});
     const sw=document.getElementById('formula-summary-wrap');if(sw)sw.style.display=sub==='summary'?'block':'none';
+    const cw=document.getElementById('formula-calc-wrap');if(cw)cw.style.display=sub==='calc'?'block':'none';
     const dw=document.getElementById('formula-detail-wrap');if(dw)dw.style.display=sub==='detail'?'block':'none';
   }else{
     SUBTAB_BELI=sub;
@@ -1458,6 +1475,7 @@ function render(){
     renderPjmds(beliF);
   }else if(TAB==='formula'){
     if(SUBTAB_FORMULA==='summary')renderFormula(stockF);
+    else if(SUBTAB_FORMULA==='calc'){populateFcSelects();renderInTransitImports();renderFcTable();fcPreview();}
     else{populateFdStoreSelect(stockF);renderFormulaDetail(stockF);}
   }
 }
@@ -1792,9 +1810,6 @@ function renderFormula(stockF){
   set('fm-awal',totalAwal);set('fm-akhir',totalAkhir);set('fm-transit',totalTransit);set('fm-sellout',totalSellOut);
   const nbF=document.getElementById('nb-formula');if(nbF)nbF.textContent=rows.length||'—';
   const tf=document.getElementById('tfoot-formula');if(tf)tf.textContent=`${rows.length} toko · Sell Out = Stock Awal + In Transit − Stock Akhir`;
-  populateFcSelects();
-  renderFcTable();
-  fcPreview();
 }
 function downloadFormulaTemplate(){
   const stockF=filteredStock();
@@ -1934,23 +1949,31 @@ function updateTxSum(){
   document.getElementById('tx-sum-count').textContent=`${TX_SELECTED_DATES.size} tanggal · ${rowsForStore.length} baris item`;
   document.getElementById('tx-apply-btn').dataset.value=total;
 }
+let IN_TRANSIT_IMPORTS=[];
+try{IN_TRANSIT_IMPORTS=JSON.parse(localStorage.getItem('mds_in_transit_imports')||'[]');}catch(e){IN_TRANSIT_IMPORTS=[];}
+function saveInTransitImports(){localStorage.setItem('mds_in_transit_imports',JSON.stringify(IN_TRANSIT_IMPORTS));}
 function applyTxToStore(){
   const btn=document.getElementById('tx-apply-btn');
   const val=Number(btn.dataset.value)||0;
   if(!TX_SELECTED_STORE)return;
-  const key=TX_SELECTED_STORE.toLowerCase();
-  IN_TRANSIT[key]=val;
-  saveInTransit();
   const rowsForStore=TX_ALL.filter(r=>r.customer===TX_SELECTED_STORE&&TX_SELECTED_DATES.has(r.month+'-'+r.day));
   const itemMap={};
   rowsForStore.forEach(r=>{
     const nm=r.item||'—';
     itemMap[nm]=(itemMap[nm]||0)+r.value;
   });
-  IN_TRANSIT_ITEMS[key]=itemMap;
-  saveInTransitItems();
+  IN_TRANSIT_IMPORTS.push({
+    id:Date.now()+'-'+Math.random().toString(36).slice(2,7),
+    store:TX_SELECTED_STORE,
+    value:val,
+    items:itemMap,
+    dateCount:TX_SELECTED_DATES.size,
+    itemCount:Object.keys(itemMap).length,
+    savedAt:new Date().toISOString()
+  });
+  saveInTransitImports();
   render();
-  alert(`In Transit untuk "${TX_SELECTED_STORE}" diset ke ${rp(val)} (${Object.keys(itemMap).length} item). Cek baris toko ini di tabel Sell Out Formula, atau lihat detail per item di sub-tab "Detail Item per Toko".`);
+  alert(`In Transit untuk "${TX_SELECTED_STORE}" (${rp(val)}, ${Object.keys(itemMap).length} item) disimpan sebagai baris terpisah. Buka sub-tab "Kalkulasi Manual" untuk memilih pasangannya (Stock Awal/Akhir toko manapun) — nama toko tidak dicocokkan otomatis.`);
 }
 
 // ── Manual Sell Out calculation composer ─────────────────────────────────────
@@ -1988,6 +2011,41 @@ function populateFcSelects(){
   };
   fill('fc-awal','awal');
   fill('fc-akhir','akhir');
+  const tsel=document.getElementById('fc-transit-select');
+  if(tsel){
+    const cur=tsel.value;
+    tsel.innerHTML='<option value="">— Pilih dari daftar —</option>'+IN_TRANSIT_IMPORTS.map(t=>`<option value="${t.id}" ${t.id===cur?'selected':''}>${t.store} · ${rp(t.value)} (${t.itemCount} item)</option>`).join('');
+  }
+}
+function fcUseSavedTransit(id){
+  if(!id){return;}
+  const entry=IN_TRANSIT_IMPORTS.find(t=>t.id===id);
+  if(!entry)return;
+  document.getElementById('fc-transit').value=entry.value;
+  _FC_TRANSIT_ITEMS=entry.items||{};
+  fcPreview();
+}
+function tiDelete(id){
+  IN_TRANSIT_IMPORTS=IN_TRANSIT_IMPORTS.filter(t=>t.id!==id);
+  saveInTransitImports();
+  render();
+}
+function renderInTransitImports(){
+  const tb=document.getElementById('ti-body');
+  if(!tb)return;
+  let total=0;
+  tb.innerHTML=IN_TRANSIT_IMPORTS.length?IN_TRANSIT_IMPORTS.slice().reverse().map(t=>{
+    total+=t.value;
+    return`<tr>
+      <td class="td-main">${t.store}</td>
+      <td class="td-dim">${t.dateCount} tanggal</td>
+      <td class="td-dim">${t.itemCount} item</td>
+      <td style="font-weight:800;color:var(--violet)">${rp(t.value)}</td>
+      <td><span style="cursor:pointer;color:var(--red);font-size:11px" onclick="tiDelete('${t.id}')">✕</span></td>
+    </tr>`;
+  }).join(''):`<tr><td colspan="5"><div class="empty-state">Belum ada In Transit tersimpan. Pilih toko &amp; tanggal di panel di atas lalu klik "Simpan sebagai In Transit".</div></td></tr>`;
+  const tf=document.getElementById('ti-tfoot');
+  if(tf)tf.textContent=IN_TRANSIT_IMPORTS.length?`${IN_TRANSIT_IMPORTS.length} baris · Total ${rp(total)}`:'';
 }
 function fcGet(id){const v=document.getElementById(id)?.value;return v===''?null:_FC_COMBOS[+v];}
 function fcPreview(){
@@ -2001,18 +2059,6 @@ function fcPreview(){
   el.style.color=sellOut>=0?'var(--green)':'var(--red)';
 }
 let _FC_TRANSIT_ITEMS={};
-function fcUseTxTotal(){
-  const btn=document.getElementById('tx-apply-btn');
-  const val=Number(btn?.dataset.value)||0;
-  if(!val){alert('Belum ada tanggal terpilih di panel "Hitung In Transit dari Detail Transaksi" di atas. Pilih toko dan centang tanggal dulu.');return;}
-  document.getElementById('fc-transit').value=val;
-  _FC_TRANSIT_ITEMS={};
-  TX_ALL.filter(r=>r.customer===TX_SELECTED_STORE&&TX_SELECTED_DATES.has(r.month+'-'+r.day)).forEach(r=>{
-    const nm=r.item||'—';
-    _FC_TRANSIT_ITEMS[nm]=(_FC_TRANSIT_ITEMS[nm]||0)+r.value;
-  });
-  fcPreview();
-}
 function fcSave(){
   const awal=fcGet('fc-awal'),akhir=fcGet('fc-akhir');
   const transit=parseNum(document.getElementById('fc-transit')?.value||'');
@@ -2035,6 +2081,7 @@ function fcSave(){
   document.getElementById('fc-awal').value='';
   document.getElementById('fc-akhir').value='';
   document.getElementById('fc-transit').value='';
+  document.getElementById('fc-transit-select').value='';
   _FC_TRANSIT_ITEMS={};
   fcPreview();
 }
