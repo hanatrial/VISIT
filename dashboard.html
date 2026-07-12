@@ -1986,7 +1986,8 @@ function buildStockCombos(){
   STOCK_ALL.forEach(r=>{
     if(!r.stockType)return;
     const store=r.store||'—';
-    const mk=r.timestamp?monthKey(r.timestamp):'';
+    const override=MONTH_OVERRIDE[store.toLowerCase()];
+    const mk=override||(r.timestamp?monthKey(r.timestamp):'');
     const key=r.stockType+'|'+store+'|'+mk;
     if(!map[key])map[key]={type:r.stockType,store,mk,value:0,items:{}};
     let val=storeStockValue(r.items);
