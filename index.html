@@ -24324,13 +24324,24 @@ const AREAS = Object.keys(MDS_BY_AREA).sort((a,b)=>a.localeCompare(b));
 const BELI_STORES_BY_AREA = {};
 
 // Merge stores from any source into both lookup tables + localStorage cache
+// Duplicate check is case-insensitive so "Hengky tranku" reuses "Hengky Tranku"
+function _sameName(a,b){return String(a).trim().toLowerCase()===String(b).trim().toLowerCase();}
+function canonicalStore(area,name){
+  const n=String(name).trim();
+  const all=[...(STORES_BY_AREA[area]||[]),...(BELI_STORES_BY_AREA[area]||[])];
+  return all.find(s=>_sameName(s,n))||n;
+}
+function canonicalMds(area,name){
+  const n=String(name).trim();
+  return (MDS_BY_AREA[area]||[]).find(m=>_sameName(m,n))||n;
+}
 function _mergeStores(area,stores){
   if(!Array.isArray(stores))return;
   if(!STORES_BY_AREA[area])STORES_BY_AREA[area]=[];
   if(!BELI_STORES_BY_AREA[area])BELI_STORES_BY_AREA[area]=[];
   stores.forEach(s=>{
-    if(!STORES_BY_AREA[area].includes(s))STORES_BY_AREA[area].push(s);
-    if(!BELI_STORES_BY_AREA[area].includes(s))BELI_STORES_BY_AREA[area].push(s);
+    if(!STORES_BY_AREA[area].some(x=>_sameName(x,s)))STORES_BY_AREA[area].push(s);
+    if(!BELI_STORES_BY_AREA[area].some(x=>_sameName(x,s)))BELI_STORES_BY_AREA[area].push(s);
   });
   try{
     const saved=JSON.parse(localStorage.getItem('mds_custom_stores')||'{}');
@@ -24344,10 +24355,11 @@ function _mergeStores(area,stores){
 
 function addNewStore(flow){
   const inputId=flow+'-store-new', selId=flow+'-store-sel', boxId=flow+'-store-box';
-  const nw=document.getElementById(inputId).value.trim();
+  let nw=document.getElementById(inputId).value.trim();
   if(!nw)return;
   const area=flow==='rka'?R.area:flow==='beli'?B.area:SK.area;
   if(!area){alert('Pilih area dulu sebelum tambah toko.');return;}
+  nw=canonicalStore(area,nw);
   const sel=document.getElementById(selId);
   if(![...sel.options].some(o=>o.value===nw)){
     saveCustomStore(area,nw);
@@ -24575,20 +24587,20 @@ function rkaNext(){
   if(R.step===0){
     R.area=document.getElementById('rka-area-sel').value;
     const sel=document.getElementById('rka-mds-sel').value;
-    const nw=document.getElementById('rka-mds-new').value.trim();
+    const nw=canonicalMds(R.area,document.getElementById('rka-mds-new').value);
     R.mds=sel||nw;
     if(nw&&!sel){
       if(!MDS_BY_AREA[R.area]) MDS_BY_AREA[R.area]=[];
-      if(!MDS_BY_AREA[R.area].includes(nw)) MDS_BY_AREA[R.area].push(nw);
+      if(!MDS_BY_AREA[R.area].some(m=>_sameName(m,nw))) MDS_BY_AREA[R.area].push(nw);
     }
   }
   if(R.step===1){
     const sel=document.getElementById('rka-store-sel').value;
     const box=document.getElementById('rka-store-box');
-    const nw=document.getElementById('rka-store-new').value.trim();
+    const nw=canonicalStore(R.area,document.getElementById('rka-store-new').value);
     if(box.classList.contains('open')&&nw){
       R.store=nw;
-      if(!STORES_BY_AREA[R.area].includes(nw)){ saveCustomStore(R.area,nw); const o=document.createElement('option'); o.value=nw; o.textContent=nw; document.getElementById('rka-store-sel').appendChild(o); }
+      if(!STORES_BY_AREA[R.area].some(s=>_sameName(s,nw))){ saveCustomStore(R.area,nw); const o=document.createElement('option'); o.value=nw; o.textContent=nw; document.getElementById('rka-store-sel').appendChild(o); }
     } else { R.store=sel; }
   }
   if(R.step===3){ submitRka(); return; }
@@ -24670,7 +24682,7 @@ async function submitRka(){
   // save to Firestore with photos included
   try{
     if(typeof db==='undefined') throw new Error('db not initialized');
-    const _tout=new Promise((_,r)=>setTimeout(()=>r(new Error('Timeout — cek Firestore Rules')),15000));
+    const _tout=new Promise((_,r)=>setTimeout(()=>r(new Error('Tersimpan offline — akan sinkron otomatis saat sinyal bagus')),30000));
     const _SITEMS=getStoreItems();
     const _namedItems={};Object.entries(R.items).forEach(([i,v])=>{const nm=_SITEMS[+i];if(nm)_namedItems[nm]=v;});
     await Promise.race([db.collection('rka_logs').add({id,area:R.area,mds:R.mds,store:R.store,timestamp:firebase.firestore.FieldValue.serverTimestamp(),avail,unavail,items:_namedItems,...(photoOk>0?{photoData}:{})}),_tout]);
@@ -24678,7 +24690,8 @@ async function submitRka(){
     document.getElementById('rka-sm-foto').textContent=photoOk>0?`✅ ${photoOk} foto`:'—';
   }catch(e){
     console.warn('Firestore rka failed',e);
-    document.getElementById('rka-sm-status').textContent='❌ '+e.message;
+    const offline=String(e.message).includes('offline');
+    document.getElementById('rka-sm-status').textContent=(offline?'⏳ ':'❌ ')+e.message;
     document.getElementById('rka-sm-foto').textContent='—';
   }
 }
@@ -24782,11 +24795,11 @@ function beliNext(){
     B.area=document.getElementById('beli-area-sel').value;
     const sel=document.getElementById('beli-mds-sel').value;
     const box=document.getElementById('beli-mds-box');
-    const nw=document.getElementById('beli-mds-new').value.trim();
+    const nw=canonicalMds(B.area,document.getElementById('beli-mds-new').value);
     if(box.classList.contains('open')&&nw){
       B.mds=nw;
       if(!MDS_BY_AREA[B.area]) MDS_BY_AREA[B.area]=[];
-      if(!MDS_BY_AREA[B.area].includes(nw)) MDS_BY_AREA[B.area].push(nw);
+      if(!MDS_BY_AREA[B.area].some(m=>_sameName(m,nw))) MDS_BY_AREA[B.area].push(nw);
     } else {
       B.mds=sel;
     }
@@ -24794,10 +24807,10 @@ function beliNext(){
   if(B.step===1){
     const sel=document.getElementById('beli-store-sel').value;
     const box=document.getElementById('beli-store-box');
-    const nw=document.getElementById('beli-store-new').value.trim();
+    const nw=canonicalStore(B.area,document.getElementById('beli-store-new').value);
     if(box.classList.contains('open')&&nw){
       B.store=nw;
-      if(!BELI_STORES_BY_AREA[B.area].includes(nw)){ saveCustomStore(B.area,nw); const o=document.createElement('option'); o.value=nw; o.textContent=nw; document.getElementById('beli-store-sel').appendChild(o); }
+      if(!BELI_STORES_BY_AREA[B.area].some(s=>_sameName(s,nw))){ saveCustomStore(B.area,nw); const o=document.createElement('option'); o.value=nw; o.textContent=nw; document.getElementById('beli-store-sel').appendChild(o); }
     } else {
       B.store=sel;
     }
@@ -24859,13 +24872,14 @@ async function submitBeli(){
   try{
     if(typeof db==='undefined') throw new Error('db not initialized');
     const _iq={};BELI_FLAT.forEach((nm,ii)=>{if(B.qty[ii])_iq[nm]=B.qty[ii];});
-    const _tout=new Promise((_,r)=>setTimeout(()=>r(new Error('Timeout — cek Firestore Rules')),15000));
+    const _tout=new Promise((_,r)=>setTimeout(()=>r(new Error('Tersimpan offline — akan sinkron otomatis saat sinyal bagus')),30000));
     await Promise.race([db.collection('beli_logs').add({id,area:B.area,mds:B.mds,store:B.store,timestamp:firebase.firestore.FieldValue.serverTimestamp(),nominal:parseNominal(document.getElementById('beli-nominal').value),groupTotals:Object.assign({},groupTotals),totalRenceng,itemQty:_iq,...(photoData?{photoData}:{})}),_tout]);
     document.getElementById('beli-sm-status').textContent='✅ Tersimpan ke server';
     document.getElementById('beli-sm-foto').textContent=photoData?'✅ Foto':'—';
   }catch(e){
     console.warn('Firestore beli failed',e);
-    document.getElementById('beli-sm-status').textContent='❌ '+e.message;
+    const offline=String(e.message).includes('offline');
+    document.getElementById('beli-sm-status').textContent=(offline?'⏳ ':'❌ ')+e.message;
     document.getElementById('beli-sm-foto').textContent='—';
   }
 }
@@ -25138,7 +25152,7 @@ function stockNext(step){
     if(!stockCheck(0)) return;
     SK.area=document.getElementById('stock-area-sel').value;
     SK.status=document.getElementById('stock-r-mds').checked?'MDS':'SPG';
-    SK.nama=document.getElementById('stock-nama-input').value.trim();
+    SK.nama=canonicalMds(SK.area,document.getElementById('stock-nama-input').value);
     // fill stores
     const ss=document.getElementById('stock-store-sel');
     ss.innerHTML='<option value="">— Pilih Toko —</option>';
@@ -25146,10 +25160,10 @@ function stockNext(step){
   } else if(step===1){
     if(!stockCheck(1)) return;
     const box=document.getElementById('stock-store-box');
-    const nw=document.getElementById('stock-store-new').value.trim();
+    const nw=canonicalStore(SK.area,document.getElementById('stock-store-new').value);
     SK.store=(box.classList.contains('open')&&nw)?nw:document.getElementById('stock-store-sel').value;
     if(box.classList.contains('open')&&nw){
-      if(!BELI_STORES_BY_AREA[SK.area].includes(nw)){ saveCustomStore(SK.area,nw); const o=document.createElement('option'); o.value=nw; o.textContent=nw; document.getElementById('stock-store-sel').appendChild(o); }
+      if(!BELI_STORES_BY_AREA[SK.area].some(s=>_sameName(s,nw))){ saveCustomStore(SK.area,nw); const o=document.createElement('option'); o.value=nw; o.textContent=nw; document.getElementById('stock-store-sel').appendChild(o); }
     }
     SK.stockType=document.getElementById('stock-r-awal').checked?'awal':'akhir';
     document.getElementById('stock-input-title').textContent='Stock '+(SK.stockType==='awal'?'Awal':'Akhir')+' Bulan';
@@ -25322,6 +25336,7 @@ try{
   const firebaseConfig={apiKey:"AIzaSyCtYc8uZICLzQrA1b7l00Yo_9V_rqNVOu0",authDomain:"mds-visit.firebaseapp.com",projectId:"mds-visit",storageBucket:"mds-visit.firebasestorage.app",messagingSenderId:"732603054928",appId:"1:732603054928:web:9f946bfa13d56d860a8a55"};
   firebase.initializeApp(firebaseConfig);
   window.db=firebase.firestore();
+  window.db.enablePersistence({synchronizeTabs:true}).catch(e=>console.warn('persistence unavailable',e.code||e));
   window.storage=firebase.storage();
 }catch(e){console.warn('Firebase init failed',e);}
 loadCustomStores();
