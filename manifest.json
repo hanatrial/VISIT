@@ -1,0 +1,19 @@
+{
+  "name": "MDS Visit — Nutrifood Sulawesi",
+  "short_name": "MDS Visit",
+  "description": "Form kunjungan, pembelian, dan stock MDS Nutrifood Sulawesi",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EDEAE0",
+  "theme_color": "#162C21",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -2166,3 +2166,46 @@ function exportCSV(){
   const a=document.createElement('a');a.href=url;a.download=`MDS_${fn}_${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(url);
 }
 
+// ── MDS SCORECARD: Beli Barang vs Penjualan MDS ─────────────────────────────
+function mdsAreaOf(name){
+  for(const[a,list]of Object.entries(MDS_BY_AREA))if(list.some(m=>m.toLowerCase()===name.toLowerCase()))return a;
+  return '—';
+}
+function exportMdsScorecard(){
+  if(!PJ_RAW.call.length){alert('Data Penjualan (Call & Order) belum diupload — scorecard butuh data itu untuk kolom Omzet.');return;}
+  const beliF=filtered(BELI_ALL);
+  const rows=allMdsNames().map(name=>{
+    const nLow=name.toLowerCase();
+    const beli=beliF.filter(r=>(r.mds||'').toLowerCase()===nLow);
+    const trx=beli.length;
+    const ns=beli.reduce((s,r)=>s+(r.groupTotals&&r.groupTotals.NS||0),0);
+    const hilo=beli.reduce((s,r)=>s+(r.groupTotals&&r.groupTotals.HILO||0)+(r.groupTotals&&r.groupTotals.HILOPLS||0),0);
+    const beliVal=beli.reduce((s,r)=>s+kalc(r),0);
+    const nota=beli.reduce((s,r)=>s+(r.nominal||0),0);
+    const stores=new Set(beli.map(r=>r.store||'?')).size;
+    const resolved=pjResolveMdsName(name);
+    let omzetNS=0,omzetHILO=0,custCount=0,callCount=0;
+    if(resolved){
+      const c=pjPeriodFilterCall(PJ_RAW.call.filter(r=>r.NamaMDS===resolved));
+      callCount=c.length;
+      omzetNS=c.reduce((s,r)=>s+(r.OmzetNS||0),0);
+      omzetHILO=c.reduce((s,r)=>s+(r.OmzetHILO||0),0);
+      custCount=new Set(c.map(r=>r.KodeCustomer)).size;
+    }
+    const omzet=omzetNS+omzetHILO;
+    return{name,area:mdsAreaOf(name),trx,stores,ns,hilo,beliVal,nota,callCount,custCount,omzetNS,omzetHILO,omzet,selisih:omzet-beliVal,matched:!!resolved};
+  }).filter(r=>r.trx>0||r.omzet>0);
+  if(!rows.length){alert('Tidak ada data untuk periode/filter ini.');return;}
+  rows.sort((a,b)=>b.omzet-a.omzet);
+  const header=['MDS','Area','Trx Beli','Toko Beli','NS Rnc','HILO Rnc','Value Beli (Rp)','Nota (Rp)','Call Penjualan','Customer','Omzet NS (Rp)','Omzet HILO (Rp)','Total Omzet (Rp)','Selisih Omzet-Beli (Rp)','Match Nama'];
+  const aoa=[header].concat(rows.map(r=>[r.name,r.area,r.trx,r.stores,r.ns,r.hilo,r.beliVal,r.nota,r.callCount,r.custCount,r.omzetNS,r.omzetHILO,r.omzet,r.selisih,r.matched?'OK':'TIDAK KETEMU']));
+  const t=rows.reduce((s,r)=>({trx:s.trx+r.trx,ns:s.ns+r.ns,hilo:s.hilo+r.hilo,beliVal:s.beliVal+r.beliVal,nota:s.nota+r.nota,omzetNS:s.omzetNS+r.omzetNS,omzetHILO:s.omzetHILO+r.omzetHILO,omzet:s.omzet+r.omzet}),{trx:0,ns:0,hilo:0,beliVal:0,nota:0,omzetNS:0,omzetHILO:0,omzet:0});
+  aoa.push(['TOTAL','',t.trx,'',t.ns,t.hilo,t.beliVal,t.nota,'','',t.omzetNS,t.omzetHILO,t.omzet,t.omzet-t.beliVal,'']);
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols']=header.map((h,i)=>({wch:i===0?26:Math.max(h.length+2,12)}));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Scorecard MDS');
+  const period=MF?monthLabel(MF):(DF||'semua periode');
+  XLSX.writeFile(wb,`Scorecard_MDS_${String(period).replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
