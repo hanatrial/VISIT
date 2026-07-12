@@ -478,8 +478,8 @@ tr:hover td{background:var(--ov1);}
       <div class="bento bento-4">
         <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(6,182,212,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 0% 0%,var(--cyan),transparent 70%)"></div><div class="kpi-label">Total Stock Awal</div><div class="kpi-val sm" style="color:var(--cyan)" id="fm-awal">—</div><div class="kpi-sub">semua toko terfilter</div></div></div>
         <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(245,158,11,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 50% 0%,var(--amber),transparent 70%)"></div><div class="kpi-label">Total Stock Akhir</div><div class="kpi-val sm" style="color:var(--amber)" id="fm-akhir">—</div><div class="kpi-sub">semua toko terfilter</div></div></div>
-        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(139,92,246,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--violet),transparent 70%)"></div><div class="kpi-label">Total In Transit</div><div class="kpi-val sm" style="color:var(--violet)" id="fm-transit">—</div><div class="kpi-sub">dari import Excel</div></div></div>
-        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(16,185,129,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--green),transparent 70%)"></div><div class="kpi-label">Total Sell Out</div><div class="kpi-val sm" style="color:var(--green)" id="fm-sellout">—</div><div class="kpi-sub">Awal + In Transit − Akhir</div></div></div>
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(139,92,246,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--violet),transparent 70%)"></div><div class="kpi-label">Total In Transit Tersimpan</div><div class="kpi-val sm" style="color:var(--violet)" id="fm-transit">—</div><div class="kpi-sub">lihat sub-tab Kalkulasi Manual</div></div></div>
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(16,185,129,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--green),transparent 70%)"></div><div class="kpi-label">Total Selisih (Awal − Akhir)</div><div class="kpi-val sm" style="color:var(--green)" id="fm-sellout">—</div><div class="kpi-sub">belum termasuk In Transit</div></div></div>
       </div>
       <div class="panel-shell" style="margin-bottom:16px"><div class="panel-body" style="padding:14px 18px">
         <div style="font-size:11px;color:var(--t2);line-height:1.6">
@@ -504,11 +504,11 @@ tr:hover td{background:var(--ov1);}
           </div>
         </div></div>
         <div id="formula-import-status" style="font-size:10px;color:var(--t3);margin:6px 2px 12px"></div>
-        <div style="font-size:10px;color:var(--t3);margin:0 2px 16px">Nama toko di file Excel harus persis sama dengan nama toko di data Stock Sell Out agar otomatis masuk ke baris yang benar di bawah. Kolom "In Transit" di setiap baris toko juga bisa diisi manual langsung.</div>
+        <div style="font-size:10px;color:var(--t3);margin:0 2px 16px">Import ini tidak langsung masuk ke baris toko di bawah — setiap toko dari file Excel akan ditambahkan sebagai baris terpisah di sub-tab "Kalkulasi Manual", lalu kamu pilih sendiri pasangan Stock Awal/Akhirnya di sana.</div>
 
         <div class="panel-shell"><div class="panel-body">
           <table><thead id="table-head-formula"><tr>
-            <th>Toko</th><th>Area</th><th>Bulan</th><th>Stock Awal</th><th>Stock Akhir</th><th>In Transit</th><th>Sell Out</th>
+            <th>Toko</th><th>Area</th><th>Bulan</th><th>Stock Awal</th><th>Stock Akhir</th><th>Selisih (Awal − Akhir)</th>
           </tr></thead><tbody id="table-body-formula"></tbody></table>
           <div class="tfoot-row" id="tfoot-formula"></div>
         </div></div>
@@ -1774,22 +1774,16 @@ function computeStoreStockMap(stockF){
   });
   return Object.values(map).map(r=>({...r,monthKey:r.lastTs?monthKey(r.lastTs):null})).sort((a,b)=>a.store.localeCompare(b.store));
 }
-function updateInTransit(el){
-  IN_TRANSIT[el.dataset.store]=parseNum(el.value);
-  saveInTransit();
-  render();
-}
 function renderFormula(stockF){
   const rows=computeStoreStockMap(stockF);
   const allMonthKeys=[...new Set(stockF.filter(r=>r.timestamp).map(r=>monthKey(r.timestamp)))].sort();
-  let totalAwal=0,totalAkhir=0,totalTransit=0,totalSellOut=0;
+  let totalAwal=0,totalAkhir=0,totalDiff=0;
   const tb=document.getElementById('table-body-formula');
   if(!tb)return;
   tb.innerHTML=rows.length?rows.map(r=>{
     const key=r.store.toLowerCase();
-    const transit=IN_TRANSIT[key]||0;
-    const sellOut=r.awal+transit-r.akhir;
-    totalAwal+=r.awal;totalAkhir+=r.akhir;totalTransit+=transit;totalSellOut+=sellOut;
+    const diff=r.awal-r.akhir;
+    totalAwal+=r.awal;totalAkhir+=r.akhir;totalDiff+=diff;
     const curMonth=MONTH_OVERRIDE[key]||r.monthKey||'';
     const monthOpts=[...new Set([...allMonthKeys,curMonth].filter(Boolean))].sort();
     const monthSelect=`<select class="fi" style="width:130px" data-store="${key}" onchange="updateMonthOverride(this)">
@@ -1802,19 +1796,19 @@ function renderFormula(stockF){
       <td>${monthSelect}</td>
       <td class="td-dim">${r.awal?rp(r.awal):'—'}</td>
       <td class="td-dim">${r.akhir?rp(r.akhir):'—'}</td>
-      <td><input type="text" inputmode="numeric" class="fi" style="width:110px" value="${transit||''}" placeholder="0" data-store="${key}" onchange="updateInTransit(this)"></td>
-      <td style="font-weight:800;color:${sellOut>=0?'var(--accent)':'var(--red)'}">${rp(sellOut)}</td>
+      <td style="font-weight:800;color:${diff>=0?'var(--accent)':'var(--red)'}">${rp(diff)}</td>
     </tr>`;
-  }).join(''):`<tr><td colspan="7"><div class="empty-state">Belum ada data stock untuk periode/filter ini.</div></td></tr>`;
+  }).join(''):`<tr><td colspan="6"><div class="empty-state">Belum ada data stock untuk periode/filter ini.</div></td></tr>`;
+  const totalTransit=IN_TRANSIT_IMPORTS.reduce((s,t)=>s+t.value,0);
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v?rp(v):'—';};
-  set('fm-awal',totalAwal);set('fm-akhir',totalAkhir);set('fm-transit',totalTransit);set('fm-sellout',totalSellOut);
+  set('fm-awal',totalAwal);set('fm-akhir',totalAkhir);set('fm-transit',totalTransit);set('fm-sellout',totalDiff);
   const nbF=document.getElementById('nb-formula');if(nbF)nbF.textContent=rows.length||'—';
-  const tf=document.getElementById('tfoot-formula');if(tf)tf.textContent=`${rows.length} toko · Sell Out = Stock Awal + In Transit − Stock Akhir`;
+  const tf=document.getElementById('tfoot-formula');if(tf)tf.textContent=`${rows.length} toko · Awal − Akhir (belum termasuk In Transit — gabungkan di sub-tab "Kalkulasi Manual")`;
 }
 function downloadFormulaTemplate(){
   const stockF=filteredStock();
   const rows=computeStoreStockMap(stockF);
-  const data=[['Toko','Nilai In Transit (Rp)']].concat(rows.map(r=>[r.store,IN_TRANSIT[r.store.toLowerCase()]||0]));
+  const data=[['Toko','Nilai In Transit (Rp)']].concat(rows.map(r=>[r.store,0]));
   const ws=XLSX.utils.aoa_to_sheet(data);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'In Transit');
@@ -1832,12 +1826,17 @@ async function handleFormulaImportFile(file){
     rows.forEach((row,i)=>{
       if(i===0)return;
       const store=String(row[0]||'').trim();
-      if(!store)return;
-      IN_TRANSIT[store.toLowerCase()]=parseNum(row[1]);
+      const val=parseNum(row[1]);
+      if(!store||!val)return;
+      IN_TRANSIT_IMPORTS.push({
+        id:Date.now()+'-'+Math.random().toString(36).slice(2,7),
+        store,value:val,items:{},dateCount:0,itemCount:0,
+        savedAt:new Date().toISOString()
+      });
       count++;
     });
-    saveInTransit();
-    if(el)el.textContent=`Berhasil diimpor: ${count} toko dari ${file.name}`;
+    saveInTransitImports();
+    if(el)el.textContent=`Berhasil diimpor: ${count} toko dari ${file.name} — ditambahkan sebagai baris terpisah di sub-tab "Kalkulasi Manual".`;
     render();
   }catch(e){
     console.error('Import in transit failed',e);
