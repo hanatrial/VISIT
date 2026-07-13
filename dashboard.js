@@ -1838,8 +1838,15 @@ function renderAnalisis(rkaF,beliF){
   cardsEl.innerHTML=cardsHtml;
 
   // ── 6. MDS summary table (existing) ──
+  const fMds=(document.getElementById('f-mds')?.value||'').toLowerCase();
+  const fArea=(document.getElementById('f-area')?.value||'').toLowerCase();
+  const fStore=(document.getElementById('f-store')?.value||'').toLowerCase();
   const mds={};
-  RKA_ALL.forEach(r=>{const m=r.mds||'—';if(!mds[m])mds[m]={name:m,area:r.area||'—',fd:r.timestamp,visits:0,a:0,t:0,ns:0,hi:0,nom:0,beli:0,stores:new Set()};if(r.timestamp<mds[m].fd)mds[m].fd=r.timestamp;});
+  RKA_ALL.forEach(r=>{
+    if(fMds&&!(r.mds||'').toLowerCase().includes(fMds))return;
+    if(fArea&&!(r.area||'').toLowerCase().includes(fArea))return;
+    if(fStore&&!(r.store||'').toLowerCase().includes(fStore))return;
+    const m=r.mds||'—';if(!mds[m])mds[m]={name:m,area:r.area||'—',fd:r.timestamp,visits:0,a:0,t:0,ns:0,hi:0,nom:0,beli:0,stores:new Set()};if(r.timestamp<mds[m].fd)mds[m].fd=r.timestamp;});
   rkaF.forEach(r=>{const m=r.mds||'—';if(!mds[m])mds[m]={name:m,area:r.area||'—',fd:r.timestamp,visits:0,a:0,t:0,ns:0,hi:0,nom:0,beli:0,stores:new Set()};mds[m].visits++;mds[m].a+=(r.avail||0);mds[m].t+=(r.avail||0)+(r.unavail||0);mds[m].stores.add(r.store||'?');});
   beliF.forEach(r=>{const m=r.mds||'—';if(!mds[m])mds[m]={name:m,area:r.area||'—',fd:new Date(),visits:0,a:0,t:0,ns:0,hi:0,nom:0,beli:0,stores:new Set()};mds[m].ns+=(r.groupTotals&&r.groupTotals.NS||0);mds[m].hi+=(r.groupTotals&&r.groupTotals.HILO||0);mds[m].nom+=(r.nominal||0);mds[m].beli++;mds[m].stores.add(r.store||'?');});
   let entries=Object.values(mds).map(v=>({...v,storesCnt:v.stores.size,av:v.t?Math.round(v.a/v.t*100):null,k:v.ns*NS_PRICE+v.hi*HILO_PRICE,tdays:Math.floor((new Date()-v.fd)/864e5)}));
