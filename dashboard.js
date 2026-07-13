@@ -1707,6 +1707,7 @@ function renderBeli(beliF){
 }
 
 // ── TAB: Analisis Beli MDS ──────────────────────────────────────────────────
+let _LAST_ANALISIS_ENTRIES=[];
 function renderAnalisis(rkaF,beliF){
   // ── 1. MDS roster per area (from registered MDS_BY_AREA list) ──
   const rosterByArea={};
@@ -1872,6 +1873,7 @@ function renderAnalisis(rkaF,beliF){
     </tr>`;
   }).join(''):`<tr><td colspan="11"><div class="empty-state">Tidak ada data MDS.</div></td></tr>`;
   document.getElementById('tfoot').textContent=`${entries.length} MDS — klik untuk detail modal`;
+  _LAST_ANALISIS_ENTRIES=entries.map(e=>({...e,hasBeli:submittedByArea[e.area]&&submittedByArea[e.area].has(e.name)}));
 }
 
 // ── TAB: Evaluasi MDS ───────────────────────────────────────────────────────
@@ -2152,6 +2154,12 @@ function exportCSV(){
       const bp=b=>bav[b].t?Math.round(bav[b].a/bav[b].t*100)+'%':'—';
       return[r.id,ts.toLocaleString('id-ID'),r.mds,r.area,q(r.store),r.avail,r.unavail,pct+'%',bp('NS'),bp('HILO'),bp('TS'),q(ada.join('; ')),q(tdk.join('; '))].join(',');
     }).join('\n');fn='RKA';
+  }else if(TAB==='beli'&&SUBTAB_BELI==='analisis'){
+    csv='MDS,Area,Aktif Sejak,Sudah Beli (Periode Ini),Visit,AV%,NS Rnc,HILO Rnc,Value,Nota,Selisih,Transaksi\n';
+    csv+=_LAST_ANALISIS_ENTRIES.map(e=>{
+      const diff=e.k-e.nom;
+      return[q(e.name),q(e.area),e.fd.toLocaleDateString('id-ID'),e.hasBeli?'Ya':'Tidak',e.visits,e.av!==null?e.av+'%':'—',e.ns,e.hi,e.k,e.nom,diff,e.beli].join(',');
+    }).join('\n');fn='Analisis_Beli_MDS';
   }else if(TAB==='beli'){
     csv='ID,Waktu,MDS,Area,Toko,NS Rnc,HILO Rnc,Total Rnc,Value,Nota,Selisih,Detail Item\n';
     csv+=doSort(beliF).map(r=>{
