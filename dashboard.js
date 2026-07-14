@@ -2226,16 +2226,20 @@ function computeScorecardRows(){
     const nota=beli.reduce((s,r)=>s+(r.nominal||0),0);
     const stores=new Set(beli.map(r=>r.store||'?')).size;
     const resolved=pjResolveMdsName(name);
-    let omzetNS=0,omzetHILO=0,custCount=0,callCount=0;
+    let omzetNS=0,omzetHILO=0,custCount=0,callCount=0,omzet=0;
     if(resolved){
-      const c=pjPeriodFilterCall(PJ_RAW.call.filter(r=>r.NamaMDS===resolved));
+      const cAll=PJ_RAW.call.filter(r=>r.NamaMDS===resolved);
+      const oAll=PJ_RAW.order.filter(r=>r.NamaMDS===resolved);
+      const c=pjPeriodFilterCall(cAll);
+      const o=pjPeriodFilterOrder(oAll,c);
       callCount=c.length;
       omzetNS=c.reduce((s,r)=>s+(r.OmzetNS||0),0);
       omzetHILO=c.reduce((s,r)=>s+(r.OmzetHILO||0),0);
       custCount=new Set(c.map(r=>r.KodeCustomer)).size;
+      omzet=o.reduce((s,r)=>s+pjOrderValue(r),0);
     }
-    const omzet=omzetNS+omzetHILO;
-    return{name,area:mdsAreaOf(name),trx,stores,ns,hilo,beliVal,nota,callCount,custCount,omzetNS,omzetHILO,omzet,selisih:omzet-beliVal,matched:!!resolved};
+    const maxBeliNota=Math.max(beliVal,nota);
+    return{name,area:mdsAreaOf(name),trx,stores,ns,hilo,beliVal,nota,callCount,custCount,omzetNS,omzetHILO,omzet,selisih:omzet-maxBeliNota,matched:!!resolved};
   }).filter(r=>r.trx>0||r.omzet>0);
 }
 let SC_SORT='omzet',SC_DIR=-1;
@@ -2250,9 +2254,9 @@ function renderScorecard(){
     return SC_DIR*String(av||'').localeCompare(String(bv||''));
   });
   const maxOmzet=Math.max(...rows.map(r=>r.omzet),1);
-  let tB=0,tO=0,unmatched=0;
+  let tB=0,tO=0,tD=0,unmatched=0;
   tb.innerHTML=rows.length?rows.map(r=>{
-    tB+=r.beliVal;tO+=r.omzet;if(!r.matched&&r.trx>0)unmatched++;
+    tB+=r.beliVal;tO+=r.omzet;tD+=r.selisih;if(!r.matched&&r.trx>0)unmatched++;
     const dTag=r.selisih===0?'<span class="tag t sm">0</span>':r.selisih>0?`<span class="tag g sm">+${rp(r.selisih)}</span>`:`<span class="tag r sm">${rp(r.selisih)}</span>`;
     const barW=Math.round(r.omzet/maxOmzet*100);
     return`<tr class="clickrow" onclick="selectPjmds('${r.name.replace(/'/g,"\\'")}');switchSubTab('pjmds','mds')">
@@ -2272,7 +2276,7 @@ function renderScorecard(){
   set('sc-beli',tB?rp(tB):'—');
   set('sc-omzet',tO?rp(tO):'—');
   const diffEl=document.getElementById('sc-diff');
-  if(diffEl){diffEl.textContent=(tO-tB)?rp(tO-tB):'—';diffEl.style.color=(tO-tB)>=0?'var(--green)':'var(--red)';}
+  if(diffEl){diffEl.textContent=tD?rp(tD):'—';diffEl.style.color=tD>=0?'var(--green)':'var(--red)';}
   set('sc-count',rows.length||'—');
   set('sc-unmatched',unmatched?`⚠ ${unmatched} MDS belum match nama Penjualan`:'semua nama match');
   const tf=document.getElementById('sc-tfoot');
@@ -2283,10 +2287,10 @@ function exportMdsScorecard(){
   const rows=computeScorecardRows();
   if(!rows.length){alert('Tidak ada data untuk periode/filter ini.');return;}
   rows.sort((a,b)=>b.omzet-a.omzet);
-  const header=['MDS','Area','Trx Beli','Toko Beli','NS Rnc','HILO Rnc','Value Beli (Rp)','Nota (Rp)','Call Penjualan','Customer','Omzet NS (Rp)','Omzet HILO (Rp)','Total Omzet (Rp)','Selisih Omzet-Beli (Rp)','Match Nama'];
+  const header=['MDS','Area','Trx Beli','Toko Beli','NS Rnc','HILO Rnc','Value Beli (Rp)','Nota (Rp)','Call Penjualan','Customer','Omzet NS (Rp)','Omzet HILO (Rp)','Total Omzet (Rp)','Selisih Omzet-Max(Beli,Nota) (Rp)','Match Nama'];
   const aoa=[header].concat(rows.map(r=>[r.name,r.area,r.trx,r.stores,r.ns,r.hilo,r.beliVal,r.nota,r.callCount,r.custCount,r.omzetNS,r.omzetHILO,r.omzet,r.selisih,r.matched?'OK':'TIDAK KETEMU']));
-  const t=rows.reduce((s,r)=>({trx:s.trx+r.trx,ns:s.ns+r.ns,hilo:s.hilo+r.hilo,beliVal:s.beliVal+r.beliVal,nota:s.nota+r.nota,omzetNS:s.omzetNS+r.omzetNS,omzetHILO:s.omzetHILO+r.omzetHILO,omzet:s.omzet+r.omzet}),{trx:0,ns:0,hilo:0,beliVal:0,nota:0,omzetNS:0,omzetHILO:0,omzet:0});
-  aoa.push(['TOTAL','',t.trx,'',t.ns,t.hilo,t.beliVal,t.nota,'','',t.omzetNS,t.omzetHILO,t.omzet,t.omzet-t.beliVal,'']);
+  const t=rows.reduce((s,r)=>({trx:s.trx+r.trx,ns:s.ns+r.ns,hilo:s.hilo+r.hilo,beliVal:s.beliVal+r.beliVal,nota:s.nota+r.nota,omzetNS:s.omzetNS+r.omzetNS,omzetHILO:s.omzetHILO+r.omzetHILO,omzet:s.omzet+r.omzet,selisih:s.selisih+r.selisih}),{trx:0,ns:0,hilo:0,beliVal:0,nota:0,omzetNS:0,omzetHILO:0,omzet:0,selisih:0});
+  aoa.push(['TOTAL','',t.trx,'',t.ns,t.hilo,t.beliVal,t.nota,'','',t.omzetNS,t.omzetHILO,t.omzet,t.selisih,'']);
   const ws=XLSX.utils.aoa_to_sheet(aoa);
   ws['!cols']=header.map((h,i)=>({wch:i===0?26:Math.max(h.length+2,12)}));
   const wb=XLSX.utils.book_new();
