@@ -112,6 +112,11 @@ let PJ_RAW={call:[],order:[],meta:null};
 function pjIsJP(n){return n&&n.toUpperCase().includes('JERUK PERAS');}
 function pjIsASO(n){return n&&(n.toUpperCase().includes(' ASO ')||n.toUpperCase().includes('AMERICAN SWEET ORANGE'));}
 function pjMode(arr){const f={};let best='',bc=0;arr.forEach(v=>{if(!v)return;f[v]=(f[v]||0)+1;if(f[v]>bc){bc=f[v];best=v;}});return best;}
+function pjFmtUpdatedAt(iso){
+  const d=new Date(iso);
+  if(isNaN(d))return '-';
+  return d.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+}
 function pjToDate(v){if(v instanceof Date)return v;if(typeof v==='string'){const d=new Date(v);return isNaN(d)?null:d;}return null;}
 function pjIsoWeek(date){
   const d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()));
@@ -265,7 +270,8 @@ async function loadPjmdsData(){
     if(raw){
       const parsed=JSON.parse(raw);
       PJ_RAW={call:parsed.call||[],order:parsed.order||[],meta:parsed.meta||null};
-      if(el)el.textContent=`Data tersimpan: ${PJ_RAW.meta?.filename||'file sebelumnya'} · ${PJ_RAW.call.length} baris call, ${PJ_RAW.order.length} baris order`;
+      const updTxt=PJ_RAW.meta?.uploadedAt?pjFmtUpdatedAt(PJ_RAW.meta.uploadedAt):'-';
+      if(el)el.textContent=`Data tersimpan: ${PJ_RAW.meta?.filename||'file sebelumnya'} · ${PJ_RAW.call.length} baris call, ${PJ_RAW.order.length} baris order · terakhir update ${updTxt}`;
     }else if(el){
       el.textContent='Belum ada data Call/Order diupload — klik "⟲ Update Data".';
     }
@@ -302,7 +308,7 @@ async function handlePjmdsDataFile(file){
       };
     });
     PJ_RAW={call,order,meta:{filename:file.name,uploadedAt:new Date().toISOString()}};
-    el.textContent=`Berhasil diproses: ${file.name} · ${call.length} baris call, ${order.length} baris order`;
+    el.textContent=`Berhasil diproses: ${file.name} · ${call.length} baris call, ${order.length} baris order · terakhir update ${pjFmtUpdatedAt(PJ_RAW.meta.uploadedAt)}`;
     render();
     const payload=JSON.stringify(PJ_RAW);
     const sizeMB=(new TextEncoder().encode(payload)).length/1024/1024;
