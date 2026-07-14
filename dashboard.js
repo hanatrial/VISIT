@@ -1493,7 +1493,10 @@ function buildStockCombos(){
     if(r.items)Object.entries(r.items).forEach(([nm,v])=>{
       const ip=ITEM_PRICE[nm]||{};
       const iv=(v.krt||0)*(ip.ctn||0)+(v.rncg||0)*(ip.pcs||0);
-      map[key].items[nm]=(map[key].items[nm]||0)+iv;
+      const rncgEquiv=(v.rncg||0)+(v.krt||0)*((ip.ctn&&ip.pcs)?Math.round(ip.ctn/ip.pcs):0);
+      if(!map[key].items[nm])map[key].items[nm]={val:0,qty:0};
+      map[key].items[nm].val+=iv;
+      map[key].items[nm].qty+=rncgEquiv;
     });
   });
   _FC_COMBOS=Object.values(map).sort((a,b)=>a.store.localeCompare(b.store)||a.mk.localeCompare(b.mk));
@@ -1613,16 +1616,24 @@ function exportFcCsv(i){
   const awalItems=r.awalItems||{},transitItems=r.transitItems||{},akhirItems=r.akhirItems||{};
   const allItems=[...new Set([...Object.keys(awalItems),...Object.keys(transitItems),...Object.keys(akhirItems)])].sort();
   const q=s=>`"${String(s).replace(/"/g,'""')}"`;
+  // awal/akhir items are {val,qty} (from Stock Sell Out krt/rncg); transit items are flat value-only
+  // (from transaction Excel, which has no qty column) — estimate qty from ITEM_PRICE per-renceng price when known
+  const transitQty=(nm,val)=>{const p=ITEM_PRICE[nm]?.pcs;return p?Math.round(val/p):'';};
   let csv=`Toko,${q(r.store)}\nStock Awal,${q(r.awalLabel)}\nStock Akhir,${q(r.akhirLabel)}\n\n`;
-  csv+='Item,Stock Awal,In Transit,Stock Akhir,Sell Out\n';
-  let tA=0,tT=0,tK=0;
+  csv+='Item,Stock Awal Qty (rnc),Stock Awal Value,In Transit Qty (rnc)*,In Transit Value,Stock Akhir Qty (rnc),Stock Akhir Value,Sell Out Qty (rnc),Sell Out Value\n';
+  let tAq=0,tAv=0,tTv=0,tKq=0,tKv=0;
+  const asObj=x=>(x&&typeof x==='object')?x:{val:Number(x)||0,qty:''};
   csv+=allItems.map(nm=>{
-    const a=awalItems[nm]||0,t=transitItems[nm]||0,k=akhirItems[nm]||0;
-    tA+=a;tT+=t;tK+=k;
-    return[q(nm),a,t,k,a+t-k].join(',');
+    const a=asObj(awalItems[nm]),k=asObj(akhirItems[nm]);
+    const tv=transitItems[nm]||0,tq=transitQty(nm,tv);
+    tAq+=Number(a.qty)||0;tAv+=a.val;tTv+=tv;tKq+=Number(k.qty)||0;tKv+=k.val;
+    const sellOutQty=a.qty===''||k.qty===''?'':a.qty-k.qty;
+    const sellOutVal=a.val+tv-k.val;
+    return[q(nm),a.qty,a.val,tq,tv,k.qty,k.val,sellOutQty,sellOutVal].join(',');
   }).join('\n');
   if(allItems.length)csv+='\n';
-  csv+=['TOTAL',r.awalVal||tA,r.transitVal||tT,r.akhirVal||tK,(r.awalVal||tA)+(r.transitVal||tT)-(r.akhirVal||tK)].join(',');
+  csv+=['TOTAL',tAq,r.awalVal||tAv,'',r.transitVal||tTv,tKq,r.akhirVal||tKv,tAq-tKq,(r.awalVal||tAv)+(r.transitVal||tTv)-(r.akhirVal||tKv)].join(',');
+  csv+='\n\n*In Transit Qty adalah estimasi (Value ÷ harga per renceng) karena file transaksi tidak punya kolom qty.';
   const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
