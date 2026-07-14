@@ -424,8 +424,8 @@ function computePjmdsMdsData(selName){
   }
   nooPengembangan.sort((a,b)=>b.omzet-a.omzet);
 
-  const teaVolume=o.filter(r=>r.Brand==='NUTRISARI'&&String(r.NamaItem).toUpperCase().includes('TEA')).reduce((s,r)=>s+pjOrderValue(r),0);
-  const hiloVolume=c.reduce((s,r)=>s+(r.OmzetHILO||0),0);
+  const teaVolume=o.filter(r=>r.Brand==='NUTRISARI'&&String(r.NamaItem).toUpperCase().includes('TEA PLS')).reduce((s,r)=>s+pjOrderValue(r),0);
+  const hiloVolume=o.filter(r=>String(r.Brand).toUpperCase()==='HI LO').reduce((s,r)=>s+pjOrderValue(r),0);
   const totalPenjualan=o.reduce((s,r)=>s+pjOrderValue(r),0);
   const singleSkuCount=singleSku.length;
   const singleSkuTotalValue=singleSku.reduce((s,r)=>s+r.omzet,0);
@@ -2226,16 +2226,18 @@ function computeScorecardRows(){
     const nota=beli.reduce((s,r)=>s+(r.nominal||0),0);
     const stores=new Set(beli.map(r=>r.store||'?')).size;
     const resolved=pjResolveMdsName(name);
-    let omzetNS=0,omzetHILO=0,custCount=0,callCount=0;
+    let omzetNS=0,omzetHILO=0,custCount=0,callCount=0,omzet=0;
     if(resolved){
       const cAll=PJ_RAW.call.filter(r=>r.NamaMDS===resolved);
+      const oAll=PJ_RAW.order.filter(r=>r.NamaMDS===resolved);
       const c=pjPeriodFilterCall(cAll);
+      const o=pjPeriodFilterOrder(oAll,c);
       callCount=c.length;
       omzetNS=c.reduce((s,r)=>s+(r.OmzetNS||0),0);
       omzetHILO=c.reduce((s,r)=>s+(r.OmzetHILO||0),0);
       custCount=new Set(c.map(r=>r.KodeCustomer)).size;
+      omzet=o.reduce((s,r)=>s+pjOrderValue(r),0);
     }
-    const omzet=omzetNS+omzetHILO;
     const maxBeliNota=Math.max(beliVal,nota);
     return{name,area:mdsAreaOf(name),trx,stores,ns,hilo,beliVal,nota,callCount,custCount,omzetNS,omzetHILO,omzet,selisih:omzet-maxBeliNota,matched:!!resolved};
   }).filter(r=>r.trx>0||r.omzet>0);
