@@ -180,7 +180,7 @@ function pjItemPrice(name){
   if(arr2&&arr2.length)return Math.round(arr2.reduce((a,b)=>a+b,0)/arr2.length);
   return 0;
 }
-function pjOrderValue(r){return(r.Qty||0)*pjItemPrice(r.NamaItem);}
+function pjOrderValue(r){return r.Value||((r.Qty||0)*pjItemPrice(r.NamaItem));}
 function pjPeriodDays(){
   if(MF)return 31;
   if(DF==='today')return 1;
@@ -299,12 +299,13 @@ async function handlePjmdsDataFile(file){
     const order=orderRaw.map(r=>{
       const qty=Number(r['Qty'])||0;
       const nm=r['Nama Item']||'';
-      const price=pjItemPrice(nm);
+      const rawValue=Number(r['Value'])||0;
+      const value=rawValue||(qty*pjItemPrice(nm));
       return{
         Bulan:Number(r['Bulan']),Tanggal:r['Tanggal']instanceof Date?r['Tanggal'].toISOString():r['Tanggal'],
         NamaMDS:r['Nama MDS'],KodeCustomer:String(r['Kode Customer']),
         NamaCustomer:r['Nama Customer'],Kabupaten:r['Kabupaten'],Klasifikasi:r['Klasifikasi'],
-        Brand:r['Brand'],NamaItem:nm,Qty:qty,Value:qty*price
+        Brand:r['Brand'],NamaItem:nm,Qty:qty,Value:value
       };
     });
     PJ_RAW={call,order,meta:{filename:file.name,uploadedAt:new Date().toISOString()}};
