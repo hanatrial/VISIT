@@ -566,6 +566,7 @@ function initDash(){
   if(tf)tf.addEventListener('change',e=>{if(e.target.files[0])handleTxImportFile(e.target.files[0]);e.target.value='';});
   loadKedaiDb();
   loadPjmdsData();
+  loadPjmdsManualMatch();
   loadDashState();
   loadAll();
   setInterval(loadAll,30000);
@@ -909,11 +910,26 @@ function selectPjmds(name){
   PJMDS_SHOW_TOKO=false;
   render();
 }
+async function loadPjmdsManualMatch(){
+  if(!dbSulawesi)return;
+  try{
+    const doc=await dbSulawesi.collection('pjmds_manual_match').doc('main').get();
+    if(doc.exists)PJMDS_MANUAL_MATCH=doc.data().map||{};
+  }catch(e){console.error('loadPjmdsManualMatch failed',e);}
+  render();
+}
+async function savePjmdsManualMatch(){
+  if(!dbSulawesi)return;
+  try{
+    await dbSulawesi.collection('pjmds_manual_match').doc('main').set({map:PJMDS_MANUAL_MATCH,updatedAt:new Date().toISOString()});
+  }catch(e){console.error('savePjmdsManualMatch failed',e);}
+}
 function setPjmdsManualMatch(callName){
   if(!PJMDS_SEL)return;
   if(callName)PJMDS_MANUAL_MATCH[PJMDS_SEL]=callName;
   else delete PJMDS_MANUAL_MATCH[PJMDS_SEL];
   render();
+  savePjmdsManualMatch();
 }
 function togglePjmdsToko(){
   if(!PJMDS_SEL)return;
