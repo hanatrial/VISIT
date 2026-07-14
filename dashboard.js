@@ -52,7 +52,6 @@ applyTheme(localStorage.getItem('mds_theme')||'dark');
 let _expandedRkaVid=null,_expandedBeliVid=null;
 let KEDAI_DB={stores:[],meta:null},PJMDS_SEL=null,PJMDS_SHOW_TOKO=false;
 let PJMDS_MANUAL_MATCH={};
-let PJ_DETAIL_CUST=null,PJ_DETAIL_SEK=null,PJ_DETAIL_CUST_SOURCE=null;
 let cAV=null,cTrend=null,cBrand=null,mcAV=null,mcBrand=null;
 
 // ── PIN ─────────────────────────────────────────────────────────────────────
@@ -467,35 +466,37 @@ function pjCustomerVisits(kode,c,o){
     return{tanggal:r.Tanggal,klasifikasi:r.Klasifikasi,omzet:(r.OmzetNS||0)+(r.OmzetHILO||0),items:items.map(it=>({nama:it.NamaItem,qty:it.Qty,value:pjOrderValue(it)}))};
   }).sort((a,b)=>new Date(b.tanggal)-new Date(a.tanggal));
 }
-function pjToggleCustomer(kode,source){
-  if(PJ_DETAIL_CUST===kode&&PJ_DETAIL_CUST_SOURCE===source){PJ_DETAIL_CUST=null;PJ_DETAIL_CUST_SOURCE=null;}
-  else{PJ_DETAIL_CUST=kode;PJ_DETAIL_CUST_SOURCE=source;}
-  render();
+function pjShowModal(title,bodyHtml){
+  const t=document.getElementById('pjmds-modal-title'),b=document.getElementById('pjmds-modal-body'),m=document.getElementById('pjmds-modal');
+  if(!t||!b||!m)return;
+  t.textContent=title;
+  b.innerHTML=bodyHtml;
+  m.classList.remove('hidden');
 }
-function pjToggleSekolah(nama){
-  PJ_DETAIL_SEK=PJ_DETAIL_SEK===nama?null:nama;
-  PJ_DETAIL_CUST=null;PJ_DETAIL_CUST_SOURCE=null;
-  render();
-}
-function pjRenderCustomerDetail(kode,c,o){
-  const nama=(c.find(r=>r.KodeCustomer===kode)||{}).NamaCustomer||kode;
+function pjCustomerDetailBody(kode,c,o){
   const visits=pjCustomerVisits(kode,c,o);
-  return`<div class="panel-shell" style="margin-top:8px"><div class="panel-body">
-    <div class="ch-label" style="margin-bottom:10px">🧾 Riwayat Visit — ${nama}</div>
-    ${visits.length?visits.map(v=>{
-      const dt=pjToDate(v.tanggal);
-      const dtStr=dt?dt.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}):'-';
-      const itemsHtml=v.items.length?v.items.map(it=>`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px"><span>${it.nama}</span><span style="color:var(--t3)">x${it.qty} · ${rp(it.value)}</span></div>`).join(''):'<div style="font-size:11px;color:var(--t3);padding:4px 0">Tidak ada data item di sheet Order untuk tanggal ini.</div>';
-      return`<div style="margin-bottom:10px;padding:10px 12px;background:rgba(255,255,255,.02);border-radius:10px">
-        <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:6px"><span>${dtStr} <span style="color:var(--t3);font-weight:500">· ${v.klasifikasi||'-'}</span></span><span style="color:var(--accent)">${v.omzet?rp(v.omzet):'—'}</span></div>
-        ${itemsHtml}
-      </div>`;
-    }).join(''):'<div class="empty-state">Tidak ada riwayat visit.</div>'}
-  </div></div>`;
+  return visits.length?visits.map(v=>{
+    const dt=pjToDate(v.tanggal);
+    const dtStr=dt?dt.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}):'-';
+    const itemsHtml=v.items.length?v.items.map(it=>`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px"><span>${it.nama}</span><span style="color:var(--t3)">x${it.qty} · ${rp(it.value)}</span></div>`).join(''):'<div style="font-size:11px;color:var(--t3);padding:4px 0">Tidak ada data item di sheet Order untuk tanggal ini.</div>';
+    return`<div style="margin-bottom:10px;padding:10px 12px;background:rgba(255,255,255,.03);border-radius:10px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:6px"><span>${dtStr} <span style="color:var(--t3);font-weight:500">· ${v.klasifikasi||'-'}</span></span><span style="color:var(--accent)">${v.omzet?rp(v.omzet):'—'}</span></div>
+      ${itemsHtml}
+    </div>`;
+  }).join(''):'<div class="empty-state">Tidak ada riwayat visit.</div>';
 }
-function pjRenderSekolahDetail(namaSekolah,c){
+function pjOpenCustomerModal(kode,backNama){
+  const d=computePjmdsMdsData(PJMDS_SEL);
+  if(!d)return;
+  const nama=(d.rawCall.find(r=>r.KodeCustomer===kode)||{}).NamaCustomer||kode;
+  const backBtn=backNama?`<div class="freset" style="margin-bottom:10px;display:inline-block" onclick="pjOpenSekolahModal('${backNama.replace(/'/g,"\\'")}')">← Kembali ke ${backNama}</div>`:'';
+  pjShowModal('🧾 Riwayat Visit — '+nama, backBtn+pjCustomerDetailBody(kode,d.rawCall,d.rawOrder));
+}
+function pjOpenSekolahModal(namaSekolah){
+  const d=computePjmdsMdsData(PJMDS_SEL);
+  if(!d)return;
   const key=String(namaSekolah||'').trim().toUpperCase();
-  const rows=c.filter(r=>String(r.Sekolah||'').trim().toUpperCase()===key);
+  const rows=d.rawCall.filter(r=>String(r.Sekolah||'').trim().toUpperCase()===key);
   const custMap={};
   rows.forEach(r=>{
     const k=r.KodeCustomer;
@@ -503,20 +504,18 @@ function pjRenderSekolahDetail(namaSekolah,c){
     custMap[k].visits.push({tanggal:r.Tanggal,omzet:(r.OmzetNS||0)+(r.OmzetHILO||0)});
   });
   const custs=Object.values(custMap).sort((a,b)=>b.visits.length-a.visits.length);
-  return`<div class="panel-shell" style="margin-top:8px"><div class="panel-body">
-    <div class="ch-label" style="margin-bottom:10px">🏫 Kantin di ${namaSekolah}</div>
-    <table><thead><tr><th>Customer</th><th>Tanggal Visit</th><th>Value</th></tr></thead><tbody>
+  const body=`<table><thead><tr><th>Customer</th><th>Tanggal Visit</th><th>Value</th></tr></thead><tbody>
     ${custs.length?custs.map(cu=>cu.visits.map((v,i)=>{
       const dt=pjToDate(v.tanggal);
       const dtStr=dt?dt.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}):'-';
-      return`<tr class="clickrow" style="cursor:pointer" onclick="pjToggleCustomer('${String(cu.kode).replace(/'/g,"\\'")}','sekolah')">
+      return`<tr class="clickrow" style="cursor:pointer" onclick="pjOpenCustomerModal('${String(cu.kode).replace(/'/g,"\\'")}','${namaSekolah.replace(/'/g,"\\'")}')">
         <td class="td-main">${i===0?cu.nama:''}</td>
         <td class="td-dim">${dtStr}</td>
         <td style="color:var(--accent);font-weight:700">${v.omzet?rp(v.omzet):'—'}</td>
       </tr>`;
     }).join('')).join(''):'<tr><td colspan="3"><div class="empty-state">Tidak ada data kantin.</div></td></tr>'}
-    </tbody></table>
-  </div></div>`;
+    </tbody></table>`;
+  pjShowModal('🏫 Kantin di '+namaSekolah, body);
 }
 function renderPjmdsSalesDetail(mds){
   const d=computePjmdsMdsData(mds);
@@ -533,16 +532,11 @@ function renderPjmdsSalesDetail(mds){
     ${pjKpiCard('Sekolah Dikunjungi',d.kpi.total_sekolah,PJ_TARGET.sekolah,fmtNum)}
   </div>`;
   html+=`<div class="ch-label" style="margin:16px 0 8px">Top 10 Customer <span style="color:var(--t3);font-weight:500">· klik baris untuk lihat detail visit</span></div><div class="panel-shell"><div class="panel-body">
-    ${pjTable(['','Customer','Klasifikasi','Kabupaten','Visit','Omzet'],d.top_customer,(r,i)=>`<tr class="clickrow" style="cursor:pointer" onclick="pjToggleCustomer('${String(r.kode).replace(/'/g,"\\'")}','top10')"><td>${i+1}</td><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.visits}x</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada data customer.')}
+    ${pjTable(['','Customer','Klasifikasi','Kabupaten','Visit','Omzet'],d.top_customer,(r,i)=>`<tr class="clickrow" style="cursor:pointer" onclick="pjOpenCustomerModal('${String(r.kode).replace(/'/g,"\\'")}')"><td>${i+1}</td><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.visits}x</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada data customer.')}
   </div></div>`;
-  if(PJ_DETAIL_CUST_SOURCE==='top10'&&PJ_DETAIL_CUST)html+=pjRenderCustomerDetail(PJ_DETAIL_CUST,d.rawCall,d.rawOrder);
   html+=`<div class="ch-label" style="margin:16px 0 8px">Top 5 Sekolah <span style="color:var(--t3);font-weight:500">· klik baris untuk lihat kantin & customer</span></div><div class="panel-shell"><div class="panel-body">
-    ${pjTable(['','Nama Sekolah','Kabupaten','Kantin','Visit','Omzet'],d.top_sekolah,(r,i)=>`<tr class="clickrow" style="cursor:pointer" onclick="pjToggleSekolah('${r.nama.replace(/'/g,"\\'")}')"><td>${i+1}</td><td class="td-main">${r.nama}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.kantin}</td><td>${r.visits}x</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada data sekolah.')}
+    ${pjTable(['','Nama Sekolah','Kabupaten','Kantin','Visit','Omzet'],d.top_sekolah,(r,i)=>`<tr class="clickrow" style="cursor:pointer" onclick="pjOpenSekolahModal('${r.nama.replace(/'/g,"\\'")}')"><td>${i+1}</td><td class="td-main">${r.nama}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.kantin}</td><td>${r.visits}x</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada data sekolah.')}
   </div></div>`;
-  if(PJ_DETAIL_SEK){
-    html+=pjRenderSekolahDetail(PJ_DETAIL_SEK,d.rawCall);
-    if(PJ_DETAIL_CUST_SOURCE==='sekolah'&&PJ_DETAIL_CUST)html+=pjRenderCustomerDetail(PJ_DETAIL_CUST,d.rawCall,d.rawOrder);
-  }
   html+=`<div class="ch-label" style="margin:16px 0 8px">Customer Hanya Beli 1 SKU (Jeruk Peras / ASO)</div><div class="panel-shell"><div class="panel-body">
     <div class="bento bento-2">
       <div class="kpi-shell"><div class="kpi-inner" style="padding:12px 14px"><div class="kpi-label">Jumlah Customer</div><div class="kpi-val" style="font-size:18px;color:var(--gold)">${d.single_sku_count}</div></div></div>
@@ -550,9 +544,8 @@ function renderPjmdsSalesDetail(mds){
     </div>
   </div></div>`;
   html+=`<div class="ch-label" style="margin:16px 0 8px">NOO Pengembangan (${d.noo_pengembangan.length} customer) <span style="color:var(--t3);font-weight:500">· klik baris untuk lihat detail visit</span> ${KEDAI_DB.stores.length?'':'<span style="color:var(--t3);font-weight:500">(upload database kedai dulu)</span>'}</div><div class="panel-shell"><div class="panel-body">
-    ${KEDAI_DB.stores.length?pjTable(['Customer','Klasifikasi','Kabupaten','Jumlah SKU','Omzet'],d.noo_pengembangan,r=>`<tr class="clickrow" style="cursor:pointer" onclick="pjToggleCustomer('${String(r.kode).replace(/'/g,"\\'")}','noo')"><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.sku_count} SKU</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada customer NOO Pengembangan.'):'<div class="empty-state">Belum ada database kedai diupload.</div>'}
+    ${KEDAI_DB.stores.length?pjTable(['Customer','Klasifikasi','Kabupaten','Jumlah SKU','Omzet'],d.noo_pengembangan,r=>`<tr class="clickrow" style="cursor:pointer" onclick="pjOpenCustomerModal('${String(r.kode).replace(/'/g,"\\'")}')"><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.sku_count} SKU</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada customer NOO Pengembangan.'):'<div class="empty-state">Belum ada database kedai diupload.</div>'}
   </div></div>`;
-  if(PJ_DETAIL_CUST_SOURCE==='noo'&&PJ_DETAIL_CUST)html+=pjRenderCustomerDetail(PJ_DETAIL_CUST,d.rawCall,d.rawOrder);
   html+=`<div class="ch-label" style="margin:16px 0 8px">Efektivitas Kunjungan</div><div class="panel-shell"><div class="panel-body">
     ${pjTable(['Customer','Klasifikasi','Kabupaten','Total Visit','Max/Minggu','Omzet'],d.efektivitas,r=>`<tr><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.total_visit}x</td><td>${r.max_minggu}x</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada customer yang ditandai tidak efektif. ✅')}
   </div></div>`;
@@ -981,7 +974,6 @@ function renderPjmds(beliF){
 function selectPjmds(name){
   PJMDS_SEL=name||null;
   PJMDS_SHOW_TOKO=false;
-  PJ_DETAIL_CUST=null;PJ_DETAIL_CUST_SOURCE=null;PJ_DETAIL_SEK=null;
   render();
 }
 async function loadPjmdsManualMatch(){

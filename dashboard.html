@@ -456,6 +456,16 @@
   </div></div>
 </div>
 
+<div class="modal-overlay hidden" id="pjmds-modal" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="modal-shell"><div class="modal">
+    <div class="modal-head">
+      <div><div class="modal-name" id="pjmds-modal-title"></div></div>
+      <div class="modal-x" onclick="document.getElementById('pjmds-modal').classList.add('hidden')">✕</div>
+    </div>
+    <div class="modal-body" id="pjmds-modal-body"></div>
+  </div></div>
+</div>
+
 <script src="dashboard.js?v=5"></script>
 </body>
 </html>
