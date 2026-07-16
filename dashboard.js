@@ -478,7 +478,13 @@ function pjRouteStops(mds,dateKey){
   });
   const withCoord=rows.filter(r=>r.KoordinatCall&&/-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?/.test(r.KoordinatCall));
   withCoord.sort((a,b)=>pjCheckInSeconds(a.CheckIn)-pjCheckInSeconds(b.CheckIn));
-  return withCoord.map(r=>({nama:r.NamaCustomer,sekolah:r.Sekolah,koordinat:r.KoordinatCall.trim(),checkIn:r.CheckIn}));
+  const stops=withCoord.map(r=>({nama:r.NamaCustomer,sekolah:r.Sekolah,koordinat:r.KoordinatCall.trim(),checkIn:r.CheckIn}));
+  const PJ_MAX_JUMP_KM=100;
+  for(let i=1;i<stops.length;i++){
+    const km=pjHaversineKm(pjParseCoord(stops[i-1].koordinat),pjParseCoord(stops[i].koordinat));
+    if(km!==null&&km>PJ_MAX_JUMP_KM)stops[i].koordinat=stops[i-1].koordinat;
+  }
+  return stops;
 }
 function pjBuildMapsUrl(stops){
   const coords=stops.map(s=>s.koordinat.replace(/\s+/g,''));
