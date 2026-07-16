@@ -512,7 +512,7 @@ function pjRouteModalBody(mds,dateKey){
     ${stops.length?`<table><thead><tr><th>#</th><th>Waktu</th><th>Customer</th><th>Koordinat</th></tr></thead><tbody>
       ${stops.map((s,i)=>{
         const dt=pjToDate(s.checkIn);
-        const tStr=dt?dt.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'}):'-';
+        const tStr=dt?new Date(dt.getTime()+8*3600*1000).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'}):'-';
         return`<tr><td class="td-dim">${i+1}</td><td class="td-dim">${tStr}</td><td class="td-main">${s.nama}${s.sekolah?` <span style="color:var(--t3);font-size:10px">(${s.sekolah})</span>`:''}</td><td class="td-dim" style="font-size:10px">${s.koordinat}</td></tr>`;
       }).join('')}
     </tbody></table>`:'<div class="empty-state">Tidak ada koordinat kunjungan pada tanggal ini.</div>'}`;
