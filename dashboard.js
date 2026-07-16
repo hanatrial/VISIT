@@ -520,15 +520,19 @@ function pjRouteModalBody(mds,dateKey){
       <button class="exp-btn" onclick="pjOpenRoute()" ${withCoordCount?'':'disabled'}>🗺️ Buka Rute (${withCoordCount} titik)</button>
     </div>
     ${withCoordCount<totalVisitCount?`<div style="font-size:11px;color:var(--t3);margin-bottom:8px">${totalVisitCount-withCoordCount} visit tanpa koordinat tidak diikutkan</div>`:''}
-    ${stops.length?`<table><thead><tr><th>#</th><th>Waktu</th><th>Customer</th><th>Jarak</th></tr></thead><tbody>
-      ${stops.map((s,i)=>{
+    ${stops.length?(()=>{
+      let totalKm=0;
+      const rows=stops.map((s,i)=>{
         const dt=pjToDate(s.checkIn);
         const tStr=dt?new Date(dt.getTime()+8*3600*1000).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'}):'-';
         const km=i>0?pjHaversineKm(pjParseCoord(stops[i-1].koordinat),pjParseCoord(s.koordinat)):null;
+        if(km!==null)totalKm+=km;
         const jarakStr=km===null?'—':`+${km.toFixed(1)} km`;
         return`<tr><td class="td-dim">${i+1}</td><td class="td-dim">${tStr}</td><td class="td-main">${s.nama}${s.sekolah?` <span style="color:var(--t3);font-size:10px">(${s.sekolah})</span>`:''}</td><td class="td-dim">${jarakStr}</td></tr>`;
-      }).join('')}
-    </tbody></table>`:'<div class="empty-state">Tidak ada koordinat kunjungan pada tanggal ini.</div>'}`;
+      }).join('');
+      return`<table><thead><tr><th>#</th><th>Waktu</th><th>Customer</th><th>Jarak</th></tr></thead><tbody>${rows}</tbody></table>
+      <div class="tfoot-row" style="font-weight:700">Total jarak: ${totalKm.toFixed(1)} km</div>`;
+    })():'<div class="empty-state">Tidak ada koordinat kunjungan pada tanggal ini.</div>'}`;
 }
 function pjOpenRouteModal(){
   if(!PJMDS_SEL){alert('Pilih MDS dulu.');return;}
