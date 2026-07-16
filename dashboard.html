@@ -274,7 +274,10 @@
 
       <div id="pjmds-mds-wrap">
         <div class="panel-shell"><div class="panel-body">
-          <div class="ch-label" style="margin-bottom:10px">👤 Pilih MDS</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px">
+            <div class="ch-label" style="margin-bottom:0">👤 Pilih MDS</div>
+            <button class="exp-btn" onclick="pjOpenRouteModal()">🗺️ Rute Harian</button>
+          </div>
           <select id="pjmds-select" class="fi" style="width:260px" onchange="selectPjmds(this.value)">
             <option value="">— Pilih MDS —</option>
           </select>

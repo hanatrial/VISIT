@@ -486,7 +486,8 @@ function pjBuildMapsUrl(stops){
 }
 function pjSelectRouteDate(v){
   PJ_ROUTE_DATE=v||null;
-  render();
+  const b=document.getElementById('pjmds-modal-body');
+  if(b&&PJMDS_SEL)b.innerHTML=pjRouteModalBody(PJMDS_SEL,PJ_ROUTE_DATE);
 }
 function pjOpenRoute(){
   if(!PJMDS_SEL||!PJ_ROUTE_DATE)return;
@@ -494,29 +495,34 @@ function pjOpenRoute(){
   if(!stops.length){alert('Tidak ada koordinat kunjungan untuk tanggal ini.');return;}
   window.open(pjBuildMapsUrl(stops),'_blank');
 }
-function pjRenderRoutePanel(mds){
+function pjRouteModalBody(mds,dateKey){
   const dates=pjAvailableDates(mds);
-  if(!dates.length)return'';
-  if(!PJ_ROUTE_DATE||!dates.includes(PJ_ROUTE_DATE))PJ_ROUTE_DATE=dates[0];
-  const stops=pjRouteStops(mds,PJ_ROUTE_DATE);
+  if(!dates.length)return'<div class="empty-state">Belum ada data Call untuk MDS ini.</div>';
+  if(!dateKey||!dates.includes(dateKey))dateKey=dates[0];
+  const stops=pjRouteStops(mds,dateKey);
   const withCoordCount=stops.length;
-  const totalVisitCount=PJ_RAW.call.filter(r=>r.NamaMDS===pjResolveMdsName(mds)).filter(r=>{const dt=pjToDate(r.Tanggal);return dt&&dt.toISOString().slice(0,10)===PJ_ROUTE_DATE;}).length;
-  return`<div class="ch-label" style="margin:16px 0 8px">🗺️ Rute Kunjungan Harian</div><div class="panel-shell"><div class="panel-body">
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+  const totalVisitCount=PJ_RAW.call.filter(r=>r.NamaMDS===pjResolveMdsName(mds)).filter(r=>{const dt=pjToDate(r.Tanggal);return dt&&dt.toISOString().slice(0,10)===dateKey;}).length;
+  return`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
       <select class="fi" style="width:180px" onchange="pjSelectRouteDate(this.value)">
-        ${dates.map(dk=>{const dt=new Date(dk);const label=dt.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});return`<option value="${dk}"${dk===PJ_ROUTE_DATE?' selected':''}>${label}</option>`;}).join('')}
+        ${dates.map(dk=>{const dt=new Date(dk);const label=dt.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});return`<option value="${dk}"${dk===dateKey?' selected':''}>${label}</option>`;}).join('')}
       </select>
-      <button class="exp-btn" onclick="pjOpenRoute()" ${withCoordCount?'':'disabled'}>🗺️ Buka Rute di Google Maps (${withCoordCount} titik)</button>
-      ${withCoordCount<totalVisitCount?`<span style="font-size:11px;color:var(--t3)">${totalVisitCount-withCoordCount} visit tanpa koordinat tidak diikutkan</span>`:''}
+      <button class="exp-btn" onclick="pjOpenRoute()" ${withCoordCount?'':'disabled'}>🗺️ Buka Rute (${withCoordCount} titik)</button>
     </div>
+    ${withCoordCount<totalVisitCount?`<div style="font-size:11px;color:var(--t3);margin-bottom:8px">${totalVisitCount-withCoordCount} visit tanpa koordinat tidak diikutkan</div>`:''}
     ${stops.length?`<table><thead><tr><th>#</th><th>Waktu</th><th>Customer</th><th>Koordinat</th></tr></thead><tbody>
       ${stops.map((s,i)=>{
         const dt=pjToDate(s.checkIn);
         const tStr=dt?dt.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'}):'-';
         return`<tr><td class="td-dim">${i+1}</td><td class="td-dim">${tStr}</td><td class="td-main">${s.nama}${s.sekolah?` <span style="color:var(--t3);font-size:10px">(${s.sekolah})</span>`:''}</td><td class="td-dim" style="font-size:10px">${s.koordinat}</td></tr>`;
       }).join('')}
-    </tbody></table>`:'<div class="empty-state">Tidak ada koordinat kunjungan pada tanggal ini.</div>'}
-  </div></div>`;
+    </tbody></table>`:'<div class="empty-state">Tidak ada koordinat kunjungan pada tanggal ini.</div>'}`;
+}
+function pjOpenRouteModal(){
+  if(!PJMDS_SEL){alert('Pilih MDS dulu.');return;}
+  const dates=pjAvailableDates(PJMDS_SEL);
+  if(!dates.length){alert('Belum ada data Call untuk MDS ini.');return;}
+  if(!PJ_ROUTE_DATE||!dates.includes(PJ_ROUTE_DATE))PJ_ROUTE_DATE=dates[0];
+  pjShowModal('🗺️ Rute Kunjungan Harian — '+PJMDS_SEL,pjRouteModalBody(PJMDS_SEL,PJ_ROUTE_DATE));
 }
 function pjCustomerVisits(kode,c,o){
   const ordersByDate={};
@@ -596,7 +602,6 @@ function renderPjmdsSalesDetail(mds){
     ${pjKpiCard('EA / Total Customer',d.kpi.total_customer,PJ_TARGET.ea,fmtNum)}
     ${pjKpiCard('Sekolah Dikunjungi',d.kpi.total_sekolah,PJ_TARGET.sekolah,fmtNum)}
   </div>`;
-  html+=pjRenderRoutePanel(mds);
   html+=`<div class="ch-label" style="margin:16px 0 8px">Top 10 Customer <span style="color:var(--t3);font-weight:500">· klik baris untuk lihat detail visit</span></div><div class="panel-shell"><div class="panel-body">
     ${pjTable(['','Customer','Klasifikasi','Kabupaten','Visit','Omzet'],d.top_customer,(r,i)=>`<tr class="clickrow" style="cursor:pointer" onclick="pjOpenCustomerModal('${String(r.kode).replace(/'/g,"\\'")}')"><td>${i+1}</td><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.visits}x</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada data customer.')}
   </div></div>`;
