@@ -2429,6 +2429,9 @@ function renderScorecard(){
   tb.innerHTML=rows.length?rows.map(r=>{
     tB+=r.beliVal;tO+=r.omzet;tD+=r.selisih;if(!r.matched&&r.trx>0)unmatched++;
     const dTag=r.selisih===0?'<span class="tag t sm">0</span>':r.selisih>0?`<span class="tag g sm">+${rp(r.selisih)}</span>`:`<span class="tag r sm">${rp(r.selisih)}</span>`;
+    const dNote=r.selisih>2000000?'<div style="margin-top:2px"><span class="tag r sm" title="Omzet jauh lebih besar dari pengambilan, kemungkinan nota belum diinput">⚠️ Cek Nota</span></div>'
+      :r.selisih<-2000000?'<div style="margin-top:2px"><span class="tag r sm" title="Pengambilan jauh lebih besar dari omzet, kemungkinan salah input nota/beli">⚠️ Cek Pengambilan</span></div>'
+      :'';
     const barW=Math.round(r.omzet/maxOmzet*100);
     return`<tr class="clickrow" onclick="selectPjmds('${r.name.replace(/'/g,"\\'")}');switchSubTab('pjmds','mds')">
       <td class="td-main">${r.name} ${r.matched?'':'<span style="font-size:8px;color:var(--red)" title="Nama tidak ketemu di data Penjualan">⚠</span>'}</td>
@@ -2440,7 +2443,7 @@ function renderScorecard(){
       <td class="td-dim">${r.nota?rp(r.nota):'—'}</td>
       <td><span class="tag t sm">${r.custCount||'—'}</span></td>
       <td><div style="font-weight:800;color:var(--pink);font-size:11px">${r.omzet?rp(r.omzet):'—'}</div><div class="av-bg" style="margin-top:3px;max-width:90px"><div class="av-fill" style="width:${barW}%;background:var(--pink)"></div></div></td>
-      <td>${dTag}</td>
+      <td>${dTag}${dNote}</td>
     </tr>`;
   }).join(''):`<tr><td colspan="10"><div class="empty-state">Tidak ada data untuk periode/filter ini.${PJ_RAW.call.length?'':' Upload data Penjualan (Call & Order) untuk kolom Omzet.'}</div></td></tr>`;
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
