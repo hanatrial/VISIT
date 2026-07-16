@@ -495,6 +495,17 @@ function pjOpenRoute(){
   if(!stops.length){alert('Tidak ada koordinat kunjungan untuk tanggal ini.');return;}
   window.open(pjBuildMapsUrl(stops),'_blank');
 }
+function pjParseCoord(s){
+  const m=String(s||'').match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+  return m?{lat:parseFloat(m[1]),lng:parseFloat(m[2])}:null;
+}
+function pjHaversineKm(a,b){
+  if(!a||!b)return null;
+  const R=6371,toRad=d=>d*Math.PI/180;
+  const dLat=toRad(b.lat-a.lat),dLng=toRad(b.lng-a.lng);
+  const x=Math.sin(dLat/2)**2+Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat))*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
 function pjRouteModalBody(mds,dateKey){
   const dates=pjAvailableDates(mds);
   if(!dates.length)return'<div class="empty-state">Belum ada data Call untuk MDS ini.</div>';
@@ -509,11 +520,13 @@ function pjRouteModalBody(mds,dateKey){
       <button class="exp-btn" onclick="pjOpenRoute()" ${withCoordCount?'':'disabled'}>🗺️ Buka Rute (${withCoordCount} titik)</button>
     </div>
     ${withCoordCount<totalVisitCount?`<div style="font-size:11px;color:var(--t3);margin-bottom:8px">${totalVisitCount-withCoordCount} visit tanpa koordinat tidak diikutkan</div>`:''}
-    ${stops.length?`<table><thead><tr><th>#</th><th>Waktu</th><th>Customer</th><th>Koordinat</th></tr></thead><tbody>
+    ${stops.length?`<table><thead><tr><th>#</th><th>Waktu</th><th>Customer</th><th>Jarak</th></tr></thead><tbody>
       ${stops.map((s,i)=>{
         const dt=pjToDate(s.checkIn);
         const tStr=dt?new Date(dt.getTime()+8*3600*1000).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'}):'-';
-        return`<tr><td class="td-dim">${i+1}</td><td class="td-dim">${tStr}</td><td class="td-main">${s.nama}${s.sekolah?` <span style="color:var(--t3);font-size:10px">(${s.sekolah})</span>`:''}</td><td class="td-dim" style="font-size:10px">${s.koordinat}</td></tr>`;
+        const km=i>0?pjHaversineKm(pjParseCoord(stops[i-1].koordinat),pjParseCoord(s.koordinat)):null;
+        const jarakStr=km===null?'—':`+${km.toFixed(1)} km`;
+        return`<tr><td class="td-dim">${i+1}</td><td class="td-dim">${tStr}</td><td class="td-main">${s.nama}${s.sekolah?` <span style="color:var(--t3);font-size:10px">(${s.sekolah})</span>`:''}</td><td class="td-dim">${jarakStr}</td></tr>`;
       }).join('')}
     </tbody></table>`:'<div class="empty-state">Tidak ada koordinat kunjungan pada tanggal ini.</div>'}`;
 }
