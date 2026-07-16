@@ -1715,19 +1715,25 @@ function exportFcCsv(i){
   const transitQty=(nm,val)=>{const p=ITEM_PRICE[nm]?.pcs;return p?Math.round(val/p):'';};
   let csv=`Toko,${q(r.store)}\nStock Awal,${q(r.awalLabel)}\nStock Akhir,${q(r.akhirLabel)}\n\n`;
   csv+='Item,Stock Awal Qty (rnc),Stock Awal Value,In Transit Qty (rnc)*,In Transit Value,Stock Akhir Qty (rnc),Stock Akhir Value,Sell Out Qty (rnc),Sell Out Value\n';
-  let tAq=0,tAv=0,tTv=0,tKq=0,tKv=0;
-  const asObj=x=>(x&&typeof x==='object')?x:{val:Number(x)||0,qty:''};
+  let tAq=0,tAv=0,tTv=0,tTq=0,tKq=0,tKv=0;
+  // old saved calcs stored flat values without qty — estimate missing qty from per-renceng price
+  const asObj=(nm,x)=>{
+    if(x&&typeof x==='object')return x;
+    const val=Number(x)||0;
+    const p=ITEM_PRICE[nm]?.pcs;
+    return{val,qty:(val&&p)?Math.round(val/p):(val?'':0)};
+  };
   csv+=allItems.map(nm=>{
-    const a=asObj(awalItems[nm]),k=asObj(akhirItems[nm]);
+    const a=asObj(nm,awalItems[nm]),k=asObj(nm,akhirItems[nm]);
     const tv=transitItems[nm]||0,tq=transitQty(nm,tv);
-    tAq+=Number(a.qty)||0;tAv+=a.val;tTv+=tv;tKq+=Number(k.qty)||0;tKv+=k.val;
-    const sellOutQty=a.qty===''||k.qty===''?'':a.qty-k.qty;
+    tAq+=Number(a.qty)||0;tAv+=a.val;tTv+=tv;tTq+=Number(tq)||0;tKq+=Number(k.qty)||0;tKv+=k.val;
+    const sellOutQty=a.qty===''||k.qty===''?'':(Number(a.qty)||0)+(Number(tq)||0)-(Number(k.qty)||0);
     const sellOutVal=a.val+tv-k.val;
     return[q(nm),a.qty,a.val,tq,tv,k.qty,k.val,sellOutQty,sellOutVal].join(',');
   }).join('\n');
   if(allItems.length)csv+='\n';
-  csv+=['TOTAL',tAq,r.awalVal||tAv,'',r.transitVal||tTv,tKq,r.akhirVal||tKv,tAq-tKq,(r.awalVal||tAv)+(r.transitVal||tTv)-(r.akhirVal||tKv)].join(',');
-  csv+='\n\n*In Transit Qty adalah estimasi (Value ÷ harga per renceng) karena file transaksi tidak punya kolom qty.';
+  csv+=['TOTAL',tAq,r.awalVal||tAv,tTq,r.transitVal||tTv,tKq,r.akhirVal||tKv,tAq+tTq-tKq,(r.awalVal||tAv)+(r.transitVal||tTv)-(r.akhirVal||tKv)].join(',');
+  csv+='\n\n*Qty adalah renceng-equivalent; jika data qty asli tidak tersimpan (kalkulasi lama / file transaksi tanpa kolom qty) maka diestimasi dari Value ÷ harga per renceng.';
   const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
