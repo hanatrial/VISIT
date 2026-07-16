@@ -52,6 +52,7 @@ applyTheme(localStorage.getItem('mds_theme')||'dark');
 let _expandedRkaVid=null,_expandedBeliVid=null;
 let KEDAI_DB={stores:[],meta:null},PJMDS_SEL=null,PJMDS_SHOW_TOKO=false;
 let PJMDS_MANUAL_MATCH={};
+let PJ_ROUTE_DATE=null;
 let cAV=null,cTrend=null,cBrand=null,mcAV=null,mcBrand=null;
 
 // ── PIN ─────────────────────────────────────────────────────────────────────
@@ -294,7 +295,9 @@ async function handlePjmdsDataFile(file){
       NamaMDS:r['Nama MDS'],PIC:r['PIC'],Provinsi:r['Provinsi'],
       KodeCustomer:String(r['Kode Customer']),NamaCustomer:r['Nama Customer'],Kabupaten:r['Kabupaten'],
       Klasifikasi:r['Klasifikasi'],Sekolah:r['Sekolah'],StatusSekolah:r['Status Sekolah']===true,
-      OmzetNS:Number(r['Omzet NS'])||0,OmzetHILO:Number(r['Omzet HILO'])||0,TotalOrder:Number(r['Total Order'])||0
+      OmzetNS:Number(r['Omzet NS'])||0,OmzetHILO:Number(r['Omzet HILO'])||0,TotalOrder:Number(r['Total Order'])||0,
+      CheckIn:r['Check In']instanceof Date?r['Check In'].toISOString():r['Check In'],
+      KoordinatCall:r['Koordinat Call']||null
     }));
     const order=orderRaw.map(r=>{
       const qty=Number(r['Qty'])||0;
@@ -453,6 +456,68 @@ function pjTable(headers,rows,rowFn,emptyMsg){
   if(!rows.length)return`<div class="empty-state">${emptyMsg}</div>`;
   return`<table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(rowFn).join('')}</tbody></table>`;
 }
+function pjCheckInSeconds(iso){
+  const dt=pjToDate(iso);
+  if(!dt)return 0;
+  return dt.getUTCHours()*3600+dt.getUTCMinutes()*60+dt.getUTCSeconds();
+}
+function pjAvailableDates(mds){
+  const resolved=pjResolveMdsName(mds);
+  if(!resolved)return[];
+  const dates=new Set();
+  PJ_RAW.call.filter(r=>r.NamaMDS===resolved).forEach(r=>{
+    const dt=pjToDate(r.Tanggal);if(dt)dates.add(dt.toISOString().slice(0,10));
+  });
+  return[...dates].sort().reverse();
+}
+function pjRouteStops(mds,dateKey){
+  const resolved=pjResolveMdsName(mds);
+  if(!resolved)return[];
+  const rows=PJ_RAW.call.filter(r=>r.NamaMDS===resolved).filter(r=>{
+    const dt=pjToDate(r.Tanggal);return dt&&dt.toISOString().slice(0,10)===dateKey;
+  });
+  const withCoord=rows.filter(r=>r.KoordinatCall&&/-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?/.test(r.KoordinatCall));
+  withCoord.sort((a,b)=>pjCheckInSeconds(a.CheckIn)-pjCheckInSeconds(b.CheckIn));
+  return withCoord.map(r=>({nama:r.NamaCustomer,sekolah:r.Sekolah,koordinat:r.KoordinatCall.trim(),checkIn:r.CheckIn}));
+}
+function pjBuildMapsUrl(stops){
+  const coords=stops.map(s=>s.koordinat.replace(/\s+/g,''));
+  return'https://www.google.com/maps/dir/'+coords.join('/');
+}
+function pjSelectRouteDate(v){
+  PJ_ROUTE_DATE=v||null;
+  render();
+}
+function pjOpenRoute(){
+  if(!PJMDS_SEL||!PJ_ROUTE_DATE)return;
+  const stops=pjRouteStops(PJMDS_SEL,PJ_ROUTE_DATE);
+  if(!stops.length){alert('Tidak ada koordinat kunjungan untuk tanggal ini.');return;}
+  window.open(pjBuildMapsUrl(stops),'_blank');
+}
+function pjRenderRoutePanel(mds){
+  const dates=pjAvailableDates(mds);
+  if(!dates.length)return'';
+  if(!PJ_ROUTE_DATE||!dates.includes(PJ_ROUTE_DATE))PJ_ROUTE_DATE=dates[0];
+  const stops=pjRouteStops(mds,PJ_ROUTE_DATE);
+  const withCoordCount=stops.length;
+  const totalVisitCount=PJ_RAW.call.filter(r=>r.NamaMDS===pjResolveMdsName(mds)).filter(r=>{const dt=pjToDate(r.Tanggal);return dt&&dt.toISOString().slice(0,10)===PJ_ROUTE_DATE;}).length;
+  return`<div class="ch-label" style="margin:16px 0 8px">🗺️ Rute Kunjungan Harian</div><div class="panel-shell"><div class="panel-body">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+      <select class="fi" style="width:180px" onchange="pjSelectRouteDate(this.value)">
+        ${dates.map(dk=>{const dt=new Date(dk);const label=dt.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});return`<option value="${dk}"${dk===PJ_ROUTE_DATE?' selected':''}>${label}</option>`;}).join('')}
+      </select>
+      <button class="exp-btn" onclick="pjOpenRoute()" ${withCoordCount?'':'disabled'}>🗺️ Buka Rute di Google Maps (${withCoordCount} titik)</button>
+      ${withCoordCount<totalVisitCount?`<span style="font-size:11px;color:var(--t3)">${totalVisitCount-withCoordCount} visit tanpa koordinat tidak diikutkan</span>`:''}
+    </div>
+    ${stops.length?`<table><thead><tr><th>#</th><th>Waktu</th><th>Customer</th><th>Koordinat</th></tr></thead><tbody>
+      ${stops.map((s,i)=>{
+        const dt=pjToDate(s.checkIn);
+        const tStr=dt?dt.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'}):'-';
+        return`<tr><td class="td-dim">${i+1}</td><td class="td-dim">${tStr}</td><td class="td-main">${s.nama}${s.sekolah?` <span style="color:var(--t3);font-size:10px">(${s.sekolah})</span>`:''}</td><td class="td-dim" style="font-size:10px">${s.koordinat}</td></tr>`;
+      }).join('')}
+    </tbody></table>`:'<div class="empty-state">Tidak ada koordinat kunjungan pada tanggal ini.</div>'}
+  </div></div>`;
+}
 function pjCustomerVisits(kode,c,o){
   const ordersByDate={};
   o.filter(r=>r.KodeCustomer===kode).forEach(r=>{
@@ -531,6 +596,7 @@ function renderPjmdsSalesDetail(mds){
     ${pjKpiCard('EA / Total Customer',d.kpi.total_customer,PJ_TARGET.ea,fmtNum)}
     ${pjKpiCard('Sekolah Dikunjungi',d.kpi.total_sekolah,PJ_TARGET.sekolah,fmtNum)}
   </div>`;
+  html+=pjRenderRoutePanel(mds);
   html+=`<div class="ch-label" style="margin:16px 0 8px">Top 10 Customer <span style="color:var(--t3);font-weight:500">· klik baris untuk lihat detail visit</span></div><div class="panel-shell"><div class="panel-body">
     ${pjTable(['','Customer','Klasifikasi','Kabupaten','Visit','Omzet'],d.top_customer,(r,i)=>`<tr class="clickrow" style="cursor:pointer" onclick="pjOpenCustomerModal('${String(r.kode).replace(/'/g,"\\'")}')"><td>${i+1}</td><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.visits}x</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada data customer.')}
   </div></div>`;
