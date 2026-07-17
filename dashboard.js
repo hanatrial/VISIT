@@ -798,6 +798,8 @@ function initDash(){
   if(dl)Object.keys(ITEM_PRICE).sort().forEach(k=>{const o=document.createElement('option');o.value=k;dl.appendChild(o);});
   const kf=document.getElementById('kedai-file-input');
   if(kf)kf.addEventListener('change',e=>{if(e.target.files[0])handleKedaiFile(e.target.files[0]);});
+  const tkf=document.getElementById('toko-file-input');
+  if(tkf)tkf.addEventListener('change',e=>{if(e.target.files[0])handleTokoFile(e.target.files[0]);});
   const pf=document.getElementById('pjdata-file-input');
   if(pf)pf.addEventListener('change',e=>{if(e.target.files[0])handlePjmdsDataFile(e.target.files[0]);});
   const ff=document.getElementById('formula-import-input');

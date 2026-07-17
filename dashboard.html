@@ -267,9 +267,15 @@
         </div>
       </div></div>
 
-      <div class="panel-shell" style="margin-top:12px"><div class="panel-body">
-        <div class="ch-label" style="margin-bottom:2px">🏪 Database Toko (Frekuensi Visit)</div>
-        <div id="toko-status" style="font-size:11px;color:var(--t3)">Memuat…</div>
+      <div class="panel-shell" style="margin-top:12px"><div class="panel-body" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>
+          <div class="ch-label" style="margin-bottom:2px">🏪 Database Toko (Frekuensi Visit)</div>
+          <div id="toko-status" style="font-size:11px;color:var(--t3)">Memuat…</div>
+        </div>
+        <div>
+          <button class="exp-btn" onclick="pjGuardedClick('toko-file-input')">🏪 Update Database Toko</button>
+          <input type="file" id="toko-file-input" accept=".xlsx,.xls" style="display:none">
+        </div>
       </div></div>
 
       <div class="sub-nav" style="margin-top:12px">
