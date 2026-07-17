@@ -51,7 +51,6 @@ function toggleTheme(){
 applyTheme(localStorage.getItem('mds_theme')||'dark');
 let _expandedRkaVid=null,_expandedBeliVid=null;
 let KEDAI_DB={stores:[],meta:null},PJMDS_SEL=null,PJMDS_SHOW_TOKO=false;
-let TOKO_DB={stores:[],meta:null};
 let PJMDS_MANUAL_MATCH={};
 let PJ_ROUTE_DATE=null;
 let cAV=null,cTrend=null,cBrand=null,mcAV=null,mcBrand=null;
@@ -334,42 +333,6 @@ function pjResolveMdsName(selName){
   const found=names.find(n=>pjNormName(n)===target);
   if(found)return found;
   return null;
-}
-const TOKO_STOPWORDS=new Set(['TK','TOKO','KEDAI','KIOS','WARUNG','WR','STAND','KDI','KS','RM','CAFE','KAFE','DEPOT','BSP','BCP']);
-function pjTokoCoreName(s){
-  return String(s||'').toUpperCase().replace(/[^A-Z0-9\s]/g,' ').split(/\s+/).filter(t=>t&&!TOKO_STOPWORDS.has(t)).join(' ');
-}
-function pjTokoNameMatch(a,b){
-  const ta=pjTokoCoreName(a).split(' ').filter(Boolean);
-  const tb=pjTokoCoreName(b).split(' ').filter(Boolean);
-  if(!ta.length||!tb.length)return false;
-  const shorter=ta.length<=tb.length?ta:tb,longer=ta.length<=tb.length?tb:ta;
-  let matched=0;
-  shorter.forEach(tok=>{
-    if(longer.some(lt=>lt===tok||(tok.length>=3&&lt.length>=3&&(lt.startsWith(tok)||tok.startsWith(lt)))))matched++;
-  });
-  return matched>=Math.ceil(shorter.length*0.6);
-}
-function computeVisitToko(mds){
-  const resolved=pjResolveMdsName(mds);
-  const d=computePjmdsMdsData(mds);
-  if(!d)return[];
-  const custMap={};
-  d.rawCall.forEach(r=>{
-    const k=r.KodeCustomer;
-    if(!custMap[k])custMap[k]={nama:r.NamaCustomer,klas:[],visits:0,omzet:0};
-    custMap[k].klas.push(r.Klasifikasi);custMap[k].visits++;custMap[k].omzet+=(r.OmzetNS||0)+(r.OmzetHILO||0);
-  });
-  const custList=Object.values(custMap);
-  const tokoEntries=TOKO_DB.stores.filter(s=>pjNormName(s.mds)===pjNormName(mds)||(resolved&&pjNormName(s.mds)===pjNormName(resolved)));
-  return tokoEntries.map(t=>{
-    const match=custList.find(cu=>pjTokoNameMatch(t.bsp,cu.nama));
-    const freqMatch=t.freq.match(/^F(\d+)$/i);
-    const wajib=!!freqMatch;
-    const target=freqMatch?parseInt(freqMatch[1],10):0;
-    return{nama:t.bsp,klasifikasi:match?pjMode(match.klas):'-',wajib,target,freq:t.freq,
-      visit:match?match.visits:0,omzet:match?match.omzet:0,matched:!!match};
-  }).sort((a,b)=>(b.wajib-a.wajib)||(b.visit-a.visit));
 }
 function computePjmdsMdsData(selName){
   const resolvedName=pjResolveMdsName(selName);
@@ -748,49 +711,6 @@ async function handleKedaiFile(file){
     el.textContent='Gagal membaca file: '+(err.message||err);
   }
 }
-function loadTokoDb(){
-  if(!dbSulawesi)return;
-  dbSulawesi.collection('toko_db').doc('main').get().then(doc=>{
-    if(doc.exists){
-      const v=doc.data();
-      TOKO_DB={stores:v.stores||[],meta:v.meta||null};
-    }
-    renderTokoStatus();
-    render();
-  }).catch(e=>{console.error('toko_db load failed',e.code,e.message);renderTokoStatus();});
-}
-function renderTokoStatus(){
-  const el=document.getElementById('toko-status');if(!el)return;
-  if(TOKO_DB.stores.length){
-    el.textContent=`Tersimpan: ${TOKO_DB.meta?.filename||'file sebelumnya'} · ${TOKO_DB.stores.length} toko (update ${TOKO_DB.meta?.uploadedAt?new Date(TOKO_DB.meta.uploadedAt).toLocaleDateString('id-ID'):'-'})`;
-  }else{
-    el.textContent='Belum ada database toko diupload.';
-  }
-}
-async function handleTokoFile(file){
-  const el=document.getElementById('toko-status');
-  el.textContent='Membaca '+file.name+'…';
-  try{
-    const buf=await file.arrayBuffer();
-    const wb=XLSX.read(buf,{type:'array'});
-    const sheet=wb.Sheets[wb.SheetNames[0]];
-    const rows=XLSX.utils.sheet_to_json(sheet,{defval:null});
-    const stores=rows.map(r=>({
-      bsp:String(r['NAMA BSP']||r['Nama BSP']||'').trim(),
-      bcp:String(r['Nama BCP']||'').trim(),
-      mds:String(r['Nama MDS']||'').trim(),
-      freq:String(r['Frekuensi Visit']||'').trim()
-    })).filter(s=>s.bsp);
-    const meta={filename:file.name,uploadedAt:new Date().toISOString(),rowCount:stores.length};
-    TOKO_DB={stores,meta};
-    await dbSulawesi.collection('toko_db').doc('main').set({stores,meta});
-    el.textContent=`Berhasil: ${file.name} · ${stores.length} toko tersimpan.`;
-    render();
-  }catch(err){
-    console.error(err);
-    el.textContent='Gagal membaca file: '+(err.message||err);
-  }
-}
 function initDash(){
   switchTab('rka');
   document.getElementById('tb-date').textContent=new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
@@ -798,8 +718,6 @@ function initDash(){
   if(dl)Object.keys(ITEM_PRICE).sort().forEach(k=>{const o=document.createElement('option');o.value=k;dl.appendChild(o);});
   const kf=document.getElementById('kedai-file-input');
   if(kf)kf.addEventListener('change',e=>{if(e.target.files[0])handleKedaiFile(e.target.files[0]);});
-  const tkf=document.getElementById('toko-file-input');
-  if(tkf)tkf.addEventListener('change',e=>{if(e.target.files[0])handleTokoFile(e.target.files[0]);});
   const pf=document.getElementById('pjdata-file-input');
   if(pf)pf.addEventListener('change',e=>{if(e.target.files[0])handlePjmdsDataFile(e.target.files[0]);});
   const ff=document.getElementById('formula-import-input');
@@ -807,7 +725,6 @@ function initDash(){
   const tf=document.getElementById('tx-import-input');
   if(tf)tf.addEventListener('change',e=>{if(e.target.files[0])handleTxImportFile(e.target.files[0]);e.target.value='';});
   loadKedaiDb();
-  loadTokoDb();
   loadPjmdsData();
   loadPjmdsManualMatch();
   loadDashState();
@@ -1151,7 +1068,6 @@ function renderPjmds(beliF){
 function selectPjmds(name){
   PJMDS_SEL=name||null;
   PJMDS_SHOW_TOKO=false;
-  PJMDS_SHOW_VISITTOKO=false;
   render();
 }
 async function loadPjmdsManualMatch(){
@@ -1179,33 +1095,6 @@ function togglePjmdsToko(){
   if(!PJMDS_SEL)return;
   PJMDS_SHOW_TOKO=!PJMDS_SHOW_TOKO;
   render();
-}
-let PJMDS_SHOW_VISITTOKO=false;
-function togglePjmdsVisitToko(){
-  if(!PJMDS_SEL)return;
-  PJMDS_SHOW_VISITTOKO=!PJMDS_SHOW_VISITTOKO;
-  render();
-}
-function pjRenderVisitTokoPanel(mds){
-  if(!TOKO_DB.stores.length){
-    return`<div class="panel-shell" style="margin-top:12px"><div class="panel-body" style="text-align:center;padding:20px;color:var(--t3)">Belum ada database toko diupload. Klik "🏪 Update Database Toko".</div></div>`;
-  }
-  const list=computeVisitToko(mds);
-  const wajibCount=list.filter(t=>t.wajib).length;
-  const tercapaiCount=list.filter(t=>t.wajib&&t.visit>=t.target).length;
-  return`<div class="panel-shell" style="margin-top:12px"><div class="panel-body">
-    <div class="ch-label" style="margin-bottom:10px">🏪 Visit Toko — ${mds} <span style="color:var(--t3);font-weight:500">· ${tercapaiCount}/${wajibCount} toko wajib tercapai</span></div>
-    <table><thead><tr><th>Toko</th><th>Klasifikasi</th><th>Status</th><th>Target</th><th>Visit</th><th>Capaian</th><th>Omzet</th></tr></thead><tbody>
-      ${list.length?list.map(t=>{
-        const wp=t.wajib?'<span class="tag au sm">WAJIB</span>':'<span class="tag t sm">Tidak Wajib</span>';
-        const tgt=t.wajib?`${t.freq} (${t.target}x)`:'-';
-        const ok=t.wajib?(t.visit>=t.target):null;
-        const sp=t.wajib?(ok?'<span class="tag g sm">TERCAPAI</span>':'<span class="tag r sm">KURANG</span>'):'-';
-        return`<tr><td class="td-main">${t.nama}${t.matched?'':' <span style="color:var(--t3);font-size:9px" title="Tidak ketemu di data Call">(no match)</span>'}</td><td class="td-dim">${t.klasifikasi}</td><td>${wp}</td><td class="td-dim">${tgt}</td><td><span class="tag t sm">${t.visit}x</span></td><td>${sp}</td><td class="td-dim">${t.omzet?rp(t.omzet):'—'}</td></tr>`;
-      }).join(''):'<tr><td colspan="7"><div class="empty-state">Belum ada toko untuk MDS ini di database toko.</div></td></tr>'}
-    </tbody></table>
-    <div class="tfoot-row">${list.length} toko</div>
-  </div></div>`;
 }
 function renderPjmdsDetail(beliF){
   const el=document.getElementById('pjmds-detail');
@@ -1256,7 +1145,6 @@ function renderPjmdsDetail(beliF){
       <div class="kpi-shell"${totPenjualan===null?' style="opacity:.5"':''}><div class="kpi-border" style="--gc:rgba(139,92,246,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--violet),transparent 70%)"></div><div class="kpi-label">Total Penjualan</div><div class="kpi-val sm" style="color:var(--violet)">${totPenjualan===null?'—':rp(totPenjualan)}</div><div class="kpi-sub">${totPenjualan===null?'menunggu upload data Call':'omzet NS + HILO dari data Call'}</div></div></div>
     </div>
     ${tokoDetailHtml}
-    ${PJMDS_SHOW_VISITTOKO?pjRenderVisitTokoPanel(PJMDS_SEL):''}
     ${renderPjmdsSalesDetail(PJMDS_SEL)}`;
 }
 

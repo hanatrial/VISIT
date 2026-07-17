@@ -267,17 +267,6 @@
         </div>
       </div></div>
 
-      <div class="panel-shell" style="margin-top:12px"><div class="panel-body" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-        <div>
-          <div class="ch-label" style="margin-bottom:2px">🏪 Database Toko (Frekuensi Visit)</div>
-          <div id="toko-status" style="font-size:11px;color:var(--t3)">Memuat…</div>
-        </div>
-        <div>
-          <button class="exp-btn" onclick="pjGuardedClick('toko-file-input')">🏪 Update Database Toko</button>
-          <input type="file" id="toko-file-input" accept=".xlsx,.xls" style="display:none">
-        </div>
-      </div></div>
-
       <div class="sub-nav" style="margin-top:12px">
         <div class="sub-tab on pjmds" id="stab-pjmds-mds" onclick="switchSubTab('pjmds','mds')">👤 Per MDS</div>
         <div class="sub-tab pjmds" id="stab-pjmds-scorecard" onclick="switchSubTab('pjmds','scorecard')">🏆 Scorecard</div>
@@ -288,7 +277,6 @@
           <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px">
             <div class="ch-label" style="margin-bottom:0">👤 Pilih MDS</div>
             <button class="exp-btn" onclick="pjOpenRouteModal()">🗺️ Rute Harian</button>
-            <button class="exp-btn" onclick="togglePjmdsVisitToko()">🏪 Visit Toko</button>
           </div>
           <select id="pjmds-select" class="fi" style="width:260px" onchange="selectPjmds(this.value)">
             <option value="">— Pilih MDS —</option>
