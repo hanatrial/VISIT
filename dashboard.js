@@ -1109,8 +1109,9 @@ function renderPjmdsDetail(beliF){
   const storeMap={};
   rows.forEach(r=>{
     const k=r.store||'—';
-    if(!storeMap[k])storeMap[k]={store:k,area:r.area||'—',count:0,nota:0};
+    if(!storeMap[k])storeMap[k]={store:k,area:r.area||'—',count:0,nota:0,dates:[]};
     storeMap[k].count++;storeMap[k].nota+=(r.nominal||0);
+    if(r.timestamp)storeMap[k].dates.push(r.timestamp);
   });
   const storeRows=Object.values(storeMap).sort((a,b)=>b.count-a.count);
   const kedaiCount=KEDAI_DB.stores.filter(s=>s.mds===PJMDS_SEL).length;
@@ -1121,8 +1122,11 @@ function renderPjmdsDetail(beliF){
   if(PJMDS_SHOW_TOKO){
     tokoDetailHtml=`<div class="panel-shell" style="margin-top:12px"><div class="panel-body">
       <div class="ch-label" style="margin-bottom:10px">🏪 Toko yang Diambil — ${PJMDS_SEL}</div>
-      <table><thead><tr><th>Toko</th><th>Area</th><th>Pengambilan</th><th>Total Nota</th></tr></thead><tbody>
-        ${storeRows.length?storeRows.map(s=>`<tr><td class="td-mid">${s.store}</td><td class="td-dim">${s.area}</td><td><span class="tag t sm">${s.count}x</span></td><td class="td-dim">${s.nota?rp(s.nota):'—'}</td></tr>`).join(''):'<tr><td colspan="4"><div class="empty-state">Belum ada toko yang diambil pada periode ini.</div></td></tr>'}
+      <table><thead><tr><th>Toko</th><th>Area</th><th>Pengambilan</th><th>Tanggal</th><th>Total Nota</th></tr></thead><tbody>
+        ${storeRows.length?storeRows.map(s=>{
+          const tglStr=s.dates.slice().sort((a,b)=>b-a).map(d=>d.toLocaleDateString('id-ID',{day:'numeric',month:'short'})).join(', ');
+          return`<tr><td class="td-mid">${s.store}</td><td class="td-dim">${s.area}</td><td><span class="tag t sm">${s.count}x</span></td><td class="td-dim" style="font-size:10px">${tglStr}</td><td class="td-dim">${s.nota?rp(s.nota):'—'}</td></tr>`;
+        }).join(''):'<tr><td colspan="5"><div class="empty-state">Belum ada toko yang diambil pada periode ini.</div></td></tr>'}
       </tbody></table>
       <div class="tfoot-row">${storeRows.length} toko</div>
     </div></div>`;
