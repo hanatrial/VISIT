@@ -6,7 +6,7 @@ const MDS_BY_AREA={
   'Bau Bau':['Rizal'],
   'Bone':['A. Arwandi Amrah','M. Murdiono Arma'],
   'Gorontalo':['Aditya Hulopi','Mohammad Rahman Marwan','Abd. Rahman Lahay','Satrio Yusuf'],
-  'Kendari':['Laode Asrad Ilhamid','Abdul Rahman','Dwi Haryanto','Rosa Sasmita'],
+  'Kendari':['Laode Asrad Ilhamid','Abdul Rahman (Rangga)','Dwi Haryanto','Rosa Sasmita'],
   'Luwuk':['Kadek Adi Merta Sastrawan'],
   'Makassar':['Sulfiana Rusdy','A. Mappanyukki','Andi Iswan Tenri Bau','Rahmat','Hasrar','Andi Muh. Nurfikrahturrahman','Nurul Ramadhani','Syafri'],
   'Mamuju':['Muhammad Rizky Sandria','Sugiono'],
