@@ -72,6 +72,28 @@
       </div>
     </div>
 
+    <div class="mod-card-shell">
+      <div class="mod-card" onclick="openNed()">
+        <div class="mod-icon" style="background:rgba(239,68,68,.12);color:#EF4444">⏰</div>
+        <div class="mod-text">
+          <div class="mod-title">NED Toko (SPG dan MDS)</div>
+          <div class="mod-desc">Pencatatan item near expired date</div>
+        </div>
+        <div class="mod-arr">›</div>
+      </div>
+    </div>
+
+    <div class="mod-card-shell">
+      <div class="mod-card" onclick="openSpg()">
+        <div class="mod-icon" style="background:rgba(245,158,11,.12);color:#F59E0B">💰</div>
+        <div class="mod-text">
+          <div class="mod-title">Report Harian SPG</div>
+          <div class="mod-desc">Omzet jualan harian + share ke WhatsApp</div>
+        </div>
+        <div class="mod-arr">›</div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -530,10 +552,263 @@
   </div><!-- step-wrap -->
 </div><!-- s-stock -->
 
+<!-- ══════════════════ NED TOKO ══════════════════ -->
+<div id="s-ned" class="screen">
+  <div class="mod-header">
+    <div class="mod-header-row">
+      <button class="back-btn" onclick="goHome()">←</button>
+      <span class="mod-screen-name">NED Toko</span>
+    </div>
+    <div class="mod-screen-sub">Pencatatan Item Near Expired Date</div>
+  </div>
+
+  <div class="stepper" id="ned-stepper">
+    <div class="s-item active" id="ns0"><div class="s-dot">1</div><div class="s-lbl">Kunjungan</div></div>
+    <div class="s-item"        id="ns1"><div class="s-dot">2</div><div class="s-lbl">Toko</div></div>
+    <div class="s-item"        id="ns2"><div class="s-dot">3</div><div class="s-lbl">NED</div></div>
+    <div class="s-item"        id="ns3"><div class="s-dot">4</div><div class="s-lbl">Review</div></div>
+  </div>
+
+  <div class="step-wrap" id="ned-wrap" style="overflow-y:auto;flex:1">
+    <div class="step-pad">
+
+      <div class="step-section active" id="ned-s0">
+        <div class="s-title">Info Kunjungan</div>
+        <div class="s-sub">Area, status, dan nama petugas</div>
+        <div class="field">
+          <label class="f-label">Nama Area</label>
+          <select class="f-input sel" id="ned-area-sel" onchange="nedCheck(0)">
+            <option value="">— Pilih Area —</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="f-label">Status</label>
+          <div style="display:flex;gap:10px;margin-top:4px">
+            <label style="flex:1;display:flex;align-items:center;gap:8px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;cursor:pointer">
+              <input type="radio" name="ned-status" value="MDS" id="ned-r-mds" onchange="nedCheck(0)" style="accent-color:var(--accent)"> MDS
+            </label>
+            <label style="flex:1;display:flex;align-items:center;gap:8px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;cursor:pointer">
+              <input type="radio" name="ned-status" value="SPG" id="ned-r-spg" onchange="nedCheck(0)" style="accent-color:var(--accent)"> SPG
+            </label>
+          </div>
+        </div>
+        <div class="field">
+          <label class="f-label">Nama Petugas</label>
+          <input type="text" class="f-input" id="ned-nama-input" placeholder="Ketik nama…" oninput="nedCheck(0)">
+        </div>
+        <div class="step-nav">
+          <div></div>
+          <button class="btn btn-p" id="ned-next-0" onclick="nedNext(0)" disabled>Lanjut →</button>
+        </div>
+      </div>
+
+      <div class="step-section" id="ned-s1">
+        <div class="s-title">Pilih Toko</div>
+        <div class="s-sub">Toko yang dicek NED-nya</div>
+        <div class="field">
+          <label class="f-label">Nama Toko</label>
+          <select class="f-input sel" id="ned-store-sel" onchange="nedCheck(1)">
+            <option value="">— Pilih Toko —</option>
+          </select>
+        </div>
+        <div class="add-trigger" onclick="toggleBox('ned-store-box')"><span>+</span> Tambah toko baru</div>
+        <div class="add-box" id="ned-store-box">
+          <div class="field" style="margin-bottom:8px">
+            <label class="f-label">Nama Toko Baru</label>
+            <input type="text" class="f-input" id="ned-store-new" placeholder="Ketik nama toko…" oninput="nedCheck(1)">
+          </div>
+          <button class="save-store-btn" onclick="addNewStore('ned')">✓ Simpan Toko</button>
+        </div>
+        <div class="step-nav">
+          <button class="btn btn-s" onclick="nedPrev(1)">← Kembali</button>
+          <button class="btn btn-p" id="ned-next-1" onclick="nedNext(1)" disabled>Lanjut →</button>
+        </div>
+      </div>
+
+      <div class="step-section" id="ned-s2">
+        <div class="s-title">Input NED</div>
+        <div class="s-sub">Isi bulan expired dan qty hanya untuk item yang mendekati expired</div>
+        <div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:4px;padding:8px 12px;background:rgba(239,68,68,.07);border-radius:8px;margin-bottom:8px;font-size:10px;color:var(--t2);font-weight:700">
+          <span>ITEM</span><span style="text-align:center;width:104px">EXPIRED (BULAN)</span><span style="text-align:center;width:60px">QTY</span>
+        </div>
+        <div id="ned-item-list"></div>
+        <div style="margin-top:16px;padding:14px 16px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.18);border-radius:12px">
+          <div style="font-size:11px;color:var(--t2);margin-bottom:4px">Item NED Terisi</div>
+          <div id="ned-count" style="font-size:20px;font-weight:800;color:#EF4444">0 item</div>
+        </div>
+        <div class="step-nav" style="margin-top:16px">
+          <button class="btn btn-s" onclick="nedPrev(2)">← Kembali</button>
+          <button class="btn btn-p" onclick="nedGoReview()">Review →</button>
+        </div>
+      </div>
+
+      <div class="step-section" id="ned-s3">
+        <div class="s-title">Review</div>
+        <div class="s-sub">Periksa data sebelum disimpan</div>
+        <div style="background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.18);border-radius:14px;padding:14px 16px;margin-bottom:14px;font-size:12px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="color:var(--t2)">Area</span><span id="ned-rev-area" style="font-weight:700"></span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="color:var(--t2)">Status</span><span id="ned-rev-status" style="font-weight:700"></span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="color:var(--t2)">Nama</span><span id="ned-rev-nama" style="font-weight:700"></span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">Toko</span><span id="ned-rev-store" style="font-weight:700"></span></div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:14px">
+          <thead>
+            <tr style="background:rgba(239,68,68,.08)">
+              <th style="text-align:left;padding:7px 8px;border-bottom:1px solid var(--border)">Item</th>
+              <th style="text-align:center;padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap">Expired</th>
+              <th style="text-align:center;padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap">Qty</th>
+            </tr>
+          </thead>
+          <tbody id="ned-review-body"></tbody>
+        </table>
+        <div class="step-nav">
+          <button class="btn btn-s" onclick="nedPrev(3)">← Edit</button>
+          <button class="btn btn-p" onclick="submitNed()">✓ Simpan</button>
+        </div>
+      </div>
+
+      <div class="step-section" id="ned-s4">
+        <div style="text-align:center;padding:48px 16px">
+          <div style="font-size:48px;margin-bottom:12px">⏰</div>
+          <div style="font-size:18px;font-weight:800;color:var(--primary);margin-bottom:6px">NED Tercatat!</div>
+          <div style="font-size:13px;color:var(--t2);margin-bottom:4px" id="ned-success-store"></div>
+          <div style="font-size:12px;color:#EF4444;font-weight:700;margin-bottom:24px" id="ned-success-count"></div>
+          <button class="btn btn-p" style="width:100%" onclick="resetNed()">+ Entri Baru</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div><!-- s-ned -->
+
+<!-- ══════════════════ REPORT HARIAN SPG ══════════════════ -->
+<div id="s-spg" class="screen">
+  <div class="mod-header">
+    <div class="mod-header-row">
+      <button class="back-btn" onclick="goHome()">←</button>
+      <span class="mod-screen-name">Report Harian SPG</span>
+    </div>
+    <div class="mod-screen-sub">Omzet Jualan Harian</div>
+  </div>
+
+  <div class="stepper" id="spg-stepper">
+    <div class="s-item active" id="gs0"><div class="s-dot">1</div><div class="s-lbl">SPG</div></div>
+    <div class="s-item"        id="gs1"><div class="s-dot">2</div><div class="s-lbl">Toko</div></div>
+    <div class="s-item"        id="gs2"><div class="s-dot">3</div><div class="s-lbl">Jualan</div></div>
+    <div class="s-item"        id="gs3"><div class="s-dot">4</div><div class="s-lbl">Review</div></div>
+  </div>
+
+  <div class="step-wrap" id="spg-wrap" style="overflow-y:auto;flex:1">
+    <div class="step-pad">
+
+      <div class="step-section active" id="spg-s0">
+        <div class="s-title">Info SPG</div>
+        <div class="s-sub">Area dan nama SPG</div>
+        <div class="field">
+          <label class="f-label">Nama Area</label>
+          <select class="f-input sel" id="spg-area-sel" onchange="spgCheck(0)">
+            <option value="">— Pilih Area —</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="f-label">Nama SPG</label>
+          <input type="text" class="f-input" id="spg-nama-input" placeholder="Ketik nama…" oninput="spgCheck(0)">
+        </div>
+        <div class="step-nav">
+          <div></div>
+          <button class="btn btn-p" id="spg-next-0" onclick="spgNext(0)" disabled>Lanjut →</button>
+        </div>
+      </div>
+
+      <div class="step-section" id="spg-s1">
+        <div class="s-title">Pilih Toko</div>
+        <div class="s-sub">Toko tempat jualan hari ini</div>
+        <div class="field">
+          <label class="f-label">Nama Toko</label>
+          <select class="f-input sel" id="spg-store-sel" onchange="spgCheck(1)">
+            <option value="">— Pilih Toko —</option>
+          </select>
+        </div>
+        <div class="add-trigger" onclick="toggleBox('spg-store-box')"><span>+</span> Tambah toko baru</div>
+        <div class="add-box" id="spg-store-box">
+          <div class="field" style="margin-bottom:8px">
+            <label class="f-label">Nama Toko Baru</label>
+            <input type="text" class="f-input" id="spg-store-new" placeholder="Ketik nama toko…" oninput="spgCheck(1)">
+          </div>
+          <button class="save-store-btn" onclick="addNewStore('spg')">✓ Simpan Toko</button>
+        </div>
+        <div class="step-nav">
+          <button class="btn btn-s" onclick="spgPrev(1)">← Kembali</button>
+          <button class="btn btn-p" id="spg-next-1" onclick="spgNext(1)" disabled>Lanjut →</button>
+        </div>
+      </div>
+
+      <div class="step-section" id="spg-s2">
+        <div class="s-title">Input Jualan Hari Ini</div>
+        <div class="s-sub">Isi qty renceng yang terjual, omzet dihitung otomatis</div>
+        <div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:4px;padding:8px 12px;background:rgba(245,158,11,.07);border-radius:8px;margin-bottom:8px;font-size:10px;color:var(--t2);font-weight:700">
+          <span>ITEM</span><span style="text-align:center;width:72px">QTY (RNC)</span><span style="text-align:right;width:80px">OMZET</span>
+        </div>
+        <div id="spg-item-list"></div>
+        <div style="margin-top:16px;padding:14px 16px;background:rgba(22,163,74,.07);border:1px solid rgba(22,163,74,.18);border-radius:12px">
+          <div style="font-size:11px;color:var(--t2);margin-bottom:4px">Total Omzet Hari Ini</div>
+          <div id="spg-total-rp" style="font-size:20px;font-weight:800;color:var(--ok)">Rp 0</div>
+        </div>
+        <div class="step-nav" style="margin-top:16px">
+          <button class="btn btn-s" onclick="spgPrev(2)">← Kembali</button>
+          <button class="btn btn-p" onclick="spgGoReview()">Review →</button>
+        </div>
+      </div>
+
+      <div class="step-section" id="spg-s3">
+        <div class="s-title">Review</div>
+        <div class="s-sub">Periksa data sebelum disimpan</div>
+        <div style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.18);border-radius:14px;padding:14px 16px;margin-bottom:14px;font-size:12px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="color:var(--t2)">Area</span><span id="spg-rev-area" style="font-weight:700"></span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="color:var(--t2)">Nama SPG</span><span id="spg-rev-nama" style="font-weight:700"></span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">Toko</span><span id="spg-rev-store" style="font-weight:700"></span></div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:14px">
+          <thead>
+            <tr style="background:rgba(245,158,11,.08)">
+              <th style="text-align:left;padding:7px 8px;border-bottom:1px solid var(--border)">Item</th>
+              <th style="text-align:center;padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap">Qty</th>
+              <th style="text-align:right;padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap">Omzet</th>
+            </tr>
+          </thead>
+          <tbody id="spg-review-body"></tbody>
+          <tfoot>
+            <tr style="font-weight:800;background:rgba(22,163,74,.07)">
+              <td colspan="2" style="padding:8px;font-size:11px">TOTAL OMZET</td>
+              <td id="spg-rev-total" style="padding:8px;text-align:right;font-size:11px;color:var(--ok)"></td>
+            </tr>
+          </tfoot>
+        </table>
+        <div class="step-nav">
+          <button class="btn btn-s" onclick="spgPrev(3)">← Edit</button>
+          <button class="btn btn-p" onclick="submitSpg()">✓ Simpan</button>
+        </div>
+      </div>
+
+      <div class="step-section" id="spg-s4">
+        <div style="text-align:center;padding:40px 16px">
+          <div style="font-size:48px;margin-bottom:12px">💰</div>
+          <div style="font-size:18px;font-weight:800;color:var(--primary);margin-bottom:6px">Report Tersimpan!</div>
+          <div style="font-size:13px;color:var(--t2);margin-bottom:4px" id="spg-success-store"></div>
+          <div style="font-size:14px;color:var(--ok);font-weight:800;margin-bottom:20px" id="spg-success-total"></div>
+          <button class="btn btn-p" style="width:100%;background:#25D366;margin-bottom:10px" onclick="shareSpgWhatsApp()">📲 Share ke WhatsApp</button>
+          <button class="btn btn-s" style="width:100%" onclick="resetSpg()">+ Entri Baru</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div><!-- s-spg -->
+
 
 </div><!-- #app -->
 
-<script src="app.js?v=1"></script>
+<script src="app.js?v=2"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>

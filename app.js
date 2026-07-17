@@ -23328,7 +23328,7 @@ function addNewStore(flow){
   const inputId=flow+'-store-new', selId=flow+'-store-sel', boxId=flow+'-store-box';
   let nw=document.getElementById(inputId).value.trim();
   if(!nw)return;
-  const area=flow==='rka'?R.area:flow==='beli'?B.area:SK.area;
+  const area=flow==='rka'?R.area:flow==='beli'?B.area:flow==='ned'?ND.area:flow==='spg'?SG.area:SK.area;
   if(!area){alert('Pilih area dulu sebelum tambah toko.');return;}
   nw=canonicalStore(area,nw);
   const sel=document.getElementById(selId);
@@ -23342,6 +23342,8 @@ function addNewStore(flow){
   document.getElementById(boxId).style.display='none';
   if(flow==='rka')rkaCheck(1);
   else if(flow==='beli')beliCheck(1);
+  else if(flow==='ned')nedCheck(1);
+  else if(flow==='spg')spgCheck(1);
   else stockCheck(1);
 }
 function saveCustomStore(area,name){
@@ -24298,3 +24300,348 @@ function stockUpdateStepper(){
   });
 }
 
+
+/* ─────────── NED TOKO ─────────── */
+const ND = { area:'', status:'', nama:'', store:'', items:{} };
+let nedStep = 0;
+
+function openNed(){ showScreen('s-ned'); initNed(); }
+function initNed(){
+  nedStep=0;
+  ND.area=''; ND.status=''; ND.nama=''; ND.store=''; ND.items={};
+  const as=document.getElementById('ned-area-sel');
+  as.innerHTML='<option value="">— Pilih Area —</option>';
+  AREAS.forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; as.appendChild(o); });
+  document.getElementById('ned-nama-input').value='';
+  document.getElementById('ned-store-sel').innerHTML='<option value="">— Pilih Toko —</option>';
+  document.getElementById('ned-store-new').value='';
+  document.getElementById('ned-r-mds').checked=false;
+  document.getElementById('ned-r-spg').checked=false;
+  document.getElementById('ned-next-0').disabled=true;
+  document.getElementById('ned-next-1').disabled=true;
+  nedUpdateStepper();
+  document.querySelectorAll('#s-ned .step-section').forEach((s,i)=>s.classList.toggle('active',i===0));
+}
+function nedCheck(step){
+  let ok=false;
+  if(step===0){
+    const area=document.getElementById('ned-area-sel').value;
+    const hasStatus=document.getElementById('ned-r-mds').checked||document.getElementById('ned-r-spg').checked;
+    const nama=document.getElementById('ned-nama-input').value.trim();
+    ok=!!(area&&hasStatus&&nama);
+    document.getElementById('ned-next-0').disabled=!ok;
+  } else if(step===1){
+    const store=document.getElementById('ned-store-sel').value||document.getElementById('ned-store-new').value.trim();
+    ok=!!store;
+    document.getElementById('ned-next-1').disabled=!ok;
+  }
+  return ok;
+}
+function nedNext(step){
+  if(step===0){
+    if(!nedCheck(0)) return;
+    ND.area=document.getElementById('ned-area-sel').value;
+    ND.status=document.getElementById('ned-r-mds').checked?'MDS':'SPG';
+    ND.nama=canonicalMds(ND.area,document.getElementById('ned-nama-input').value);
+    const ss=document.getElementById('ned-store-sel');
+    ss.innerHTML='<option value="">— Pilih Toko —</option>';
+    (BELI_STORES_BY_AREA[ND.area]||[]).forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; ss.appendChild(o); });
+  } else if(step===1){
+    if(!nedCheck(1)) return;
+    const box=document.getElementById('ned-store-box');
+    const nw=canonicalStore(ND.area,document.getElementById('ned-store-new').value);
+    ND.store=(box.classList.contains('open')&&nw)?nw:document.getElementById('ned-store-sel').value;
+    if(box.classList.contains('open')&&nw){
+      if(!BELI_STORES_BY_AREA[ND.area].some(s=>_sameName(s,nw))){ saveCustomStore(ND.area,nw); const o=document.createElement('option'); o.value=nw; o.textContent=nw; document.getElementById('ned-store-sel').appendChild(o); }
+    }
+    renderNedItems();
+  }
+  nedStep=step+1;
+  nedUpdateStepper();
+  document.querySelectorAll('#s-ned .step-section').forEach((s,i)=>s.classList.toggle('active',i===nedStep));
+  document.getElementById('ned-wrap').scrollTop=0;
+}
+function nedPrev(step){
+  nedStep=step-1;
+  nedUpdateStepper();
+  document.querySelectorAll('#s-ned .step-section').forEach((s,i)=>s.classList.toggle('active',i===nedStep));
+  document.getElementById('ned-wrap').scrollTop=0;
+}
+function renderNedItems(){
+  const list=document.getElementById('ned-item-list');
+  list.innerHTML='';
+  let fi=0;
+  STOCK_PRODUCTS.forEach(group=>{
+    const hdr=document.createElement('div');
+    hdr.className='qty-group-hdr'; hdr.textContent=group.group;
+    list.appendChild(hdr);
+    group.items.forEach(name=>{
+      const row=document.createElement('div');
+      row.className='qty-row';
+      row.innerHTML=
+        '<div class="qty-name" style="flex:1;min-width:0">'+
+          '<div style="font-size:10px;font-weight:600;line-height:1.3">'+name+'</div>'+
+        '</div>'+
+        '<div style="min-width:104px">'+
+          '<input type="month" class="f-input" id="ned-exp-'+fi+'" style="padding:6px 6px;font-size:11px;width:104px" oninput="nedCountFilled()">'+
+        '</div>'+
+        '<div style="min-width:60px">'+
+          '<input type="number" class="qty-val" id="ned-qty-'+fi+'" value="0" min="0" style="width:52px;font-size:11px;padding:6px 4px" oninput="nedCountFilled()" onfocus="if(this.value==&quot;0&quot;)this.value=&quot;&quot;" onblur="if(this.value===&quot;&quot;)this.value=&quot;0&quot;">'+
+        '</div>';
+      list.appendChild(row);
+      fi++;
+    });
+  });
+  nedCountFilled();
+}
+function nedCountFilled(){
+  let cnt=0,fi=0;
+  STOCK_PRODUCTS.forEach(group=>group.items.forEach(()=>{
+    const exp=document.getElementById('ned-exp-'+fi)?.value;
+    if(exp)cnt++;
+    fi++;
+  }));
+  document.getElementById('ned-count').textContent=cnt+' item';
+  return cnt;
+}
+function nedExpLabel(exp){
+  if(!exp)return'—';
+  const[y,m]=exp.split('-');
+  const bln=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  return (bln[+m-1]||m)+' '+y;
+}
+function nedGoReview(){
+  ND.items={};
+  let fi=0;
+  STOCK_PRODUCTS.forEach(group=>group.items.forEach(name=>{
+    const exp=document.getElementById('ned-exp-'+fi)?.value;
+    const qty=parseInt(document.getElementById('ned-qty-'+fi)?.value)||0;
+    if(exp) ND.items[name]={exp,qty};
+    fi++;
+  }));
+  if(!Object.keys(ND.items).length){alert('Belum ada item yang diisi bulan expired-nya.');return;}
+  document.getElementById('ned-rev-area').textContent=ND.area;
+  document.getElementById('ned-rev-status').textContent=ND.status;
+  document.getElementById('ned-rev-nama').textContent=ND.nama;
+  document.getElementById('ned-rev-store').textContent=ND.store;
+  const tbody=document.getElementById('ned-review-body');
+  tbody.innerHTML='';
+  Object.entries(ND.items).forEach(([name,{exp,qty}])=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td style="font-size:10px;padding:5px 8px;border-bottom:1px solid var(--border)">'+name+'</td>'+
+      '<td style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--border);font-weight:700;color:#EF4444">'+nedExpLabel(exp)+'</td>'+
+      '<td style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--border);font-weight:700">'+qty+'</td>';
+    tbody.appendChild(tr);
+  });
+  nedStep=3;
+  nedUpdateStepper();
+  document.querySelectorAll('#s-ned .step-section').forEach((s,i)=>s.classList.toggle('active',i===nedStep));
+  document.getElementById('ned-wrap').scrollTop=0;
+}
+function submitNed(){
+  const id='NED-'+String(Math.floor(Math.random()*9000)+1000);
+  const cnt=Object.keys(ND.items).length;
+  document.getElementById('ned-success-store').textContent=ND.store+' · '+ND.area;
+  document.getElementById('ned-success-count').textContent=cnt+' item NED tercatat';
+  if(typeof db!=='undefined'){
+    db.collection('ned_logs').add({
+      id, area:ND.area, status:ND.status, nama:ND.nama, store:ND.store,
+      timestamp:firebase.firestore.FieldValue.serverTimestamp(),
+      items:ND.items,
+      itemCount:cnt
+    }).then(()=>console.log('ned_logs write OK',id))
+    .catch(e=>{console.error('ned_logs FAILED',e);alert('Firestore error: '+e.code+' — '+e.message);});
+  } else { alert('DB not initialized'); }
+  nedStep=4;
+  nedUpdateStepper();
+  document.querySelectorAll('#s-ned .step-section').forEach((s,i)=>s.classList.toggle('active',i===nedStep));
+  document.getElementById('ned-wrap').scrollTop=0;
+}
+function resetNed(){ initNed(); document.getElementById('ned-wrap').scrollTop=0; }
+function nedUpdateStepper(){
+  ['ns0','ns1','ns2','ns3'].forEach((id,i)=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.className='s-item'+(i<nedStep?' done':i===nedStep?' active':'');
+    el.querySelector('.s-dot').textContent=i<nedStep?'✓':(i+1);
+  });
+}
+
+/* ─────────── REPORT HARIAN SPG ─────────── */
+const SG = { area:'', nama:'', store:'', items:{}, total:0 };
+let spgStep = 0;
+
+function openSpg(){ showScreen('s-spg'); initSpg(); }
+function initSpg(){
+  spgStep=0;
+  SG.area=''; SG.nama=''; SG.store=''; SG.items={}; SG.total=0;
+  const as=document.getElementById('spg-area-sel');
+  as.innerHTML='<option value="">— Pilih Area —</option>';
+  AREAS.forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; as.appendChild(o); });
+  document.getElementById('spg-nama-input').value='';
+  document.getElementById('spg-store-sel').innerHTML='<option value="">— Pilih Toko —</option>';
+  document.getElementById('spg-store-new').value='';
+  document.getElementById('spg-next-0').disabled=true;
+  document.getElementById('spg-next-1').disabled=true;
+  spgUpdateStepper();
+  document.querySelectorAll('#s-spg .step-section').forEach((s,i)=>s.classList.toggle('active',i===0));
+}
+function spgCheck(step){
+  let ok=false;
+  if(step===0){
+    const area=document.getElementById('spg-area-sel').value;
+    const nama=document.getElementById('spg-nama-input').value.trim();
+    ok=!!(area&&nama);
+    document.getElementById('spg-next-0').disabled=!ok;
+  } else if(step===1){
+    const store=document.getElementById('spg-store-sel').value||document.getElementById('spg-store-new').value.trim();
+    ok=!!store;
+    document.getElementById('spg-next-1').disabled=!ok;
+  }
+  return ok;
+}
+function spgNext(step){
+  if(step===0){
+    if(!spgCheck(0)) return;
+    SG.area=document.getElementById('spg-area-sel').value;
+    SG.nama=canonicalMds(SG.area,document.getElementById('spg-nama-input').value);
+    const ss=document.getElementById('spg-store-sel');
+    ss.innerHTML='<option value="">— Pilih Toko —</option>';
+    (BELI_STORES_BY_AREA[SG.area]||[]).forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; ss.appendChild(o); });
+  } else if(step===1){
+    if(!spgCheck(1)) return;
+    const box=document.getElementById('spg-store-box');
+    const nw=canonicalStore(SG.area,document.getElementById('spg-store-new').value);
+    SG.store=(box.classList.contains('open')&&nw)?nw:document.getElementById('spg-store-sel').value;
+    if(box.classList.contains('open')&&nw){
+      if(!BELI_STORES_BY_AREA[SG.area].some(s=>_sameName(s,nw))){ saveCustomStore(SG.area,nw); const o=document.createElement('option'); o.value=nw; o.textContent=nw; document.getElementById('spg-store-sel').appendChild(o); }
+    }
+    renderSpgItems();
+  }
+  spgStep=step+1;
+  spgUpdateStepper();
+  document.querySelectorAll('#s-spg .step-section').forEach((s,i)=>s.classList.toggle('active',i===spgStep));
+  document.getElementById('spg-wrap').scrollTop=0;
+}
+function spgPrev(step){
+  spgStep=step-1;
+  spgUpdateStepper();
+  document.querySelectorAll('#s-spg .step-section').forEach((s,i)=>s.classList.toggle('active',i===spgStep));
+  document.getElementById('spg-wrap').scrollTop=0;
+}
+function renderSpgItems(){
+  const list=document.getElementById('spg-item-list');
+  list.innerHTML='';
+  let fi=0;
+  STOCK_PRODUCTS.forEach(group=>{
+    const hdr=document.createElement('div');
+    hdr.className='qty-group-hdr'; hdr.textContent=group.group;
+    list.appendChild(hdr);
+    group.items.forEach(name=>{
+      const row=document.createElement('div');
+      row.className='qty-row';
+      row.innerHTML=
+        '<div class="qty-name" style="flex:1;min-width:0">'+
+          '<div style="font-size:10px;font-weight:600;line-height:1.3">'+name+'</div>'+
+        '</div>'+
+        '<div style="min-width:72px">'+
+          '<div class="qty-ctrl" style="width:100%">'+
+            '<button class="qty-btn" onclick="adjSG('+fi+',-1)" style="width:20px;font-size:12px">−</button>'+
+            '<input type="number" class="qty-val" id="sg-qty-'+fi+'" value="0" min="0" style="width:28px;font-size:11px" oninput="spgCalcTotal()" onfocus="if(this.value==&quot;0&quot;)this.value=&quot;&quot;" onblur="if(this.value===&quot;&quot;)this.value=&quot;0&quot;">'+
+            '<button class="qty-btn" onclick="adjSG('+fi+',1)" style="width:20px;font-size:12px">+</button>'+
+          '</div>'+
+        '</div>'+
+        '<div id="sg-omz-'+fi+'" style="min-width:80px;text-align:right;font-size:10px;font-weight:700;color:var(--ok)">—</div>';
+      list.appendChild(row);
+      fi++;
+    });
+  });
+  spgCalcTotal();
+}
+function adjSG(i,d){
+  const el=document.getElementById('sg-qty-'+i); if(!el) return;
+  el.value=Math.max(0,(parseInt(el.value)||0)+d);
+  spgCalcTotal();
+}
+function spgCalcTotal(){
+  let total=0,fi=0;
+  STOCK_PRODUCTS.forEach(group=>group.items.forEach(name=>{
+    const ip=ITEM_PRICE[name]||{};
+    const qty=parseInt(document.getElementById('sg-qty-'+fi)?.value)||0;
+    const omz=qty*(ip.pcs||0);
+    total+=omz;
+    const oEl=document.getElementById('sg-omz-'+fi);
+    if(oEl)oEl.textContent=omz?'Rp '+omz.toLocaleString('id-ID'):'—';
+    fi++;
+  }));
+  document.getElementById('spg-total-rp').textContent='Rp '+total.toLocaleString('id-ID');
+  return total;
+}
+function spgGoReview(){
+  SG.items={};
+  SG.total=0;
+  let fi=0;
+  STOCK_PRODUCTS.forEach(group=>group.items.forEach(name=>{
+    const ip=ITEM_PRICE[name]||{};
+    const qty=parseInt(document.getElementById('sg-qty-'+fi)?.value)||0;
+    if(qty){ const omzet=qty*(ip.pcs||0); SG.items[name]={qty,omzet}; SG.total+=omzet; }
+    fi++;
+  }));
+  if(!Object.keys(SG.items).length){alert('Belum ada item jualan yang diisi.');return;}
+  document.getElementById('spg-rev-area').textContent=SG.area;
+  document.getElementById('spg-rev-nama').textContent=SG.nama;
+  document.getElementById('spg-rev-store').textContent=SG.store;
+  const tbody=document.getElementById('spg-review-body');
+  tbody.innerHTML='';
+  Object.entries(SG.items).forEach(([name,{qty,omzet}])=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td style="font-size:10px;padding:5px 8px;border-bottom:1px solid var(--border)">'+name+'</td>'+
+      '<td style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--border);font-weight:700">'+qty+'</td>'+
+      '<td style="text-align:right;padding:5px 8px;border-bottom:1px solid var(--border);font-size:10px">Rp '+omzet.toLocaleString('id-ID')+'</td>';
+    tbody.appendChild(tr);
+  });
+  document.getElementById('spg-rev-total').textContent='Rp '+SG.total.toLocaleString('id-ID');
+  spgStep=3;
+  spgUpdateStepper();
+  document.querySelectorAll('#s-spg .step-section').forEach((s,i)=>s.classList.toggle('active',i===spgStep));
+  document.getElementById('spg-wrap').scrollTop=0;
+}
+function submitSpg(){
+  const id='SPG-'+String(Math.floor(Math.random()*9000)+1000);
+  document.getElementById('spg-success-store').textContent=SG.nama+' · '+SG.store+' · '+SG.area;
+  document.getElementById('spg-success-total').textContent='Total Omzet: Rp '+SG.total.toLocaleString('id-ID');
+  if(typeof db!=='undefined'){
+    db.collection('spg_daily_logs').add({
+      id, area:SG.area, nama:SG.nama, store:SG.store,
+      timestamp:firebase.firestore.FieldValue.serverTimestamp(),
+      items:SG.items,
+      totalOmzet:SG.total
+    }).then(()=>console.log('spg_daily_logs write OK',id))
+    .catch(e=>{console.error('spg_daily_logs FAILED',e);alert('Firestore error: '+e.code+' — '+e.message);});
+  } else { alert('DB not initialized'); }
+  spgStep=4;
+  spgUpdateStepper();
+  document.querySelectorAll('#s-spg .step-section').forEach((s,i)=>s.classList.toggle('active',i===spgStep));
+  document.getElementById('spg-wrap').scrollTop=0;
+}
+function shareSpgWhatsApp(){
+  const tgl=new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  let text='*REPORT HARIAN SPG*\n';
+  text+='📅 '+tgl+'\n';
+  text+='👤 '+SG.nama+'\n';
+  text+='🏪 '+SG.store+' ('+SG.area+')\n';
+  text+='─────────────────\n';
+  Object.entries(SG.items).forEach(([name,{qty,omzet}])=>{
+    text+='• '+name+'\n   '+qty+' rnc = Rp '+omzet.toLocaleString('id-ID')+'\n';
+  });
+  text+='─────────────────\n';
+  text+='*TOTAL OMZET: Rp '+SG.total.toLocaleString('id-ID')+'*';
+  window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');
+}
+function resetSpg(){ initSpg(); document.getElementById('spg-wrap').scrollTop=0; }
+function spgUpdateStepper(){
+  ['gs0','gs1','gs2','gs3'].forEach((id,i)=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.className='s-item'+(i<spgStep?' done':i===spgStep?' active':'');
+    el.querySelector('.s-dot').textContent=i<spgStep?'✓':(i+1);
+  });
+}
