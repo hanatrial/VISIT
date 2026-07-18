@@ -668,6 +668,20 @@ function loadAll(){
     console.log('[stock_logs] loaded',STOCK_ALL.length,'docs');
     render();
   }).catch(e=>console.error('stock_logs FAILED',e.code,e.message));
+  db.collection('ned_logs').limit(2000).get(SRV)
+    .catch(()=>db.collection('ned_logs').get())
+    .then(s=>{
+    NED_ALL=[];s.forEach(d=>{const v=d.data();NED_ALL.push({...v,timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
+    NED_ALL.sort((a,b)=>b.timestamp-a.timestamp);
+    render();
+  }).catch(e=>console.error('ned_logs FAILED',e.code,e.message));
+  db.collection('spg_daily_logs').limit(2000).get(SRV)
+    .catch(()=>db.collection('spg_daily_logs').get())
+    .then(s=>{
+    SPG_ALL=[];s.forEach(d=>{const v=d.data();SPG_ALL.push({...v,timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
+    SPG_ALL.sort((a,b)=>b.timestamp-a.timestamp);
+    render();
+  }).catch(e=>console.error('spg_daily_logs FAILED',e.code,e.message));
 }
 function loadKedaiDb(){
   if(!dbSulawesi)return;
@@ -749,6 +763,18 @@ function initDash(){
     console.log('[stock_logs] SNAP loaded',STOCK_ALL.length,'docs');
     render();
   },e=>console.error('stock snap err',e));
+  db.collection('ned_logs').limit(2000).onSnapshot({includeMetadataChanges:true},s=>{
+    if(s.metadata.fromCache)return;
+    NED_ALL=[];s.forEach(d=>{const v=d.data();NED_ALL.push({...v,timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
+    NED_ALL.sort((a,b)=>b.timestamp-a.timestamp);
+    render();
+  },e=>console.error('ned snap err',e));
+  db.collection('spg_daily_logs').limit(2000).onSnapshot({includeMetadataChanges:true},s=>{
+    if(s.metadata.fromCache)return;
+    SPG_ALL=[];s.forEach(d=>{const v=d.data();SPG_ALL.push({...v,timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
+    SPG_ALL.sort((a,b)=>b.timestamp-a.timestamp);
+    render();
+  },e=>console.error('spg snap err',e));
 }
 function buildMonthOpts(){
   const ms=new Set([...RKA_ALL,...BELI_ALL].map(r=>{const d=r.timestamp;return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;}));
@@ -940,10 +966,11 @@ function buildSpotlight(rkaF,beliF){
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 let STOCK_ALL=[], SUBTAB_STOCK='log';
-let SUBTAB_RKA='log', SUBTAB_BELI='log', SUBTAB_FORMULA='summary', SUBTAB_PJMDS='mds';
+let SUBTAB_RKA='log', SUBTAB_BELI='log', SUBTAB_FORMULA='summary', SUBTAB_PJMDS='mds', SUBTAB_NED='log';
+let NED_ALL=[], SPG_ALL=[];
 function switchTab(t){
   TAB=t;
-  ['rka','beli','stock','pjmds','formula'].forEach(x=>{
+  ['rka','beli','stock','pjmds','formula','ned','spg'].forEach(x=>{
     const el=document.getElementById('ntab-'+x);
     if(el){el.classList.toggle('on',x===t);el.classList.toggle(x,true);}
   });
@@ -952,6 +979,8 @@ function switchTab(t){
   const ss=document.getElementById('sec-stock');if(ss)ss.style.display=t==='stock'?'block':'none';
   const sp=document.getElementById('sec-pjmds');if(sp)sp.style.display=t==='pjmds'?'block':'none';
   const sf=document.getElementById('sec-formula');if(sf)sf.style.display=t==='formula'?'block':'none';
+  const sn=document.getElementById('sec-ned');if(sn)sn.style.display=t==='ned'?'block':'none';
+  const sg=document.getElementById('sec-spg');if(sg)sg.style.display=t==='spg'?'block':'none';
   render();
 }
 function switchSubTab(main,sub){
@@ -972,6 +1001,9 @@ function switchSubTab(main,sub){
     ['mds','scorecard'].forEach(s=>{const el=document.getElementById('stab-pjmds-'+s);if(el)el.classList.toggle('on',s===sub);});
     const mw=document.getElementById('pjmds-mds-wrap');if(mw)mw.style.display=sub==='mds'?'block':'none';
     const sw2=document.getElementById('pjmds-scorecard-wrap');if(sw2)sw2.style.display=sub==='scorecard'?'block':'none';
+  }else if(main==='ned'){
+    SUBTAB_NED=sub;
+    ['log','urgent'].forEach(s=>{const el=document.getElementById('stab-ned-'+s);if(el)el.classList.toggle('on',s===sub);});
   }else{
     SUBTAB_BELI=sub;
     ['log','analisis'].forEach(s=>{const el=document.getElementById('stab-beli-'+s);if(el)el.classList.toggle('on',s===sub);});
@@ -1008,6 +1040,10 @@ function render(){
   const nbBeli=document.getElementById('nb-beli');if(nbBeli)nbBeli.textContent=beliF.length||'—';
   const stockF=filteredStock();
   const nbStk=document.getElementById('nb-stock');if(nbStk)nbStk.textContent=stockF.length||'—';
+  const nedF=filteredNed();
+  const nbNed=document.getElementById('nb-ned');if(nbNed)nbNed.textContent=nedF.length||'—';
+  const spgF=filteredSpg();
+  const nbSpg=document.getElementById('nb-spg');if(nbSpg)nbSpg.textContent=spgF.length||'—';
   if(TAB==='rka'){
     if(SUBTAB_RKA==='log')renderRKA(rkaF);
     else renderStore(rkaF);
@@ -1024,6 +1060,11 @@ function render(){
     if(SUBTAB_FORMULA==='summary')renderFormula(stockF);
     else if(SUBTAB_FORMULA==='calc'){populateFcSelects();renderInTransitImports();renderFcTable();fcPreview();}
     else{populateFdStoreSelect(stockF);renderFormulaDetail(stockF);}
+  }else if(TAB==='ned'){
+    if(SUBTAB_NED==='log')renderNedLog(nedF);
+    else renderNedUrgent(nedF);
+  }else if(TAB==='spg'){
+    renderSpgLog(spgF);
   }
 }
 
@@ -1162,6 +1203,204 @@ function filteredStock(){
     if(store&&!((r.store||'').toLowerCase().includes(store)))return false;
     return true;
   });
+}
+function filteredNed(){
+  const area=(document.getElementById('f-area')?.value||'').toLowerCase();
+  const mds=(document.getElementById('f-mds')?.value||'').toLowerCase();
+  const store=(document.getElementById('f-store')?.value||'').toLowerCase();
+  const cut=getCutoff();
+  return NED_ALL.filter(r=>{
+    if(r.timestamp<cut)return false;
+    if(MF){const d=r.timestamp;const m=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');if(m!==MF)return false;}
+    if(area&&!((r.area||'').toLowerCase().includes(area)))return false;
+    if(mds&&!((r.nama||'').toLowerCase().includes(mds)))return false;
+    if(store&&!((r.store||'').toLowerCase().includes(store)))return false;
+    return true;
+  });
+}
+function filteredSpg(){
+  const area=(document.getElementById('f-area')?.value||'').toLowerCase();
+  const mds=(document.getElementById('f-mds')?.value||'').toLowerCase();
+  const store=(document.getElementById('f-store')?.value||'').toLowerCase();
+  const cut=getCutoff();
+  return SPG_ALL.filter(r=>{
+    if(r.timestamp<cut)return false;
+    if(MF){const d=r.timestamp;const m=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');if(m!==MF)return false;}
+    if(area&&!((r.area||'').toLowerCase().includes(area)))return false;
+    if(mds&&!((r.nama||'').toLowerCase().includes(mds)))return false;
+    if(store&&!((r.store||'').toLowerCase().includes(store)))return false;
+    return true;
+  });
+}
+function nedExpDaysLeft(exp){
+  if(!exp)return null;
+  const[y,m]=exp.split('-').map(Number);
+  const expDate=new Date(y,m,0); // last day of that month
+  return Math.ceil((expDate-new Date())/864e5);
+}
+function nedExpLabelDash(exp){
+  if(!exp)return'—';
+  const[y,m]=exp.split('-');
+  const bln=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  return (bln[+m-1]||m)+' '+y;
+}
+let _NED_ROWS=[];
+function renderNedLog(nedF){
+  _NED_ROWS=[...nedF].sort((a,b)=>b.timestamp-a.timestamp);
+  let totalItems=0,urgent=0,soon=0;
+  nedF.forEach(r=>{
+    const items=r.items||{};
+    Object.values(items).forEach(it=>{
+      totalItems++;
+      const d=nedExpDaysLeft(it.exp);
+      if(d!==null){if(d<=30)urgent++;else if(d<=90)soon++;}
+    });
+  });
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v||'—';};
+  set('ds-ned-total',nedF.length);
+  set('ds-ned-items',totalItems);
+  set('ds-ned-urgent',urgent);
+  set('ds-ned-soon',soon);
+  const th=document.getElementById('table-head-ned');
+  const tb=document.getElementById('table-body-ned');
+  const tf=document.getElementById('tfoot-ned');
+  if(!th)return;
+  th.innerHTML='<tr><th>Waktu</th><th>Nama</th><th>Status</th><th>Area</th><th>Toko</th><th>Item NED</th></tr>';
+  tb.innerHTML=_NED_ROWS.length?_NED_ROWS.map((r,i)=>{
+    const ts=r.timestamp;
+    const cnt=r.items?Object.keys(r.items).length:0;
+    return`<tr class="${cnt?'clickrow':''}" ${cnt?`onclick="toggleNedDetail(this,${i})"`:''} style="cursor:${cnt?'pointer':'default'}">
+      <td class="td-dim">${ts.toLocaleDateString('id-ID',{day:'numeric',month:'short'})} ${ts.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}</td>
+      <td class="td-main">${r.nama||'—'} ${cnt?'<span style="font-size:9px;color:var(--t3)">▾</span>':''}</td>
+      <td class="td-dim">${r.status||'—'}</td>
+      <td class="td-dim">${r.area||'—'}</td>
+      <td class="td-mid">${r.store||'—'}</td>
+      <td><span class="tag r sm">${cnt} item</span></td>
+    </tr>`;
+  }).join(''):'<tr><td colspan="6"><div class="empty-state">Belum ada data NED untuk periode/filter ini.</div></td></tr>';
+  if(tf)tf.textContent=`${_NED_ROWS.length} entri kunjungan`;
+}
+function toggleNedDetail(tr,idx){
+  const next=tr.nextElementSibling;
+  if(next&&next.classList.contains('item-detail-row')){
+    next.style.display=next.style.display==='none'?'':'none';
+    const sp=tr.querySelector('span[style*="▾"]')||tr.querySelector('span[style*="▴"]');
+    if(sp)sp.textContent=next.style.display===''?'▴':'▾';
+    return;
+  }
+  const r=_NED_ROWS[idx]||{};
+  const items=Object.entries(r.items||{}).sort(([,a],[,b])=>nedExpDaysLeft(a.exp)-nedExpDaysLeft(b.exp));
+  let html=`<td colspan="99" style="padding:8px 16px 14px;background:${ov(1)};border-top:none">`;
+  html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:5px">';
+  items.forEach(([nm,{exp,qty}])=>{
+    const d=nedExpDaysLeft(exp);
+    const col=d!==null&&d<=30?'var(--red)':d!==null&&d<=90?'var(--amber)':'var(--t2)';
+    html+=`<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;padding:5px 8px;border-radius:5px;background:${ov(3)}">
+      <span style="color:var(--t2)">${nm}</span>
+      <span style="text-align:right;white-space:nowrap;margin-left:8px"><span style="color:${col};font-weight:700">${nedExpLabelDash(exp)}</span><br><span style="color:var(--t3)">${qty} rnc</span></span>
+    </div>`;
+  });
+  html+='</div></td>';
+  const det=document.createElement('tr');
+  det.className='item-detail-row';
+  det.innerHTML=html;
+  tr.parentNode.insertBefore(det,tr.nextSibling);
+  const sp=tr.querySelector('span[style*="▾"]');
+  if(sp)sp.textContent='▴';
+}
+function renderNedUrgent(nedF){
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v||'—';};
+  const flat=[];
+  nedF.forEach(r=>{
+    Object.entries(r.items||{}).forEach(([nm,{exp,qty}])=>{
+      const d=nedExpDaysLeft(exp);
+      flat.push({item:nm,exp,qty,daysLeft:d,store:r.store,area:r.area,nama:r.nama,ts:r.timestamp});
+    });
+  });
+  flat.sort((a,b)=>(a.daysLeft??9e9)-(b.daysLeft??9e9));
+  const totalItems=flat.length;
+  const urgent=flat.filter(x=>x.daysLeft!==null&&x.daysLeft<=30).length;
+  const soon=flat.filter(x=>x.daysLeft!==null&&x.daysLeft>30&&x.daysLeft<=90).length;
+  set('ds-ned-total',nedF.length);
+  set('ds-ned-items',totalItems);
+  set('ds-ned-urgent',urgent);
+  set('ds-ned-soon',soon);
+  const th=document.getElementById('table-head-ned');
+  const tb=document.getElementById('table-body-ned');
+  const tf=document.getElementById('tfoot-ned');
+  if(!th)return;
+  th.innerHTML='<tr><th>Item</th><th>Toko</th><th>Area</th><th>Nama</th><th>Expired</th><th>Sisa Hari</th><th>Qty</th></tr>';
+  tb.innerHTML=flat.length?flat.map(x=>{
+    const col=x.daysLeft!==null&&x.daysLeft<=30?'var(--red)':x.daysLeft!==null&&x.daysLeft<=90?'var(--amber)':'var(--t2)';
+    const badge=x.daysLeft!==null&&x.daysLeft<0?'Sudah lewat':x.daysLeft!==null?x.daysLeft+' hari':'—';
+    return`<tr>
+      <td class="td-main">${x.item}</td>
+      <td class="td-mid">${x.store||'—'}</td>
+      <td class="td-dim">${x.area||'—'}</td>
+      <td class="td-dim">${x.nama||'—'}</td>
+      <td style="color:${col};font-weight:700">${nedExpLabelDash(x.exp)}</td>
+      <td style="color:${col};font-weight:700">${badge}</td>
+      <td><span class="tag t sm">${x.qty} rnc</span></td>
+    </tr>`;
+  }).join(''):'<tr><td colspan="7"><div class="empty-state">Belum ada item NED untuk periode/filter ini.</div></td></tr>';
+  if(tf)tf.textContent=`${flat.length} item · diurutkan dari yang paling dekat expired`;
+}
+let _SPG_ROWS=[];
+function renderSpgLog(spgF){
+  _SPG_ROWS=[...spgF].sort((a,b)=>b.timestamp-a.timestamp);
+  const totalOmzet=spgF.reduce((s,r)=>s+(r.totalOmzet||0),0);
+  const avgOmzet=spgF.length?Math.round(totalOmzet/spgF.length):0;
+  const storesActive=new Set(spgF.map(r=>r.store||'?')).size;
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v?rp(v):'—';};
+  const setN=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v||'—';};
+  setN('ds-spg-total',spgF.length);
+  set('ds-spg-omzet',totalOmzet);
+  set('ds-spg-avg',avgOmzet);
+  setN('ds-spg-stores',storesActive);
+  const th=document.getElementById('table-head-spg');
+  const tb=document.getElementById('table-body-spg');
+  const tf=document.getElementById('tfoot-spg');
+  if(!th)return;
+  th.innerHTML='<tr><th>Waktu</th><th>SPG</th><th>Area</th><th>Toko</th><th>Item</th><th>Total Omzet</th></tr>';
+  tb.innerHTML=_SPG_ROWS.length?_SPG_ROWS.map((r,i)=>{
+    const ts=r.timestamp;
+    const cnt=r.items?Object.keys(r.items).length:0;
+    return`<tr class="${cnt?'clickrow':''}" ${cnt?`onclick="toggleSpgDetail(this,${i})"`:''} style="cursor:${cnt?'pointer':'default'}">
+      <td class="td-dim">${ts.toLocaleDateString('id-ID',{day:'numeric',month:'short'})} ${ts.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}</td>
+      <td class="td-main">${r.nama||'—'} ${cnt?'<span style="font-size:9px;color:var(--t3)">▾</span>':''}</td>
+      <td class="td-dim">${r.area||'—'}</td>
+      <td class="td-mid">${r.store||'—'}</td>
+      <td><span class="tag au sm">${cnt} item</span></td>
+      <td style="font-weight:700;color:var(--green)">${r.totalOmzet?rp(r.totalOmzet):'—'}</td>
+    </tr>`;
+  }).join(''):'<tr><td colspan="6"><div class="empty-state">Belum ada laporan harian SPG untuk periode/filter ini.</div></td></tr>';
+  if(tf)tf.textContent=`${_SPG_ROWS.length} laporan · Total Omzet ${rp(totalOmzet)}`;
+}
+function toggleSpgDetail(tr,idx){
+  const next=tr.nextElementSibling;
+  if(next&&next.classList.contains('item-detail-row')){
+    next.style.display=next.style.display==='none'?'':'none';
+    const sp=tr.querySelector('span[style*="▾"]')||tr.querySelector('span[style*="▴"]');
+    if(sp)sp.textContent=next.style.display===''?'▴':'▾';
+    return;
+  }
+  const r=_SPG_ROWS[idx]||{};
+  const items=Object.entries(r.items||{}).sort(([,a],[,b])=>b.omzet-a.omzet);
+  let html=`<td colspan="99" style="padding:8px 16px 14px;background:${ov(1)};border-top:none">`;
+  html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:5px">';
+  items.forEach(([nm,{qty,omzet}])=>{
+    html+=`<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;padding:5px 8px;border-radius:5px;background:${ov(3)}">
+      <span style="color:var(--t2)">${nm}</span>
+      <span style="text-align:right;white-space:nowrap;margin-left:8px"><span style="color:var(--green);font-weight:700">${rp(omzet)}</span><br><span style="color:var(--t3)">${qty} rnc</span></span>
+    </div>`;
+  });
+  html+='</div></td>';
+  const det=document.createElement('tr');
+  det.className='item-detail-row';
+  det.innerHTML=html;
+  tr.parentNode.insertBefore(det,tr.nextSibling);
+  const sp=tr.querySelector('span[style*="▾"]');
+  if(sp)sp.textContent='▴';
 }
 function renderStockLog(stockF){
   const awal=stockF.filter(r=>r.stockType==='awal').length;

@@ -72,8 +72,14 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .nav-tab.on.pjmds .nav-badge{background:var(--pink-g);color:var(--pink);}
 .nav-tab.on.formula{color:var(--cyan);border-bottom-color:var(--cyan);}
 .nav-tab.on.formula .nav-badge{background:var(--cyan-g);color:var(--cyan);}
+.nav-tab.on.ned{color:var(--red);border-bottom-color:var(--red);}
+.nav-tab.on.ned .nav-badge{background:var(--red-g);color:var(--red);}
+.nav-tab.on.spg{color:var(--gold);border-bottom-color:var(--gold);}
+.nav-tab.on.spg .nav-badge{background:rgba(245,158,11,.15);color:var(--gold);}
 .sub-tab.on.stock{color:var(--amber);border-bottom-color:var(--amber);}
 .sub-tab.on.formula{background:rgba(6,182,212,.1);border-color:rgba(6,182,212,.25);color:var(--cyan);}
+.sub-tab.on.ned{background:rgba(248,113,113,.1);border-color:rgba(248,113,113,.25);color:var(--red);}
+.sub-tab.on.spg{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.25);color:var(--gold);}
 .bento-4{grid-template-columns:repeat(4,1fr);}
 .nav-badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:10px;font-size:9px;font-weight:800;padding:0 6px;transition:all .3s var(--ease);}
 .nav-tab.on.rka .nav-badge{background:var(--green-g);color:var(--green);}

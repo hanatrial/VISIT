@@ -14,7 +14,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link rel="stylesheet" href="dashboard.css?v=2">
+<link rel="stylesheet" href="dashboard.css?v=3">
 </head>
 <body>
 <div id="pin-screen">
@@ -46,6 +46,8 @@
     <div class="nav-tab pjmds" id="ntab-pjmds" onclick="switchTab('pjmds')">💰 Penjualan MDS <span class="nav-badge" id="nb-pjmds">—</span></div>
     <div class="nav-tab stock" id="ntab-stock" onclick="switchTab('stock')">📦 Stock Sell Out <span class="nav-badge" id="nb-stock">—</span></div>
     <div class="nav-tab formula" id="ntab-formula" onclick="switchTab('formula')">🧮 Sell Out Formula <span class="nav-badge" id="nb-formula">—</span></div>
+    <div class="nav-tab ned" id="ntab-ned" onclick="switchTab('ned')">⏰ NED Toko <span class="nav-badge" id="nb-ned">—</span></div>
+    <div class="nav-tab spg" id="ntab-spg" onclick="switchTab('spg')">💵 Report Harian SPG <span class="nav-badge" id="nb-spg">—</span></div>
   </div>
   <div class="main">
     <div class="filter-shell"><div class="filter-inner">
@@ -425,6 +427,38 @@
         </div></div>
       </div>
     </div>
+
+    <!-- NED TOKO SECTION -->
+    <div id="sec-ned" style="display:none">
+      <div class="bento bento-4">
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(248,113,113,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 0% 0%,var(--red),transparent 70%)"></div><div class="kpi-label">Total Entri NED</div><div class="kpi-val" style="color:var(--red)" id="ds-ned-total">—</div><div class="kpi-sub">kunjungan cek NED</div></div></div>
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(245,158,11,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 50% 0%,var(--amber),transparent 70%)"></div><div class="kpi-label">Total Item NED</div><div class="kpi-val" style="color:var(--amber)" id="ds-ned-items">—</div><div class="kpi-sub">baris item tercatat</div></div></div>
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(248,113,113,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--red),transparent 70%)"></div><div class="kpi-label">Expired ≤ 30 Hari</div><div class="kpi-val" style="color:var(--red)" id="ds-ned-urgent">—</div><div class="kpi-sub">segera ditarik/diskon</div></div></div>
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(245,158,11,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--amber),transparent 70%)"></div><div class="kpi-label">Expired 31–90 Hari</div><div class="kpi-val" style="color:var(--amber)" id="ds-ned-soon">—</div><div class="kpi-sub">perlu dipantau</div></div></div>
+      </div>
+      <div class="sub-nav">
+        <div class="sub-tab on ned" id="stab-ned-log" onclick="switchSubTab('ned','log')">📋 Riwayat NED</div>
+        <div class="sub-tab ned" id="stab-ned-urgent" onclick="switchSubTab('ned','urgent')">⚠️ Daftar Mendekati Expired</div>
+      </div>
+      <div class="panel-shell"><div class="panel-body">
+        <table><thead id="table-head-ned"></thead><tbody id="table-body-ned"></tbody></table>
+        <div class="tfoot-row" id="tfoot-ned"></div>
+      </div></div>
+    </div>
+
+    <!-- REPORT HARIAN SPG SECTION -->
+    <div id="sec-spg" style="display:none">
+      <div class="bento bento-4">
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(245,158,11,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 0% 0%,var(--gold),transparent 70%)"></div><div class="kpi-label">Total Entri Harian</div><div class="kpi-val" style="color:var(--gold)" id="ds-spg-total">—</div><div class="kpi-sub">laporan SPG</div></div></div>
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(16,185,129,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 50% 0%,var(--green),transparent 70%)"></div><div class="kpi-label">Total Omzet</div><div class="kpi-val sm" style="color:var(--green)" id="ds-spg-omzet">—</div><div class="kpi-sub">akumulasi periode terfilter</div></div></div>
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(6,182,212,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--cyan),transparent 70%)"></div><div class="kpi-label">Avg Omzet / Entri</div><div class="kpi-val sm" style="color:var(--cyan)" id="ds-spg-avg">—</div><div class="kpi-sub">rata-rata per laporan</div></div></div>
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(139,92,246,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--violet),transparent 70%)"></div><div class="kpi-label">Toko Aktif</div><div class="kpi-val" style="color:var(--violet)" id="ds-spg-stores">—</div><div class="kpi-sub">toko berbeda terfilter</div></div></div>
+      </div>
+      <div class="panel-shell"><div class="panel-body">
+        <table><thead id="table-head-spg"></thead><tbody id="table-body-spg"></tbody></table>
+        <div class="tfoot-row" id="tfoot-spg"></div>
+      </div></div>
+    </div>
   </div>
 </div>
 
@@ -469,6 +503,6 @@
   </div></div>
 </div>
 
-<script src="dashboard.js?v=9"></script>
+<script src="dashboard.js?v=10"></script>
 </body>
 </html>
