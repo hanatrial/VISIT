@@ -24467,17 +24467,21 @@ function nedUpdateStepper(){
 }
 
 /* ─────────── REPORT HARIAN SPG ─────────── */
-const SG = { area:'', nama:'', store:'', items:{}, total:0 };
+const SG = { area:'', nama:'', store:'', date:'', items:{}, total:0 };
 let spgStep = 0;
 
 function openSpg(){ showScreen('s-spg'); initSpg(); }
 function initSpg(){
   spgStep=0;
-  SG.area=''; SG.nama=''; SG.store=''; SG.items={}; SG.total=0;
+  SG.area=''; SG.nama=''; SG.store=''; SG.date=''; SG.items={}; SG.total=0;
   const as=document.getElementById('spg-area-sel');
   as.innerHTML='<option value="">— Pilih Area —</option>';
   AREAS.forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; as.appendChild(o); });
   document.getElementById('spg-nama-input').value='';
+  const todayStr=new Date().toISOString().slice(0,10);
+  const dateInput=document.getElementById('spg-date-input');
+  dateInput.value=todayStr;
+  dateInput.max=todayStr;
   document.getElementById('spg-store-sel').innerHTML='<option value="">— Pilih Toko —</option>';
   document.getElementById('spg-store-new').value='';
   document.getElementById('spg-next-0').disabled=true;
@@ -24490,7 +24494,8 @@ function spgCheck(step){
   if(step===0){
     const area=document.getElementById('spg-area-sel').value;
     const nama=document.getElementById('spg-nama-input').value.trim();
-    ok=!!(area&&nama);
+    const date=document.getElementById('spg-date-input').value;
+    ok=!!(area&&nama&&date);
     document.getElementById('spg-next-0').disabled=!ok;
   } else if(step===1){
     const store=document.getElementById('spg-store-sel').value||document.getElementById('spg-store-new').value.trim();
@@ -24504,6 +24509,7 @@ function spgNext(step){
     if(!spgCheck(0)) return;
     SG.area=document.getElementById('spg-area-sel').value;
     SG.nama=canonicalMds(SG.area,document.getElementById('spg-nama-input').value);
+    SG.date=document.getElementById('spg-date-input').value;
     const ss=document.getElementById('spg-store-sel');
     ss.innerHTML='<option value="">— Pilih Toko —</option>';
     (BELI_STORES_BY_AREA[SG.area]||[]).forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; ss.appendChild(o); });
@@ -24636,6 +24642,7 @@ function spgGoReview(){
   document.getElementById('spg-rev-area').textContent=SG.area;
   document.getElementById('spg-rev-nama').textContent=SG.nama;
   document.getElementById('spg-rev-store').textContent=SG.store;
+  document.getElementById('spg-rev-date').textContent=spgDateLabel(SG.date);
   const tbody=document.getElementById('spg-review-body');
   tbody.innerHTML='';
   Object.entries(SG.items).forEach(([name,{qty,omzet}])=>{
@@ -24651,14 +24658,22 @@ function spgGoReview(){
   document.querySelectorAll('#s-spg .step-section').forEach((s,i)=>s.classList.toggle('active',i===spgStep));
   document.getElementById('spg-wrap').scrollTop=0;
 }
+function spgDateLabel(dateStr){
+  if(!dateStr)return'—';
+  const d=new Date(dateStr+'T12:00:00');
+  return d.toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+}
 function submitSpg(){
   const id='SPG-'+String(Math.floor(Math.random()*9000)+1000);
   document.getElementById('spg-success-store').textContent=SG.nama+' · '+SG.store+' · '+SG.area;
   document.getElementById('spg-success-total').textContent='Total Omzet: Rp '+SG.total.toLocaleString('id-ID');
+  const salesTimestamp=SG.date?firebase.firestore.Timestamp.fromDate(new Date(SG.date+'T12:00:00')):firebase.firestore.FieldValue.serverTimestamp();
   if(typeof db!=='undefined'){
     db.collection('spg_daily_logs').add({
       id, area:SG.area, nama:SG.nama, store:SG.store,
-      timestamp:firebase.firestore.FieldValue.serverTimestamp(),
+      tanggalJualan:SG.date,
+      timestamp:salesTimestamp,
+      submittedAt:firebase.firestore.FieldValue.serverTimestamp(),
       items:SG.items,
       totalOmzet:SG.total
     }).then(()=>console.log('spg_daily_logs write OK',id))
@@ -24670,7 +24685,7 @@ function submitSpg(){
   document.getElementById('spg-wrap').scrollTop=0;
 }
 function shareSpgWhatsApp(){
-  const tgl=new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const tgl=spgDateLabel(SG.date);
   const prioSet=new Set(SPG_PRIORITY_ITEMS);
   const prioEntries=Object.entries(SG.items).filter(([name])=>prioSet.has(name));
   const lainEntries=Object.entries(SG.items).filter(([name])=>!prioSet.has(name));
