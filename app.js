@@ -24528,32 +24528,80 @@ function spgPrev(step){
   document.querySelectorAll('#s-spg .step-section').forEach((s,i)=>s.classList.toggle('active',i===spgStep));
   document.getElementById('spg-wrap').scrollTop=0;
 }
+const SPG_PRIORITY_ITEMS=[
+  // TS Beras (kecuali TS Shirataki Noodles)
+  "TS BERAS PORANG INSTAN 12PCHX1000G",
+  "TS BERAS PORANG INSTAN SACHET 12DX10SX40G",
+  "TS BERAS PORANG INSTAN GOLDEN UBE 12DX7SX40G",
+  "TS BERAS PORANG INSTAN NASI GORENG 12DX7SX38.5G",
+  "TS BERAS MERAH ORGANIK 12PCHX1000G",
+  // Oil
+  "TS CANOLA OIL 12BTLX946ML",
+  "TS CORN OIL 12BTLX946ML",
+  "TS CORN OIL REF 16PCHX1000ML",
+  "TS EXTRA VIRGIN OLIVE OIL 12BTLX500ML",
+  "TS SUNFLOWER OIL 12BTLX946ML",
+  // Stevia
+  "TS SWT STEVIA 24DX50SX1.8G",
+  "TS SWT STEVIA 12DX100SX1.8G",
+  // Diabtx Milk
+  "TS DIABTX MILK VANILLA MALT 12DX150G",
+  "TS DIABTX MILK VANILLA MALT 12DX500G",
+  // TS Spread Jam
+  "TS CHOCOLATE SPREAD 12BTLX300G",
+  "TS ROYAL MATCHA SPREAD 12BTLX300G",
+  "TS PEANUT ALMOND BUTTER 12BTLX300G",
+  "TS BALI ARTISAN SEA SALT 12BTLX300G",
+  "TS STRAWBERRY JAM 12BTLX375G",
+  // HI LO Active Granola Berry Berry Honey
+  "HI LO ACTIVE GRANOLA BERRY BERRY HONEY 12PX150G"
+].filter(nm=>STOCK_PRODUCTS.some(g=>g.items.includes(nm)));
+function spgGroupOf(name){
+  for(const g of STOCK_PRODUCTS) if(g.items.includes(name)) return g.group;
+  return '';
+}
+function spgOrderedItems(){
+  const prio=new Set(SPG_PRIORITY_ITEMS);
+  const rest=[];
+  STOCK_PRODUCTS.forEach(group=>group.items.forEach(name=>{ if(!prio.has(name)) rest.push(name); }));
+  return SPG_PRIORITY_ITEMS.concat(rest);
+}
 function renderSpgItems(){
   const list=document.getElementById('spg-item-list');
   list.innerHTML='';
-  let fi=0;
-  STOCK_PRODUCTS.forEach(group=>{
-    const hdr=document.createElement('div');
-    hdr.className='qty-group-hdr'; hdr.textContent=group.group;
-    list.appendChild(hdr);
-    group.items.forEach(name=>{
-      const row=document.createElement('div');
-      row.className='qty-row';
-      row.innerHTML=
-        '<div class="qty-name" style="flex:1;min-width:0">'+
-          '<div style="font-size:10px;font-weight:600;line-height:1.3">'+name+'</div>'+
+  const order=spgOrderedItems();
+  let lastGroup=null;
+  order.forEach((name,fi)=>{
+    if(fi<SPG_PRIORITY_ITEMS.length){
+      if(fi===0){
+        const hdr=document.createElement('div');
+        hdr.className='qty-group-hdr'; hdr.style.color='#F59E0B'; hdr.textContent='⭐ PRIORITAS';
+        list.appendChild(hdr);
+      }
+    } else {
+      const g=spgGroupOf(name);
+      if(g!==lastGroup){
+        const hdr=document.createElement('div');
+        hdr.className='qty-group-hdr'; hdr.textContent=g;
+        list.appendChild(hdr);
+        lastGroup=g;
+      }
+    }
+    const row=document.createElement('div');
+    row.className='qty-row';
+    row.innerHTML=
+      '<div class="qty-name" style="flex:1;min-width:0">'+
+        '<div style="font-size:10px;font-weight:600;line-height:1.3">'+name+'</div>'+
+      '</div>'+
+      '<div style="min-width:72px">'+
+        '<div class="qty-ctrl" style="width:100%">'+
+          '<button class="qty-btn" onclick="adjSG('+fi+',-1)" style="width:20px;font-size:12px">−</button>'+
+          '<input type="number" class="qty-val" id="sg-qty-'+fi+'" value="0" min="0" style="width:28px;font-size:11px" oninput="spgCalcTotal()" onfocus="if(this.value==&quot;0&quot;)this.value=&quot;&quot;" onblur="if(this.value===&quot;&quot;)this.value=&quot;0&quot;">'+
+          '<button class="qty-btn" onclick="adjSG('+fi+',1)" style="width:20px;font-size:12px">+</button>'+
         '</div>'+
-        '<div style="min-width:72px">'+
-          '<div class="qty-ctrl" style="width:100%">'+
-            '<button class="qty-btn" onclick="adjSG('+fi+',-1)" style="width:20px;font-size:12px">−</button>'+
-            '<input type="number" class="qty-val" id="sg-qty-'+fi+'" value="0" min="0" style="width:28px;font-size:11px" oninput="spgCalcTotal()" onfocus="if(this.value==&quot;0&quot;)this.value=&quot;&quot;" onblur="if(this.value===&quot;&quot;)this.value=&quot;0&quot;">'+
-            '<button class="qty-btn" onclick="adjSG('+fi+',1)" style="width:20px;font-size:12px">+</button>'+
-          '</div>'+
-        '</div>'+
-        '<div id="sg-omz-'+fi+'" style="min-width:80px;text-align:right;font-size:10px;font-weight:700;color:var(--ok)">—</div>';
-      list.appendChild(row);
-      fi++;
-    });
+      '</div>'+
+      '<div id="sg-omz-'+fi+'" style="min-width:80px;text-align:right;font-size:10px;font-weight:700;color:var(--ok)">—</div>';
+    list.appendChild(row);
   });
   spgCalcTotal();
 }
@@ -24563,29 +24611,26 @@ function adjSG(i,d){
   spgCalcTotal();
 }
 function spgCalcTotal(){
-  let total=0,fi=0;
-  STOCK_PRODUCTS.forEach(group=>group.items.forEach(name=>{
+  let total=0;
+  spgOrderedItems().forEach((name,fi)=>{
     const ip=ITEM_PRICE[name]||{};
     const qty=parseInt(document.getElementById('sg-qty-'+fi)?.value)||0;
     const omz=qty*(ip.pcs||0);
     total+=omz;
     const oEl=document.getElementById('sg-omz-'+fi);
     if(oEl)oEl.textContent=omz?'Rp '+omz.toLocaleString('id-ID'):'—';
-    fi++;
-  }));
+  });
   document.getElementById('spg-total-rp').textContent='Rp '+total.toLocaleString('id-ID');
   return total;
 }
 function spgGoReview(){
   SG.items={};
   SG.total=0;
-  let fi=0;
-  STOCK_PRODUCTS.forEach(group=>group.items.forEach(name=>{
+  spgOrderedItems().forEach((name,fi)=>{
     const ip=ITEM_PRICE[name]||{};
     const qty=parseInt(document.getElementById('sg-qty-'+fi)?.value)||0;
     if(qty){ const omzet=qty*(ip.pcs||0); SG.items[name]={qty,omzet}; SG.total+=omzet; }
-    fi++;
-  }));
+  });
   if(!Object.keys(SG.items).length){alert('Belum ada item jualan yang diisi.');return;}
   document.getElementById('spg-rev-area').textContent=SG.area;
   document.getElementById('spg-rev-nama').textContent=SG.nama;
