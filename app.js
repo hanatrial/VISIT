@@ -24671,15 +24671,32 @@ function submitSpg(){
 }
 function shareSpgWhatsApp(){
   const tgl=new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const prioSet=new Set(SPG_PRIORITY_ITEMS);
+  const prioEntries=Object.entries(SG.items).filter(([name])=>prioSet.has(name));
+  const lainEntries=Object.entries(SG.items).filter(([name])=>!prioSet.has(name));
+  const prioTotal=prioEntries.reduce((s,[,{omzet}])=>s+omzet,0);
+  const lainTotal=lainEntries.reduce((s,[,{omzet}])=>s+omzet,0);
   let text='*REPORT HARIAN SPG*\n';
   text+='📅 '+tgl+'\n';
   text+='👤 '+SG.nama+'\n';
   text+='🏪 '+SG.store+' ('+SG.area+')\n';
   text+='─────────────────\n';
-  Object.entries(SG.items).forEach(([name,{qty,omzet}])=>{
-    text+='• '+name+'\n   '+qty+' rnc = Rp '+omzet.toLocaleString('id-ID')+'\n';
-  });
-  text+='─────────────────\n';
+  if(prioEntries.length){
+    text+='⭐ *PRIORITAS*\n';
+    prioEntries.forEach(([name,{qty,omzet}])=>{
+      text+='• '+name+'\n   '+qty+' rnc = Rp '+omzet.toLocaleString('id-ID')+'\n';
+    });
+    text+='_Subtotal Prioritas: Rp '+prioTotal.toLocaleString('id-ID')+'_\n';
+    text+='─────────────────\n';
+  }
+  if(lainEntries.length){
+    text+='*ITEM LAINNYA*\n';
+    lainEntries.forEach(([name,{qty,omzet}])=>{
+      text+='• '+name+'\n   '+qty+' rnc = Rp '+omzet.toLocaleString('id-ID')+'\n';
+    });
+    text+='_Subtotal Lainnya: Rp '+lainTotal.toLocaleString('id-ID')+'_\n';
+    text+='─────────────────\n';
+  }
   text+='*TOTAL OMZET: Rp '+SG.total.toLocaleString('id-ID')+'*';
   window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');
 }
