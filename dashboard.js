@@ -1443,6 +1443,41 @@ const SPG_PRIO_GROUPS=[
   {label:'HI LO Active Granola Berry Berry Honey',items:["HI LO ACTIVE GRANOLA BERRY BERRY HONEY 12PX150G"]}
 ];
 function _escJs(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+/* Non-priority items containing "PLS" are split out as NS Polos / Hilo Polos; everything else falls to Item Lainnya */
+function _spgLainBucket(nm){
+  const u=nm.toUpperCase();
+  if(!u.includes('PLS'))return'lain';
+  if(u.startsWith('NS '))return'ns';
+  if(u.startsWith('HI LO'))return'hilo';
+  return'lain';
+}
+/* Shared: rows[] -> group-breakdown table rows HTML (priority groups + NS/Hilo Polos split + remainder) */
+function spgGroupRowsHtml(rows,totalOmzet){
+  const prioSet=new Set(SPG_PRIO_GROUPS.flatMap(g=>g.items));
+  const groupTotals=SPG_PRIO_GROUPS.map(g=>{
+    let omzet=0,qty=0;
+    rows.forEach(r=>{
+      Object.entries(r.items||{}).forEach(([nm,{qty:q,omzet:o}])=>{
+        if(g.items.includes(nm)){omzet+=(o||0);qty+=(q||0);}
+      });
+    });
+    return{label:g.label,omzet,qty};
+  });
+  const lain={ns:{omzet:0,qty:0},hilo:{omzet:0,qty:0},lain:{omzet:0,qty:0}};
+  rows.forEach(r=>{
+    Object.entries(r.items||{}).forEach(([nm,{qty:q,omzet:o}])=>{
+      if(prioSet.has(nm))return;
+      const b=lain[_spgLainBucket(nm)];
+      b.omzet+=(o||0);b.qty+=(q||0);
+    });
+  });
+  const prioTotal=groupTotals.reduce((s,g)=>s+g.omzet,0);
+  let rowsHtml=groupTotals.map(g=>`<tr><td class="td-main">${g.label}</td><td class="td-mid">${g.qty||'—'}</td><td style="font-weight:700;color:var(--green)">${g.omzet?rp(g.omzet):'—'}</td><td class="td-dim">${totalOmzet?Math.round(g.omzet/totalOmzet*100):0}%</td></tr>`).join('');
+  rowsHtml+=`<tr><td class="td-main">NS Polos</td><td class="td-mid">${lain.ns.qty||'—'}</td><td style="font-weight:700;color:var(--cyan)">${lain.ns.omzet?rp(lain.ns.omzet):'—'}</td><td class="td-dim">${totalOmzet?Math.round(lain.ns.omzet/totalOmzet*100):0}%</td></tr>`;
+  rowsHtml+=`<tr><td class="td-main">Hilo Polos</td><td class="td-mid">${lain.hilo.qty||'—'}</td><td style="font-weight:700;color:var(--cyan)">${lain.hilo.omzet?rp(lain.hilo.omzet):'—'}</td><td class="td-dim">${totalOmzet?Math.round(lain.hilo.omzet/totalOmzet*100):0}%</td></tr>`;
+  rowsHtml+=`<tr style="border-top:1px solid var(--border)"><td class="td-main">Item Lainnya</td><td class="td-mid">${lain.lain.qty||'—'}</td><td style="font-weight:700;color:var(--t2)">${lain.lain.omzet?rp(lain.lain.omzet):'—'}</td><td class="td-dim">${totalOmzet?Math.round(lain.lain.omzet/totalOmzet*100):0}%</td></tr>`;
+  return{rowsHtml,prioTotal};
+}
 let SPG_REPORT_SEL='', SPG_REPORT_SEARCH='';
 function selectSpgReportName(name){
   SPG_REPORT_SEL=name;
@@ -1480,19 +1515,7 @@ function renderSpgReport(spgF){
   const storesActive=new Set(rows.map(r=>r.store||'?')).size;
   const areasActive=new Set(rows.map(r=>r.area||'?')).size;
 
-  // per-group totals across all rows for this SPG
-  const groupTotals=SPG_PRIO_GROUPS.map(g=>{
-    let omzet=0,qty=0;
-    rows.forEach(r=>{
-      Object.entries(r.items||{}).forEach(([nm,{qty:q,omzet:o}])=>{
-        if(g.items.includes(nm)){omzet+=(o||0);qty+=(q||0);}
-      });
-    });
-    return{label:g.label,omzet,qty};
-  });
-  const prioSet=new Set(SPG_PRIO_GROUPS.flatMap(g=>g.items));
-  const prioTotal=groupTotals.reduce((s,g)=>s+g.omzet,0);
-  const lainTotal=totalOmzet-prioTotal;
+  const{rowsHtml:grpRowsHtml,prioTotal}=spgGroupRowsHtml(rows,totalOmzet);
 
   let html='';
   html+=`<div class="bento bento-4" style="margin-bottom:16px">
@@ -1515,8 +1538,7 @@ function renderSpgReport(spgF){
   html+='<div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">Rekap per Grup Item Prioritas — '+SPG_REPORT_SEL+'</div>';
   html+='<div class="panel-shell"><div class="panel-body">';
   html+='<table><thead><tr><th>Grup Item</th><th>Qty (renceng)</th><th>Omzet</th><th>% dari Total</th></tr></thead><tbody>';
-  html+=groupTotals.map(g=>`<tr><td class="td-main">${g.label}</td><td class="td-mid">${g.qty||'—'}</td><td style="font-weight:700;color:var(--green)">${g.omzet?rp(g.omzet):'—'}</td><td class="td-dim">${totalOmzet?Math.round(g.omzet/totalOmzet*100):0}%</td></tr>`).join('');
-  html+=`<tr style="border-top:1px solid var(--border)"><td class="td-main">Item Lainnya (non-prioritas)</td><td class="td-mid">—</td><td style="font-weight:700;color:var(--t2)">${lainTotal?rp(lainTotal):'—'}</td><td class="td-dim">${totalOmzet?Math.round(lainTotal/totalOmzet*100):0}%</td></tr>`;
+  html+=grpRowsHtml;
   html+='</tbody></table></div></div>';
 
   detEl.innerHTML=html;
@@ -1569,17 +1591,7 @@ function renderSpgPerStore(spgF){
   const avgOmzet=rows.length?Math.round(totalOmzet/rows.length):0;
   const spgActive=new Set(rows.map(r=>r.nama||'?')).size;
 
-  const groupTotals=SPG_PRIO_GROUPS.map(gr=>{
-    let omzet=0,qty=0;
-    rows.forEach(r=>{
-      Object.entries(r.items||{}).forEach(([nm,{qty:q,omzet:o}])=>{
-        if(gr.items.includes(nm)){omzet+=(o||0);qty+=(q||0);}
-      });
-    });
-    return{label:gr.label,omzet,qty};
-  });
-  const prioTotal=groupTotals.reduce((s,gr)=>s+gr.omzet,0);
-  const lainTotal=totalOmzet-prioTotal;
+  const{rowsHtml:grpRowsHtml,prioTotal}=spgGroupRowsHtml(rows,totalOmzet);
 
   let html='';
   html+=`<div class="bento bento-4" style="margin-bottom:16px">
@@ -1602,8 +1614,7 @@ function renderSpgPerStore(spgF){
   html+='<div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">Rekap per Grup Item Prioritas — '+g.label+'</div>';
   html+='<div class="panel-shell"><div class="panel-body">';
   html+='<table><thead><tr><th>Grup Item</th><th>Qty (renceng)</th><th>Omzet</th><th>% dari Total</th></tr></thead><tbody>';
-  html+=groupTotals.map(gr=>`<tr><td class="td-main">${gr.label}</td><td class="td-mid">${gr.qty||'—'}</td><td style="font-weight:700;color:var(--green)">${gr.omzet?rp(gr.omzet):'—'}</td><td class="td-dim">${totalOmzet?Math.round(gr.omzet/totalOmzet*100):0}%</td></tr>`).join('');
-  html+=`<tr style="border-top:1px solid var(--border)"><td class="td-main">Item Lainnya (non-prioritas)</td><td class="td-mid">—</td><td style="font-weight:700;color:var(--t2)">${lainTotal?rp(lainTotal):'—'}</td><td class="td-dim">${totalOmzet?Math.round(lainTotal/totalOmzet*100):0}%</td></tr>`;
+  html+=grpRowsHtml;
   html+='</tbody></table></div></div>';
 
   detEl.innerHTML=html;
