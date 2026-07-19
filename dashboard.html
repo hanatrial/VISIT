@@ -457,6 +457,7 @@
       <div class="sub-nav">
         <div class="sub-tab on spg" id="stab-spg-log" onclick="switchSubTab('spg','log')">📋 Riwayat Laporan</div>
         <div class="sub-tab spg" id="stab-spg-report" onclick="switchSubTab('spg','report')">🧑‍💼 SPG Report</div>
+        <div class="sub-tab spg" id="stab-spg-store" onclick="switchSubTab('spg','store')">🏪 Per Toko</div>
       </div>
       <div id="spg-log-wrap">
         <div class="panel-shell"><div class="panel-body">
@@ -468,6 +469,12 @@
         <div class="panel-shell"><div class="panel-body">
           <div id="spg-report-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px"></div>
           <div id="spg-report-detail"></div>
+        </div></div>
+      </div>
+      <div id="spg-store-wrap" style="display:none">
+        <div class="panel-shell"><div class="panel-body">
+          <div id="spg-store-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px"></div>
+          <div id="spg-store-detail"></div>
         </div></div>
       </div>
     </div>
@@ -515,6 +522,6 @@
   </div></div>
 </div>
 
-<script src="dashboard.js?v=11"></script>
+<script src="dashboard.js?v=12"></script>
 </body>
 </html>

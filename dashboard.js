@@ -1006,9 +1006,10 @@ function switchSubTab(main,sub){
     ['log','urgent'].forEach(s=>{const el=document.getElementById('stab-ned-'+s);if(el)el.classList.toggle('on',s===sub);});
   }else if(main==='spg'){
     SUBTAB_SPG=sub;
-    ['log','report'].forEach(s=>{const el=document.getElementById('stab-spg-'+s);if(el)el.classList.toggle('on',s===sub);});
+    ['log','report','store'].forEach(s=>{const el=document.getElementById('stab-spg-'+s);if(el)el.classList.toggle('on',s===sub);});
     const lw=document.getElementById('spg-log-wrap');if(lw)lw.style.display=sub==='log'?'block':'none';
     const rw=document.getElementById('spg-report-wrap');if(rw)rw.style.display=sub==='report'?'block':'none';
+    const stw=document.getElementById('spg-store-wrap');if(stw)stw.style.display=sub==='store'?'block':'none';
   }else{
     SUBTAB_BELI=sub;
     ['log','analisis'].forEach(s=>{const el=document.getElementById('stab-beli-'+s);if(el)el.classList.toggle('on',s===sub);});
@@ -1070,7 +1071,8 @@ function render(){
     else renderNedUrgent(nedF);
   }else if(TAB==='spg'){
     if(SUBTAB_SPG==='log')renderSpgLog(spgF);
-    else renderSpgReport(spgF);
+    else if(SUBTAB_SPG==='report')renderSpgReport(spgF);
+    else renderSpgPerStore(spgF);
   }
 }
 
@@ -1503,6 +1505,80 @@ function renderSpgReport(spgF){
   html+='<div class="panel-shell"><div class="panel-body">';
   html+='<table><thead><tr><th>Grup Item</th><th>Qty (renceng)</th><th>Omzet</th><th>% dari Total</th></tr></thead><tbody>';
   html+=groupTotals.map(g=>`<tr><td class="td-main">${g.label}</td><td class="td-mid">${g.qty||'—'}</td><td style="font-weight:700;color:var(--green)">${g.omzet?rp(g.omzet):'—'}</td><td class="td-dim">${totalOmzet?Math.round(g.omzet/totalOmzet*100):0}%</td></tr>`).join('');
+  html+=`<tr style="border-top:1px solid var(--border)"><td class="td-main">Item Lainnya (non-prioritas)</td><td class="td-mid">—</td><td style="font-weight:700;color:var(--t2)">${lainTotal?rp(lainTotal):'—'}</td><td class="td-dim">${totalOmzet?Math.round(lainTotal/totalOmzet*100):0}%</td></tr>`;
+  html+='</tbody></table></div></div>';
+
+  detEl.innerHTML=html;
+}
+let SPG_STORE_SEL='';
+function _storeKey(s){return String(s||'?').trim().toLowerCase();}
+function selectSpgStoreName(key){
+  SPG_STORE_SEL=key;
+  renderSpgPerStore(filteredSpg());
+}
+function renderSpgPerStore(spgF){
+  // group rows by store, case/whitespace-insensitive, even when reported by different SPG names
+  const byKey={};
+  spgF.forEach(r=>{
+    const k=_storeKey(r.store);
+    if(!byKey[k])byKey[k]={label:r.store||'?',rows:[]};
+    byKey[k].rows.push(r);
+  });
+  const keys=Object.keys(byKey).sort((a,b)=>byKey[a].label.localeCompare(byKey[b].label));
+  if(SPG_STORE_SEL&&!keys.includes(SPG_STORE_SEL))SPG_STORE_SEL='';
+  if(!SPG_STORE_SEL&&keys.length)SPG_STORE_SEL=keys[0];
+  const listEl=document.getElementById('spg-store-list');
+  const detEl=document.getElementById('spg-store-detail');
+  if(!listEl||!detEl)return;
+  if(!keys.length){
+    listEl.innerHTML='';
+    detEl.innerHTML='<div class="empty-state">Belum ada laporan harian SPG untuk periode/filter ini.</div>';
+    return;
+  }
+  listEl.innerHTML=keys.map(k=>{
+    const g=byKey[k];
+    return`<div class="pill ${k===SPG_STORE_SEL?'on':''}" onclick="selectSpgStoreName(${JSON.stringify(k)})">${g.label} <span style="opacity:.7">(${g.rows.length})</span></div>`;
+  }).join('');
+  const g=byKey[SPG_STORE_SEL];
+  const rows=[...g.rows].sort((a,b)=>a.timestamp-b.timestamp);
+  const totalOmzet=rows.reduce((s,r)=>s+(r.totalOmzet||0),0);
+  const avgOmzet=rows.length?Math.round(totalOmzet/rows.length):0;
+  const spgActive=new Set(rows.map(r=>r.nama||'?')).size;
+
+  const groupTotals=SPG_PRIO_GROUPS.map(gr=>{
+    let omzet=0,qty=0;
+    rows.forEach(r=>{
+      Object.entries(r.items||{}).forEach(([nm,{qty:q,omzet:o}])=>{
+        if(gr.items.includes(nm)){omzet+=(o||0);qty+=(q||0);}
+      });
+    });
+    return{label:gr.label,omzet,qty};
+  });
+  const prioTotal=groupTotals.reduce((s,gr)=>s+gr.omzet,0);
+  const lainTotal=totalOmzet-prioTotal;
+
+  let html='';
+  html+=`<div class="bento bento-4" style="margin-bottom:16px">
+    <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(245,158,11,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 0% 0%,var(--gold),transparent 70%)"></div><div class="kpi-label">Total Laporan</div><div class="kpi-val" style="color:var(--gold)">${rows.length||'—'}</div><div class="kpi-sub">${spgActive} SPG berbeda</div></div></div>
+    <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(16,185,129,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 50% 0%,var(--green),transparent 70%)"></div><div class="kpi-label">Total Omzet</div><div class="kpi-val sm" style="color:var(--green)">${totalOmzet?rp(totalOmzet):'—'}</div><div class="kpi-sub">akumulasi periode terfilter</div></div></div>
+    <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(6,182,212,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--cyan),transparent 70%)"></div><div class="kpi-label">Avg Omzet / Hari</div><div class="kpi-val sm" style="color:var(--cyan)">${avgOmzet?rp(avgOmzet):'—'}</div><div class="kpi-sub">rata-rata per laporan</div></div></div>
+    <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(139,92,246,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--violet),transparent 70%)"></div><div class="kpi-label">Omzet Item Prioritas</div><div class="kpi-val sm" style="color:var(--violet)">${prioTotal?rp(prioTotal):'—'}</div><div class="kpi-sub">${totalOmzet?Math.round(prioTotal/totalOmzet*100):0}% dari total omzet</div></div></div>
+  </div>`;
+
+  html+='<div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">Omzet Harian — '+g.label+'</div>';
+  html+='<div class="panel-shell" style="margin-bottom:20px"><div class="panel-body">';
+  html+='<table><thead><tr><th>Tanggal</th><th>Area</th><th>SPG</th><th>Item</th><th>Total Omzet</th></tr></thead><tbody>';
+  html+=rows.length?rows.map(r=>{
+    const ts=r.timestamp;
+    const cnt=r.items?Object.keys(r.items).length:0;
+    return`<tr><td class="td-dim">${ts.toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</td><td class="td-dim">${r.area||'—'}</td><td class="td-mid">${r.nama||'—'}</td><td><span class="tag au sm">${cnt} item</span></td><td style="font-weight:700;color:var(--green)">${r.totalOmzet?rp(r.totalOmzet):'—'}</td></tr>`;
+  }).join(''):'<tr><td colspan="5"><div class="empty-state">Belum ada laporan.</div></td></tr>';
+  html+='</tbody></table></div></div>';
+
+  html+='<div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">Rekap per Grup Item Prioritas — '+g.label+'</div>';
+  html+='<div class="panel-shell"><div class="panel-body">';
+  html+='<table><thead><tr><th>Grup Item</th><th>Qty (renceng)</th><th>Omzet</th><th>% dari Total</th></tr></thead><tbody>';
+  html+=groupTotals.map(gr=>`<tr><td class="td-main">${gr.label}</td><td class="td-mid">${gr.qty||'—'}</td><td style="font-weight:700;color:var(--green)">${gr.omzet?rp(gr.omzet):'—'}</td><td class="td-dim">${totalOmzet?Math.round(gr.omzet/totalOmzet*100):0}%</td></tr>`).join('');
   html+=`<tr style="border-top:1px solid var(--border)"><td class="td-main">Item Lainnya (non-prioritas)</td><td class="td-mid">—</td><td style="font-weight:700;color:var(--t2)">${lainTotal?rp(lainTotal):'—'}</td><td class="td-dim">${totalOmzet?Math.round(lainTotal/totalOmzet*100):0}%</td></tr>`;
   html+='</tbody></table></div></div>';
 
