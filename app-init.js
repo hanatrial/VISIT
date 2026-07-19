@@ -6,6 +6,7 @@ try{
   window.storage=firebase.storage();
 }catch(e){console.warn('Firebase init failed',e);}
 loadCustomStores();
+loadSpgCustomStores();
 
 async function compressAndUpload(dataUrl){
   const img=new Image();

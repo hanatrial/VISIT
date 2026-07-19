@@ -23330,10 +23330,10 @@ function addNewStore(flow){
   if(!nw)return;
   const area=flow==='rka'?R.area:flow==='beli'?B.area:flow==='ned'?ND.area:flow==='spg'?SG.area:SK.area;
   if(!area){alert('Pilih area dulu sebelum tambah toko.');return;}
-  nw=canonicalStore(area,nw);
+  nw=flow==='spg'?canonicalSpgStore(area,nw):canonicalStore(area,nw);
   const sel=document.getElementById(selId);
   if(![...sel.options].some(o=>o.value===nw)){
-    saveCustomStore(area,nw);
+    flow==='spg'?saveSpgStore(area,nw):saveCustomStore(area,nw);
     const o=document.createElement('option');o.value=nw;o.textContent=nw;sel.appendChild(o);
   }
   sel.value=nw;
@@ -23364,6 +23364,43 @@ async function loadCustomStores(){
     if(!doc.exists)return;
     Object.entries(doc.data()).forEach(([a,v])=>_mergeStores(a,v));
   }catch(e){console.warn('loadCustomStores failed',e);}
+}
+
+/* SPG has its own isolated store list — not shared with RKA/Beli/NED/Stock */
+const SPG_STORES_BY_AREA = {};
+function canonicalSpgStore(area,name){
+  const n=String(name).trim();
+  return (SPG_STORES_BY_AREA[area]||[]).find(s=>_sameName(s,n))||n;
+}
+function _mergeSpgStores(area,stores){
+  if(!Array.isArray(stores))return;
+  if(!SPG_STORES_BY_AREA[area])SPG_STORES_BY_AREA[area]=[];
+  stores.forEach(s=>{ if(!SPG_STORES_BY_AREA[area].some(x=>_sameName(x,s)))SPG_STORES_BY_AREA[area].push(s); });
+  try{
+    const saved=JSON.parse(localStorage.getItem('mds_spg_custom_stores')||'{}');
+    if(!saved[area])saved[area]=[];
+    stores.forEach(s=>{if(!saved[area].includes(s))saved[area].push(s);});
+    localStorage.setItem('mds_spg_custom_stores',JSON.stringify(saved));
+  }catch(e){}
+}
+(function(){try{const s=JSON.parse(localStorage.getItem('mds_spg_custom_stores')||'{}');Object.entries(s).forEach(([a,v])=>_mergeSpgStores(a,v));}catch(e){}})();
+function saveSpgStore(area,name){
+  _mergeSpgStores(area,[name]);
+  try{
+    if(typeof db!=='undefined'){
+      db.collection('app_data').doc('spg_stores').set(
+        {[area]:firebase.firestore.FieldValue.arrayUnion(name)},{merge:true}
+      ).catch(e=>console.warn('spg store save failed',e));
+    }
+  }catch(e){}
+}
+async function loadSpgCustomStores(){
+  try{
+    if(typeof db==='undefined')return;
+    const doc=await db.collection('app_data').doc('spg_stores').get();
+    if(!doc.exists)return;
+    Object.entries(doc.data()).forEach(([a,v])=>_mergeSpgStores(a,v));
+  }catch(e){console.warn('loadSpgCustomStores failed',e);}
 }
 
 /* ─────────── STATE ─────────── */
@@ -24512,14 +24549,14 @@ function spgNext(step){
     SG.date=document.getElementById('spg-date-input').value;
     const ss=document.getElementById('spg-store-sel');
     ss.innerHTML='<option value="">— Pilih Toko —</option>';
-    (BELI_STORES_BY_AREA[SG.area]||[]).forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; ss.appendChild(o); });
+    (SPG_STORES_BY_AREA[SG.area]||[]).forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; ss.appendChild(o); });
   } else if(step===1){
     if(!spgCheck(1)) return;
     const box=document.getElementById('spg-store-box');
-    const nw=canonicalStore(SG.area,document.getElementById('spg-store-new').value);
+    const nw=canonicalSpgStore(SG.area,document.getElementById('spg-store-new').value);
     SG.store=(box.classList.contains('open')&&nw)?nw:document.getElementById('spg-store-sel').value;
     if(box.classList.contains('open')&&nw){
-      if(!BELI_STORES_BY_AREA[SG.area].some(s=>_sameName(s,nw))){ saveCustomStore(SG.area,nw); const o=document.createElement('option'); o.value=nw; o.textContent=nw; document.getElementById('spg-store-sel').appendChild(o); }
+      if(!(SPG_STORES_BY_AREA[SG.area]||[]).some(s=>_sameName(s,nw))){ saveSpgStore(SG.area,nw); const o=document.createElement('option'); o.value=nw; o.textContent=nw; document.getElementById('spg-store-sel').appendChild(o); }
     }
     renderSpgItems();
   }
