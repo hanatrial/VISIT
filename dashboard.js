@@ -1442,6 +1442,7 @@ const SPG_PRIO_GROUPS=[
   ]},
   {label:'HI LO Active Granola Berry Berry Honey',items:["HI LO ACTIVE GRANOLA BERRY BERRY HONEY 12PX150G"]}
 ];
+function _escJs(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
 let SPG_REPORT_SEL='';
 function selectSpgReportName(name){
   SPG_REPORT_SEL=name;
@@ -1461,7 +1462,7 @@ function renderSpgReport(spgF){
   }
   listEl.innerHTML=names.map(n=>{
     const cnt=spgF.filter(r=>(r.nama||'?')===n).length;
-    return`<div class="pill ${n===SPG_REPORT_SEL?'on':''}" onclick="selectSpgReportName(${JSON.stringify(n)})">${n} <span style="opacity:.7">(${cnt})</span></div>`;
+    return`<div class="pill ${n===SPG_REPORT_SEL?'on':''}" onclick="selectSpgReportName('${_escJs(n)}')">${n} <span style="opacity:.7">(${cnt})</span></div>`;
   }).join('');
   const rows=spgF.filter(r=>(r.nama||'?')===SPG_REPORT_SEL).sort((a,b)=>a.timestamp-b.timestamp);
   const totalOmzet=rows.reduce((s,r)=>s+(r.totalOmzet||0),0);
@@ -1537,7 +1538,7 @@ function renderSpgPerStore(spgF){
   }
   listEl.innerHTML=keys.map(k=>{
     const g=byKey[k];
-    return`<div class="pill ${k===SPG_STORE_SEL?'on':''}" onclick="selectSpgStoreName(${JSON.stringify(k)})">${g.label} <span style="opacity:.7">(${g.rows.length})</span></div>`;
+    return`<div class="pill ${k===SPG_STORE_SEL?'on':''}" onclick="selectSpgStoreName('${_escJs(k)}')">${g.label} <span style="opacity:.7">(${g.rows.length})</span></div>`;
   }).join('');
   const g=byKey[SPG_STORE_SEL];
   const rows=[...g.rows].sort((a,b)=>a.timestamp-b.timestamp);
