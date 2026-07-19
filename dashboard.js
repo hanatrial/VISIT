@@ -1443,15 +1443,26 @@ const SPG_PRIO_GROUPS=[
   {label:'HI LO Active Granola Berry Berry Honey',items:["HI LO ACTIVE GRANOLA BERRY BERRY HONEY 12PX150G"]}
 ];
 function _escJs(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
-let SPG_REPORT_SEL='';
+let SPG_REPORT_SEL='', SPG_REPORT_SEARCH='';
 function selectSpgReportName(name){
   SPG_REPORT_SEL=name;
   renderSpgReport(filteredSpg());
 }
+function onSpgReportSearch(v){
+  SPG_REPORT_SEARCH=v;
+  renderSpgReport(filteredSpg());
+  const inp=document.getElementById('spg-report-search');
+  if(inp&&document.activeElement!==inp){inp.focus();inp.selectionStart=inp.selectionEnd=inp.value.length;}
+}
 function renderSpgReport(spgF){
-  const names=[...new Set(spgF.map(r=>r.nama||'?'))].sort((a,b)=>a.localeCompare(b));
-  if(SPG_REPORT_SEL&&!names.includes(SPG_REPORT_SEL))SPG_REPORT_SEL='';
-  if(!SPG_REPORT_SEL&&names.length)SPG_REPORT_SEL=names[0];
+  let names=[...new Set(spgF.map(r=>r.nama||'?'))].map(n=>({
+    n,omzet:spgF.filter(r=>(r.nama||'?')===n).reduce((s,r)=>s+(r.totalOmzet||0),0),
+    cnt:spgF.filter(r=>(r.nama||'?')===n).length
+  })).sort((a,b)=>b.omzet-a.omzet);
+  const q=SPG_REPORT_SEARCH.trim().toLowerCase();
+  const shown=q?names.filter(x=>x.n.toLowerCase().includes(q)):names;
+  if(SPG_REPORT_SEL&&!names.some(x=>x.n===SPG_REPORT_SEL))SPG_REPORT_SEL='';
+  if((!SPG_REPORT_SEL||(q&&!shown.some(x=>x.n===SPG_REPORT_SEL)))&&shown.length)SPG_REPORT_SEL=shown[0].n;
   const listEl=document.getElementById('spg-report-list');
   const detEl=document.getElementById('spg-report-detail');
   if(!listEl||!detEl)return;
@@ -1460,10 +1471,9 @@ function renderSpgReport(spgF){
     detEl.innerHTML='<div class="empty-state">Belum ada laporan harian SPG untuk periode/filter ini.</div>';
     return;
   }
-  listEl.innerHTML=names.map(n=>{
-    const cnt=spgF.filter(r=>(r.nama||'?')===n).length;
-    return`<div class="pill ${n===SPG_REPORT_SEL?'on':''}" onclick="selectSpgReportName('${_escJs(n)}')">${n} <span style="opacity:.7">(${cnt})</span></div>`;
-  }).join('');
+  listEl.innerHTML=shown.length?shown.map(x=>{
+    return`<div class="pill ${x.n===SPG_REPORT_SEL?'on':''}" onclick="selectSpgReportName('${_escJs(x.n)}')">${x.n} <span style="opacity:.7">(${x.cnt}) · ${rp(x.omzet)}</span></div>`;
+  }).join(''):'<div class="empty-state" style="padding:8px 0">Tidak ada nama yang cocok.</div>';
   const rows=spgF.filter(r=>(r.nama||'?')===SPG_REPORT_SEL).sort((a,b)=>a.timestamp-b.timestamp);
   const totalOmzet=rows.reduce((s,r)=>s+(r.totalOmzet||0),0);
   const avgOmzet=rows.length?Math.round(totalOmzet/rows.length):0;
@@ -1511,11 +1521,17 @@ function renderSpgReport(spgF){
 
   detEl.innerHTML=html;
 }
-let SPG_STORE_SEL='';
+let SPG_STORE_SEL='', SPG_STORE_SEARCH='';
 function _storeKey(s){return String(s||'?').trim().toLowerCase();}
 function selectSpgStoreName(key){
   SPG_STORE_SEL=key;
   renderSpgPerStore(filteredSpg());
+}
+function onSpgStoreSearch(v){
+  SPG_STORE_SEARCH=v;
+  renderSpgPerStore(filteredSpg());
+  const inp=document.getElementById('spg-store-search');
+  if(inp&&document.activeElement!==inp){inp.focus();inp.selectionStart=inp.selectionEnd=inp.value.length;}
 }
 function renderSpgPerStore(spgF){
   // group rows by store, case/whitespace-insensitive, even when reported by different SPG names
@@ -1525,9 +1541,15 @@ function renderSpgPerStore(spgF){
     if(!byKey[k])byKey[k]={label:r.store||'?',rows:[]};
     byKey[k].rows.push(r);
   });
-  const keys=Object.keys(byKey).sort((a,b)=>byKey[a].label.localeCompare(byKey[b].label));
+  const keys=Object.keys(byKey).sort((a,b)=>{
+    const oa=byKey[a].rows.reduce((s,r)=>s+(r.totalOmzet||0),0);
+    const ob=byKey[b].rows.reduce((s,r)=>s+(r.totalOmzet||0),0);
+    return ob-oa;
+  });
+  const q=SPG_STORE_SEARCH.trim().toLowerCase();
+  const shownKeys=q?keys.filter(k=>byKey[k].label.toLowerCase().includes(q)):keys;
   if(SPG_STORE_SEL&&!keys.includes(SPG_STORE_SEL))SPG_STORE_SEL='';
-  if(!SPG_STORE_SEL&&keys.length)SPG_STORE_SEL=keys[0];
+  if((!SPG_STORE_SEL||(q&&!shownKeys.includes(SPG_STORE_SEL)))&&shownKeys.length)SPG_STORE_SEL=shownKeys[0];
   const listEl=document.getElementById('spg-store-list');
   const detEl=document.getElementById('spg-store-detail');
   if(!listEl||!detEl)return;
@@ -1536,10 +1558,11 @@ function renderSpgPerStore(spgF){
     detEl.innerHTML='<div class="empty-state">Belum ada laporan harian SPG untuk periode/filter ini.</div>';
     return;
   }
-  listEl.innerHTML=keys.map(k=>{
+  listEl.innerHTML=shownKeys.length?shownKeys.map(k=>{
     const g=byKey[k];
-    return`<div class="pill ${k===SPG_STORE_SEL?'on':''}" onclick="selectSpgStoreName('${_escJs(k)}')">${g.label} <span style="opacity:.7">(${g.rows.length})</span></div>`;
-  }).join('');
+    const omzet=g.rows.reduce((s,r)=>s+(r.totalOmzet||0),0);
+    return`<div class="pill ${k===SPG_STORE_SEL?'on':''}" onclick="selectSpgStoreName('${_escJs(k)}')">${g.label} <span style="opacity:.7">(${g.rows.length}) · ${rp(omzet)}</span></div>`;
+  }).join(''):'<div class="empty-state" style="padding:8px 0">Tidak ada toko yang cocok.</div>';
   const g=byKey[SPG_STORE_SEL];
   const rows=[...g.rows].sort((a,b)=>a.timestamp-b.timestamp);
   const totalOmzet=rows.reduce((s,r)=>s+(r.totalOmzet||0),0);

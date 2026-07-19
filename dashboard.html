@@ -467,13 +467,15 @@
       </div>
       <div id="spg-report-wrap" style="display:none">
         <div class="panel-shell"><div class="panel-body">
-          <div id="spg-report-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px"></div>
+          <input class="fi" id="spg-report-search" placeholder="Cari nama SPG…" style="width:220px;margin-bottom:12px" oninput="onSpgReportSearch(this.value)">
+          <div id="spg-report-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;max-height:180px;overflow-y:auto"></div>
           <div id="spg-report-detail"></div>
         </div></div>
       </div>
       <div id="spg-store-wrap" style="display:none">
         <div class="panel-shell"><div class="panel-body">
-          <div id="spg-store-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px"></div>
+          <input class="fi" id="spg-store-search" placeholder="Cari nama toko…" style="width:220px;margin-bottom:12px" oninput="onSpgStoreSearch(this.value)">
+          <div id="spg-store-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;max-height:180px;overflow-y:auto"></div>
           <div id="spg-store-detail"></div>
         </div></div>
       </div>
@@ -522,6 +524,6 @@
   </div></div>
 </div>
 
-<script src="dashboard.js?v=13"></script>
+<script src="dashboard.js?v=14"></script>
 </body>
 </html>
