@@ -454,10 +454,22 @@
         <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(6,182,212,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--cyan),transparent 70%)"></div><div class="kpi-label">Avg Omzet / Entri</div><div class="kpi-val sm" style="color:var(--cyan)" id="ds-spg-avg">—</div><div class="kpi-sub">rata-rata per laporan</div></div></div>
         <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(139,92,246,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--violet),transparent 70%)"></div><div class="kpi-label">Toko Aktif</div><div class="kpi-val" style="color:var(--violet)" id="ds-spg-stores">—</div><div class="kpi-sub">toko berbeda terfilter</div></div></div>
       </div>
-      <div class="panel-shell"><div class="panel-body">
-        <table><thead id="table-head-spg"></thead><tbody id="table-body-spg"></tbody></table>
-        <div class="tfoot-row" id="tfoot-spg"></div>
-      </div></div>
+      <div class="sub-nav">
+        <div class="sub-tab on spg" id="stab-spg-log" onclick="switchSubTab('spg','log')">📋 Riwayat Laporan</div>
+        <div class="sub-tab spg" id="stab-spg-report" onclick="switchSubTab('spg','report')">🧑‍💼 SPG Report</div>
+      </div>
+      <div id="spg-log-wrap">
+        <div class="panel-shell"><div class="panel-body">
+          <table><thead id="table-head-spg"></thead><tbody id="table-body-spg"></tbody></table>
+          <div class="tfoot-row" id="tfoot-spg"></div>
+        </div></div>
+      </div>
+      <div id="spg-report-wrap" style="display:none">
+        <div class="panel-shell"><div class="panel-body">
+          <div id="spg-report-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px"></div>
+          <div id="spg-report-detail"></div>
+        </div></div>
+      </div>
     </div>
   </div>
 </div>
@@ -503,6 +515,6 @@
   </div></div>
 </div>
 
-<script src="dashboard.js?v=10"></script>
+<script src="dashboard.js?v=11"></script>
 </body>
 </html>

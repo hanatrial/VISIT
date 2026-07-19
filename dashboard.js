@@ -966,7 +966,7 @@ function buildSpotlight(rkaF,beliF){
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 let STOCK_ALL=[], SUBTAB_STOCK='log';
-let SUBTAB_RKA='log', SUBTAB_BELI='log', SUBTAB_FORMULA='summary', SUBTAB_PJMDS='mds', SUBTAB_NED='log';
+let SUBTAB_RKA='log', SUBTAB_BELI='log', SUBTAB_FORMULA='summary', SUBTAB_PJMDS='mds', SUBTAB_NED='log', SUBTAB_SPG='log';
 let NED_ALL=[], SPG_ALL=[];
 function switchTab(t){
   TAB=t;
@@ -1004,6 +1004,11 @@ function switchSubTab(main,sub){
   }else if(main==='ned'){
     SUBTAB_NED=sub;
     ['log','urgent'].forEach(s=>{const el=document.getElementById('stab-ned-'+s);if(el)el.classList.toggle('on',s===sub);});
+  }else if(main==='spg'){
+    SUBTAB_SPG=sub;
+    ['log','report'].forEach(s=>{const el=document.getElementById('stab-spg-'+s);if(el)el.classList.toggle('on',s===sub);});
+    const lw=document.getElementById('spg-log-wrap');if(lw)lw.style.display=sub==='log'?'block':'none';
+    const rw=document.getElementById('spg-report-wrap');if(rw)rw.style.display=sub==='report'?'block':'none';
   }else{
     SUBTAB_BELI=sub;
     ['log','analisis'].forEach(s=>{const el=document.getElementById('stab-beli-'+s);if(el)el.classList.toggle('on',s===sub);});
@@ -1064,7 +1069,8 @@ function render(){
     if(SUBTAB_NED==='log')renderNedLog(nedF);
     else renderNedUrgent(nedF);
   }else if(TAB==='spg'){
-    renderSpgLog(spgF);
+    if(SUBTAB_SPG==='log')renderSpgLog(spgF);
+    else renderSpgReport(spgF);
   }
 }
 
@@ -1401,6 +1407,106 @@ function toggleSpgDetail(tr,idx){
   tr.parentNode.insertBefore(det,tr.nextSibling);
   const sp=tr.querySelector('span[style*="▾"]');
   if(sp)sp.textContent='▴';
+}
+/* ── SPG REPORT (per-SPG evaluation) ─────────────────────────────────────── */
+const SPG_PRIO_GROUPS=[
+  {label:'HI LO School, Teen & Platinum',items:[
+    "HI LO SCHOOL CHOCOLATE 12DX250G","HI LO SCHOOL CHOCOLATE 12DX500G","HI LO SCHOOL CHOCOLATE 6DX750G",
+    "HI LO SCHOOL VANILLA 12DX250G","HI LO SCHOOL VANILLA VEGIBERI 12DX500G","HI LO SCHOOL VANILLA VEGIBERI 6DX750G",
+    "HI LO SCHOOL HONEY 12DX250G","HI LO SCHOOL HONEY 12DX500G","HI LO SCHOOL STRAWBERRY CHEESECAKE 12DX500G",
+    "HI LO SCHOOL BUBBLE GUM 12DX500G","HI LO SCHOOL COTTON CANDY 12DX500G","HI LO SCHOOL ORIGINAL 12DX12SX25G",
+    "HI LO SCHOOL SUSU COKELAT 8GUSX10SX35G","HI LO SCHOOL SUSU VANILLA 8GUSX10SX35G",
+    "HI LO TEEN CHOCOLATE 12DX250G","HI LO TEEN CHOCOLATE 12DX500G","HI LO TEEN CHOCOLATE 6DX750G",
+    "HI LO TEEN VANILLA CARAMEL 12DX250G","HI LO TEEN VANILLA CARAMEL 12DX500G","HI LO TEEN VANILLA CARAMEL 6DX750G",
+    "HI LO TEEN KOREAN BANANA 12DX250G","HI LO TEEN POPCORN CARAMEL 12DX500G",
+    "HI LO TEEN HIPROTEIN ORIGINAL 12DX10SX33G","HI LO TEEN HIPROTEIN MELON 12DX400G",
+    "HI LO PLATINUM ORIGINAL 12DX12SX30G","HI LO PLATINUM SWISS CHOCOLATE 12DX12SX34G",
+    "HI LO PLATINUM +HMB VANILLA 12DX8SX42G","HI LO PLATINUM +HMB CHOCO MOCHA 12DX8SX40G"
+  ]},
+  {label:'TS Beras (kecuali Shirataki Noodles)',items:[
+    "TS BERAS PORANG INSTAN 12PCHX1000G","TS BERAS PORANG INSTAN SACHET 12DX10SX40G",
+    "TS BERAS PORANG INSTAN GOLDEN UBE 12DX7SX40G","TS BERAS PORANG INSTAN NASI GORENG 12DX7SX38.5G",
+    "TS BERAS MERAH ORGANIK 12PCHX1000G"
+  ]},
+  {label:'Oil',items:[
+    "TS CANOLA OIL 12BTLX946ML","TS CORN OIL 12BTLX946ML","TS CORN OIL REF 16PCHX1000ML",
+    "TS EXTRA VIRGIN OLIVE OIL 12BTLX500ML","TS EXTRA LIGHT OLIVE OIL 12BTLX500ML","TS SUNFLOWER OIL 12BTLX946ML"
+  ]},
+  {label:'Stevia',items:["TS SWT STEVIA 24DX50SX1.8G","TS SWT STEVIA 12DX100SX1.8G"]},
+  {label:'Diabtx Milk',items:["TS DIABTX MILK VANILLA MALT 12DX150G","TS DIABTX MILK VANILLA MALT 12DX500G"]},
+  {label:'TS Spread Jam',items:[
+    "TS CHOCOLATE SPREAD 12BTLX300G","TS ROYAL MATCHA SPREAD 12BTLX300G","TS PEANUT ALMOND BUTTER 12BTLX300G",
+    "TS BALI ARTISAN SEA SALT 12BTLX300G","TS STRAWBERRY JAM 12BTLX375G"
+  ]},
+  {label:'HI LO Active Granola Berry Berry Honey',items:["HI LO ACTIVE GRANOLA BERRY BERRY HONEY 12PX150G"]}
+];
+let SPG_REPORT_SEL='';
+function selectSpgReportName(name){
+  SPG_REPORT_SEL=name;
+  renderSpgReport(filteredSpg());
+}
+function renderSpgReport(spgF){
+  const names=[...new Set(spgF.map(r=>r.nama||'?'))].sort((a,b)=>a.localeCompare(b));
+  if(SPG_REPORT_SEL&&!names.includes(SPG_REPORT_SEL))SPG_REPORT_SEL='';
+  if(!SPG_REPORT_SEL&&names.length)SPG_REPORT_SEL=names[0];
+  const listEl=document.getElementById('spg-report-list');
+  const detEl=document.getElementById('spg-report-detail');
+  if(!listEl||!detEl)return;
+  if(!names.length){
+    listEl.innerHTML='';
+    detEl.innerHTML='<div class="empty-state">Belum ada laporan harian SPG untuk periode/filter ini.</div>';
+    return;
+  }
+  listEl.innerHTML=names.map(n=>{
+    const cnt=spgF.filter(r=>(r.nama||'?')===n).length;
+    return`<div class="pill ${n===SPG_REPORT_SEL?'on':''}" onclick="selectSpgReportName(${JSON.stringify(n)})">${n} <span style="opacity:.7">(${cnt})</span></div>`;
+  }).join('');
+  const rows=spgF.filter(r=>(r.nama||'?')===SPG_REPORT_SEL).sort((a,b)=>a.timestamp-b.timestamp);
+  const totalOmzet=rows.reduce((s,r)=>s+(r.totalOmzet||0),0);
+  const avgOmzet=rows.length?Math.round(totalOmzet/rows.length):0;
+  const storesActive=new Set(rows.map(r=>r.store||'?')).size;
+  const areasActive=new Set(rows.map(r=>r.area||'?')).size;
+
+  // per-group totals across all rows for this SPG
+  const groupTotals=SPG_PRIO_GROUPS.map(g=>{
+    let omzet=0,qty=0;
+    rows.forEach(r=>{
+      Object.entries(r.items||{}).forEach(([nm,{qty:q,omzet:o}])=>{
+        if(g.items.includes(nm)){omzet+=(o||0);qty+=(q||0);}
+      });
+    });
+    return{label:g.label,omzet,qty};
+  });
+  const prioSet=new Set(SPG_PRIO_GROUPS.flatMap(g=>g.items));
+  const prioTotal=groupTotals.reduce((s,g)=>s+g.omzet,0);
+  const lainTotal=totalOmzet-prioTotal;
+
+  let html='';
+  html+=`<div class="bento bento-4" style="margin-bottom:16px">
+    <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(245,158,11,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 0% 0%,var(--gold),transparent 70%)"></div><div class="kpi-label">Total Laporan</div><div class="kpi-val" style="color:var(--gold)">${rows.length||'—'}</div><div class="kpi-sub">${areasActive} area · ${storesActive} toko</div></div></div>
+    <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(16,185,129,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 50% 0%,var(--green),transparent 70%)"></div><div class="kpi-label">Total Omzet</div><div class="kpi-val sm" style="color:var(--green)">${totalOmzet?rp(totalOmzet):'—'}</div><div class="kpi-sub">akumulasi periode terfilter</div></div></div>
+    <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(6,182,212,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--cyan),transparent 70%)"></div><div class="kpi-label">Avg Omzet / Hari</div><div class="kpi-val sm" style="color:var(--cyan)">${avgOmzet?rp(avgOmzet):'—'}</div><div class="kpi-sub">rata-rata per laporan</div></div></div>
+    <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(139,92,246,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--violet),transparent 70%)"></div><div class="kpi-label">Omzet Item Prioritas</div><div class="kpi-val sm" style="color:var(--violet)">${prioTotal?rp(prioTotal):'—'}</div><div class="kpi-sub">${totalOmzet?Math.round(prioTotal/totalOmzet*100):0}% dari total omzet</div></div></div>
+  </div>`;
+
+  html+='<div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">Omzet Harian — '+SPG_REPORT_SEL+'</div>';
+  html+='<div class="panel-shell" style="margin-bottom:20px"><div class="panel-body">';
+  html+='<table><thead><tr><th>Tanggal</th><th>Area</th><th>Toko</th><th>Item</th><th>Total Omzet</th></tr></thead><tbody>';
+  html+=rows.length?rows.map(r=>{
+    const ts=r.timestamp;
+    const cnt=r.items?Object.keys(r.items).length:0;
+    return`<tr><td class="td-dim">${ts.toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</td><td class="td-dim">${r.area||'—'}</td><td class="td-mid">${r.store||'—'}</td><td><span class="tag au sm">${cnt} item</span></td><td style="font-weight:700;color:var(--green)">${r.totalOmzet?rp(r.totalOmzet):'—'}</td></tr>`;
+  }).join(''):'<tr><td colspan="5"><div class="empty-state">Belum ada laporan.</div></td></tr>';
+  html+='</tbody></table></div></div>';
+
+  html+='<div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">Rekap per Grup Item Prioritas — '+SPG_REPORT_SEL+'</div>';
+  html+='<div class="panel-shell"><div class="panel-body">';
+  html+='<table><thead><tr><th>Grup Item</th><th>Qty (renceng)</th><th>Omzet</th><th>% dari Total</th></tr></thead><tbody>';
+  html+=groupTotals.map(g=>`<tr><td class="td-main">${g.label}</td><td class="td-mid">${g.qty||'—'}</td><td style="font-weight:700;color:var(--green)">${g.omzet?rp(g.omzet):'—'}</td><td class="td-dim">${totalOmzet?Math.round(g.omzet/totalOmzet*100):0}%</td></tr>`).join('');
+  html+=`<tr style="border-top:1px solid var(--border)"><td class="td-main">Item Lainnya (non-prioritas)</td><td class="td-mid">—</td><td style="font-weight:700;color:var(--t2)">${lainTotal?rp(lainTotal):'—'}</td><td class="td-dim">${totalOmzet?Math.round(lainTotal/totalOmzet*100):0}%</td></tr>`;
+  html+='</tbody></table></div></div>';
+
+  detEl.innerHTML=html;
 }
 function renderStockLog(stockF){
   const awal=stockF.filter(r=>r.stockType==='awal').length;
