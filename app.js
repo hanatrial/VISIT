@@ -23367,7 +23367,9 @@ async function loadCustomStores(){
 }
 
 /* SPG has its own isolated store list — not shared with RKA/Beli/NED/Stock */
-const SPG_STORES_BY_AREA = {};
+const SPG_STORES_BY_AREA = {
+  'Makassar': ['Satu Sama Landak','Satu Sama Perintis','Satu Sama Hertasning','Hengky Tranku','Top Mode Perintis','Grand Toserba Pengayoman','Ektong','Grand Toserba Hertasning','Satu Sama Karlink','Gelael','Grand Mall','Diamond']
+};
 function canonicalSpgStore(area,name){
   const n=String(name).trim();
   return (SPG_STORES_BY_AREA[area]||[]).find(s=>_sameName(s,n))||n;
