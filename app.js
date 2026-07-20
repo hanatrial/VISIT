@@ -24776,8 +24776,14 @@ function shareSpgWhatsApp(){
   }
   if(lainEntries.length){
     text+='*ITEM LAINNYA*\n';
+    const lainByGroup={};
     lainEntries.forEach(([name,{qty,omzet}])=>{
-      text+='• '+name+'\n   '+qty+' rnc = Rp '+omzet.toLocaleString('id-ID')+'\n';
+      const g=spgGroupLabel(spgGroupOf(name))||'Lainnya';
+      if(!lainByGroup[g])lainByGroup[g]={qty:0,omzet:0};
+      lainByGroup[g].qty+=qty; lainByGroup[g].omzet+=omzet;
+    });
+    Object.entries(lainByGroup).forEach(([g,{qty,omzet}])=>{
+      text+='• '+g+'\n   '+qty+' rnc = Rp '+omzet.toLocaleString('id-ID')+'\n';
     });
     text+='_Subtotal Lainnya: Rp '+lainTotal.toLocaleString('id-ID')+'_\n';
     text+='─────────────────\n';
