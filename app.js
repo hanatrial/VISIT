@@ -24635,6 +24635,8 @@ function spgGroupOf(name){
   for(const g of STOCK_PRODUCTS) if(g.items.includes(name)) return g.group;
   return '';
 }
+const SPG_GROUP_LABEL_OVERRIDE={'TS OILS':'TS Merah','TS BERAS':'TS Noodle'};
+function spgGroupLabel(g){ return SPG_GROUP_LABEL_OVERRIDE[g]||g; }
 function spgOrderedItems(){
   const prio=new Set(SPG_PRIORITY_ITEMS);
   const rest=[];
@@ -24657,7 +24659,7 @@ function renderSpgItems(){
       const g=spgGroupOf(name);
       if(g!==lastGroup){
         const hdr=document.createElement('div');
-        hdr.className='qty-group-hdr'; hdr.textContent=g;
+        hdr.className='qty-group-hdr'; hdr.textContent=spgGroupLabel(g);
         list.appendChild(hdr);
         lastGroup=g;
       }
