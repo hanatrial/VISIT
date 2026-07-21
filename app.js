@@ -24789,7 +24789,7 @@ function shareSpgWhatsApp(){
     text+='─────────────────\n';
   }
   text+='*TOTAL OMZET: Rp '+SG.total.toLocaleString('id-ID')+'*';
-  window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');
+  location.href='https://wa.me/?text='+encodeURIComponent(text);
 }
 function resetSpg(){ initSpg(); document.getElementById('spg-wrap').scrollTop=0; }
 function spgUpdateStepper(){
