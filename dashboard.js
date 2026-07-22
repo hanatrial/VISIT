@@ -2872,26 +2872,23 @@ function computeScorecardRows(){
     const nLow=name.toLowerCase();
     const beli=beliF.filter(r=>(r.mds||'').toLowerCase()===nLow);
     const trx=beli.length;
-    const ns=beli.reduce((s,r)=>s+(r.groupTotals&&r.groupTotals.NS||0),0);
-    const hilo=beli.reduce((s,r)=>s+(r.groupTotals&&r.groupTotals.HILO||0)+(r.groupTotals&&r.groupTotals.HILOPLS||0),0);
+    const stores=new Set(beli.map(r=>r.store||'?')).size;
     const beliVal=beli.reduce((s,r)=>s+kalc(r),0);
     const nota=beli.reduce((s,r)=>s+(r.nominal||0),0);
-    const stores=new Set(beli.map(r=>r.store||'?')).size;
+    const notaFinal=Math.max(beliVal,nota);
     const resolved=pjResolveMdsName(name);
-    let omzetNS=0,omzetHILO=0,custCount=0,callCount=0,omzet=0;
-    if(resolved){
-      const cAll=PJ_RAW.call.filter(r=>r.NamaMDS===resolved);
-      const oAll=PJ_RAW.order.filter(r=>r.NamaMDS===resolved);
-      const c=pjPeriodFilterCall(cAll);
-      const o=pjPeriodFilterOrder(oAll,c);
-      callCount=c.length;
-      omzetNS=c.reduce((s,r)=>s+(r.OmzetNS||0),0);
-      omzetHILO=c.reduce((s,r)=>s+(r.OmzetHILO||0),0);
-      custCount=new Set(c.map(r=>r.KodeCustomer)).size;
-      omzet=o.reduce((s,r)=>s+pjOrderValue(r),0);
-    }
-    const maxBeliNota=Math.max(beliVal,nota);
-    return{name,area:mdsAreaOf(name),trx,stores,ns,hilo,beliVal,nota,callCount,custCount,omzetNS,omzetHILO,omzet,selisih:omzet-maxBeliNota,matched:!!resolved};
+    const d=computePjmdsMdsData(name);
+    const teaVolume=d?d.kpi.tea_volume:0;
+    const hiloVolume=d?d.kpi.hilo_volume:0;
+    const callCount=d?d.kpi.total_call:0;
+    const eaCount=d?d.kpi.total_customer:0;
+    const sekolahCount=d?d.kpi.total_sekolah:0;
+    const singleSkuCount=d?d.single_sku_count:0;
+    const varian5Count=d?d.noo_pengembangan.length:0;
+    const omzet=d?d.kpi.total_penjualan:0;
+    return{name,area:mdsAreaOf(name),trx,stores,beliVal,nota,notaFinal,
+      teaVolume,hiloVolume,callCount,eaCount,sekolahCount,singleSkuCount,varian5Count,
+      omzet,selisih:omzet-notaFinal,matched:!!resolved};
   }).filter(r=>r.trx>0||r.omzet>0);
 }
 let SC_SORT='omzet',SC_DIR=-1;
@@ -2906,24 +2903,35 @@ function renderScorecard(){
     return SC_DIR*String(av||'').localeCompare(String(bv||''));
   });
   const maxOmzet=Math.max(...rows.map(r=>r.omzet),1);
+  const pctCell=(val,target,fmt)=>{
+    const pct=target>0?(val/target*100):0;
+    const col=pct>=100?'var(--accent)':pct>=60?'var(--gold)':'var(--t3)';
+    return`<div>${fmt(val)}</div><div style="font-size:9px;color:${col};font-weight:700">${target>0?pct.toFixed(0)+'%':'-'}</div>`;
+  };
   let tB=0,tO=0,tD=0,unmatched=0;
   tb.innerHTML=rows.length?rows.map(r=>{
-    tB+=r.beliVal;tO+=r.omzet;tD+=r.selisih;if(!r.matched&&r.trx>0)unmatched++;
+    tB+=r.notaFinal;tO+=r.omzet;tD+=r.selisih;if(!r.matched&&r.trx>0)unmatched++;
     const dTag=r.selisih===0?'<span class="tag t sm">0</span>':r.selisih>0?`<span class="tag g sm">+${rp(r.selisih)}</span>`:`<span class="tag r sm">${rp(r.selisih)}</span>`;
     const dNote=r.selisih>2000000?'<div style="margin-top:2px"><span class="tag r sm" title="Omzet jauh lebih besar dari pengambilan, kemungkinan nota belum diinput">⚠️ Cek Nota</span></div>'
       :r.selisih<-2000000?'<div style="margin-top:2px"><span class="tag r sm" title="Pengambilan jauh lebih besar dari omzet, kemungkinan salah input nota/beli">⚠️ Cek Pengambilan</span></div>'
       :'';
     const barW=Math.round(r.omzet/maxOmzet*100);
+    const eaPct=r.eaCount?(v=>v/r.eaCount*100):null;
     return`<tr class="clickrow" onclick="selectPjmds('${r.name.replace(/'/g,"\\'")}');switchSubTab('pjmds','mds')">
       <td class="td-main">${r.name} ${r.matched?'':'<span style="font-size:8px;color:var(--red)" title="Nama tidak ketemu di data Penjualan">⚠</span>'}</td>
       <td class="td-dim">${r.area}</td>
-      <td style="color:var(--violet);font-weight:700;font-size:11px">${r.beliVal?rp(r.beliVal):'—'}</td>
-      <td class="td-dim">${r.nota?rp(r.nota):'—'}</td>
-      <td><span class="tag t sm">${r.custCount||'—'}</span></td>
+      <td class="td-dim">${r.notaFinal?rp(r.notaFinal):'—'}</td>
       <td><div style="font-weight:800;color:var(--pink);font-size:11px">${r.omzet?rp(r.omzet):'—'}</div><div class="av-bg" style="margin-top:3px;max-width:90px"><div class="av-fill" style="width:${barW}%;background:var(--pink)"></div></div></td>
       <td>${dTag}${dNote}</td>
+      <td>${pctCell(r.teaVolume,PJ_TARGET.tea,rp)}</td>
+      <td>${pctCell(r.hiloVolume,PJ_TARGET.hilo,rp)}</td>
+      <td>${pctCell(r.callCount,PJ_TARGET.call,fmtNum)}</td>
+      <td>${pctCell(r.eaCount,PJ_TARGET.ea,fmtNum)}</td>
+      <td>${pctCell(r.sekolahCount,PJ_TARGET.sekolah,fmtNum)}</td>
+      <td>${r.singleSkuCount}<div style="font-size:9px;color:var(--t3);font-weight:700">${eaPct?eaPct(r.singleSkuCount).toFixed(0)+'%':'-'}</div></td>
+      <td>${r.varian5Count}<div style="font-size:9px;color:var(--t3);font-weight:700">${eaPct?eaPct(r.varian5Count).toFixed(0)+'%':'-'}</div></td>
     </tr>`;
-  }).join(''):`<tr><td colspan="10"><div class="empty-state">Tidak ada data untuk periode/filter ini.${PJ_RAW.call.length?'':' Upload data Penjualan (Call & Order) untuk kolom Omzet.'}</div></td></tr>`;
+  }).join(''):`<tr><td colspan="12"><div class="empty-state">Tidak ada data untuk periode/filter ini.${PJ_RAW.call.length?'':' Upload data Penjualan (Call & Order) untuk kolom Omzet.'}</div></td></tr>`;
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
   set('sc-beli',tB?rp(tB):'—');
   set('sc-omzet',tO?rp(tO):'—');

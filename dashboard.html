@@ -290,7 +290,7 @@
 
       <div id="pjmds-scorecard-wrap" style="display:none">
         <div class="bento bento-4" id="sc-kpis">
-          <div class="kpi-shell"><div class="kpi-inner"><div class="kpi-label">Total Value Beli</div><div class="kpi-val sm" style="color:var(--violet)" id="sc-beli">—</div><div class="kpi-sub">dari Beli Barang (filter aktif)</div></div></div>
+          <div class="kpi-shell"><div class="kpi-inner"><div class="kpi-label">Total Nota</div><div class="kpi-val sm" style="color:var(--violet)" id="sc-beli">—</div><div class="kpi-sub">max(Value Beli, Nota) per MDS</div></div></div>
           <div class="kpi-shell"><div class="kpi-inner"><div class="kpi-label">Total Omzet</div><div class="kpi-val sm" style="color:var(--pink)" id="sc-omzet">—</div><div class="kpi-sub">dari data Call &amp; Order</div></div></div>
           <div class="kpi-shell"><div class="kpi-inner"><div class="kpi-label">Selisih Omzet − Max(Beli,Nota)</div><div class="kpi-val sm" id="sc-diff">—</div><div class="kpi-sub">positif = omzet lebih besar</div></div></div>
           <div class="kpi-shell"><div class="kpi-inner"><div class="kpi-label">MDS Aktif</div><div class="kpi-val" style="color:var(--cyan)" id="sc-count">—</div><div class="kpi-sub" id="sc-unmatched">—</div></div></div>
@@ -298,10 +298,16 @@
         <div class="panel-shell"><div class="panel-body">
           <table><thead><tr>
             <th onclick="scSortBy('name')">MDS</th><th>Area</th>
-            <th onclick="scSortBy('beliVal')">Value Beli</th><th onclick="scSortBy('nota')">Nota</th>
-            <th onclick="scSortBy('custCount')">Customer</th>
+            <th onclick="scSortBy('notaFinal')">Nota</th>
             <th onclick="scSortBy('omzet')">Total Omzet</th>
             <th onclick="scSortBy('selisih')">Selisih</th>
+            <th onclick="scSortBy('teaVolume')">Volume NS Tea</th>
+            <th onclick="scSortBy('hiloVolume')">Volume HILO</th>
+            <th onclick="scSortBy('callCount')">Call</th>
+            <th onclick="scSortBy('eaCount')">EA</th>
+            <th onclick="scSortBy('sekolahCount')">Sekolah Dikunjungi</th>
+            <th onclick="scSortBy('singleSkuCount')">Cust. 1 SKU</th>
+            <th onclick="scSortBy('varian5Count')">EA 5 Varian</th>
           </tr></thead><tbody id="sc-body"></tbody></table>
           <div class="tfoot-row" id="sc-tfoot"></div>
         </div></div>
