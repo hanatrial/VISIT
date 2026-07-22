@@ -636,8 +636,13 @@ function renderPjmdsSalesDetail(mds){
   {
     const nooAll=d.noo_pengembangan;
     const nooShown=PJMDS_NOO_SHOWALL?nooAll:nooAll.slice(0,10);
-    const nooToggle=nooAll.length>10?`<span class="tag ${PJMDS_NOO_SHOWALL?'g':'t'}" style="cursor:pointer;font-size:12px;padding:4px 12px;margin-left:8px" onclick="togglePjmdsNooShowAll()">${nooAll.length} customer ${PJMDS_NOO_SHOWALL?'▲':'▼'}</span>`:`<span style="color:var(--t3)">(${nooAll.length} customer)</span>`;
-    html+=`<div class="ch-label" style="margin:16px 0 8px">NOO Pengembangan ${nooToggle} <span style="color:var(--t3);font-weight:500">· klik baris untuk lihat detail visit</span></div><div class="panel-shell"><div class="panel-body">
+    const nooTotalOmzet=nooAll.reduce((s,r)=>s+r.omzet,0);
+    const nooToggleHint=nooAll.length>10?` <span style="color:var(--t3);font-weight:500;font-size:9px">(klik untuk ${PJMDS_NOO_SHOWALL?'ciutkan':'lihat semua'})</span>`:'';
+    html+=`<div class="ch-label" style="margin:16px 0 8px">NOO Pengembangan <span style="color:var(--t3);font-weight:500">· klik baris untuk lihat detail visit</span></div><div class="panel-shell"><div class="panel-body">
+    <div class="bento bento-2">
+      <div class="kpi-shell"${nooAll.length>10?' style="cursor:pointer"':''} onclick="togglePjmdsNooShowAll()"><div class="kpi-inner" style="padding:12px 14px"><div class="kpi-label">Jumlah Customer${nooToggleHint}</div><div class="kpi-val" style="font-size:18px;color:var(--gold)">${nooAll.length}${nooAll.length>10?(PJMDS_NOO_SHOWALL?' ▲':' ▼'):''}</div></div></div>
+      <div class="kpi-shell"><div class="kpi-inner" style="padding:12px 14px"><div class="kpi-label">Total Omzet</div><div class="kpi-val" style="font-size:18px;color:var(--accent)">${nooTotalOmzet?rp(nooTotalOmzet):'—'}</div></div></div>
+    </div>
     ${pjTable(['Customer','Klasifikasi','Kabupaten','Jumlah SKU','Omzet'],nooShown,r=>`<tr class="clickrow" style="cursor:pointer" onclick="pjOpenCustomerModal('${String(r.kode).replace(/'/g,"\\'")}')"><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.sku_count} SKU</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada customer NOO Pengembangan.')}
   </div></div>`;
   }
