@@ -627,12 +627,16 @@ function renderPjmdsSalesDetail(mds){
   html+=`<div class="ch-label" style="margin:16px 0 8px">Top 5 Sekolah <span style="color:var(--t3);font-weight:500">· klik baris untuk lihat kantin & customer</span></div><div class="panel-shell"><div class="panel-body">
     ${pjTable(['','Nama Sekolah','Kabupaten','Kantin','Visit','Omzet'],d.top_sekolah,(r,i)=>`<tr class="clickrow" style="cursor:pointer" onclick="pjOpenSekolahModal('${r.nama.replace(/'/g,"\\'")}')"><td>${i+1}</td><td class="td-main">${r.nama}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.kantin}</td><td>${r.visits}x</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada data sekolah.')}
   </div></div>`;
-  html+=`<div class="ch-label" style="margin:16px 0 8px">Customer Hanya Beli 1 SKU (Jeruk Peras / ASO)</div><div class="panel-shell"><div class="panel-body">
+  {
+    const pctCust=d.kpi.total_customer?(d.single_sku_count/d.kpi.total_customer*100):0;
+    const pctVal=d.kpi.total_penjualan?(d.single_sku_total_value/d.kpi.total_penjualan*100):0;
+    html+=`<div class="ch-label" style="margin:16px 0 8px">Customer Hanya Beli 1 SKU (Jeruk Peras / ASO)</div><div class="panel-shell"><div class="panel-body">
     <div class="bento bento-2">
-      <div class="kpi-shell"><div class="kpi-inner" style="padding:12px 14px"><div class="kpi-label">Jumlah Customer</div><div class="kpi-val" style="font-size:18px;color:var(--gold)">${d.single_sku_count}</div></div></div>
-      <div class="kpi-shell"><div class="kpi-inner" style="padding:12px 14px"><div class="kpi-label">Total Value</div><div class="kpi-val" style="font-size:18px;color:var(--accent)">${d.single_sku_total_value?rp(d.single_sku_total_value):'—'}</div></div></div>
+      <div class="kpi-shell"><div class="kpi-inner" style="padding:12px 14px"><div class="kpi-label">Jumlah Customer</div><div class="kpi-val" style="font-size:18px;color:var(--gold)">${d.single_sku_count}</div><div class="kpi-sub">${pctCust.toFixed(1)}% dari EA (${d.kpi.total_customer})</div></div></div>
+      <div class="kpi-shell"><div class="kpi-inner" style="padding:12px 14px"><div class="kpi-label">Total Value</div><div class="kpi-val" style="font-size:18px;color:var(--accent)">${d.single_sku_total_value?rp(d.single_sku_total_value):'—'}</div><div class="kpi-sub">${pctVal.toFixed(1)}% dari Total Omzet</div></div></div>
     </div>
   </div></div>`;
+  }
   {
     const nooAll=d.noo_pengembangan;
     const nooShown=PJMDS_NOO_SHOWALL?nooAll:nooAll.slice(0,10);
