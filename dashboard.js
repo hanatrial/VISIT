@@ -50,7 +50,7 @@ function toggleTheme(){
 }
 applyTheme(localStorage.getItem('mds_theme')||'dark');
 let _expandedRkaVid=null,_expandedBeliVid=null;
-let KEDAI_DB={stores:[],meta:null},PJMDS_SEL=null,PJMDS_SHOW_TOKO=false;
+let KEDAI_DB={stores:[],meta:null},PJMDS_SEL=null,PJMDS_SHOW_TOKO=false,PJMDS_NOO_SHOWALL=false;
 let PJMDS_MANUAL_MATCH={};
 let PJ_ROUTE_DATE=null;
 let cAV=null,cTrend=null,cBrand=null,mcAV=null,mcBrand=null;
@@ -633,9 +633,14 @@ function renderPjmdsSalesDetail(mds){
       <div class="kpi-shell"><div class="kpi-inner" style="padding:12px 14px"><div class="kpi-label">Total Value</div><div class="kpi-val" style="font-size:18px;color:var(--accent)">${d.single_sku_total_value?rp(d.single_sku_total_value):'—'}</div></div></div>
     </div>
   </div></div>`;
-  html+=`<div class="ch-label" style="margin:16px 0 8px">NOO Pengembangan (${d.noo_pengembangan.length} customer) <span style="color:var(--t3);font-weight:500">· klik baris untuk lihat detail visit</span></div><div class="panel-shell"><div class="panel-body">
-    ${pjTable(['Customer','Klasifikasi','Kabupaten','Jumlah SKU','Omzet'],d.noo_pengembangan,r=>`<tr class="clickrow" style="cursor:pointer" onclick="pjOpenCustomerModal('${String(r.kode).replace(/'/g,"\\'")}')"><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.sku_count} SKU</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada customer NOO Pengembangan.')}
+  {
+    const nooAll=d.noo_pengembangan;
+    const nooShown=PJMDS_NOO_SHOWALL?nooAll:nooAll.slice(0,10);
+    html+=`<div class="ch-label" style="margin:16px 0 8px">NOO Pengembangan (${nooAll.length} customer) <span style="color:var(--t3);font-weight:500">· klik baris untuk lihat detail visit</span></div><div class="panel-shell"><div class="panel-body">
+    ${pjTable(['Customer','Klasifikasi','Kabupaten','Jumlah SKU','Omzet'],nooShown,r=>`<tr class="clickrow" style="cursor:pointer" onclick="pjOpenCustomerModal('${String(r.kode).replace(/'/g,"\\'")}')"><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.sku_count} SKU</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada customer NOO Pengembangan.')}
+    ${nooAll.length>10?`<div style="text-align:center;margin-top:10px"><span class="freset" style="cursor:pointer" onclick="togglePjmdsNooShowAll()">${PJMDS_NOO_SHOWALL?'▲ Tampilkan lebih sedikit':`▼ Lihat semua (${nooAll.length})`}</span></div>`:''}
   </div></div>`;
+  }
   html+=`<div class="ch-label" style="margin:16px 0 8px">Efektivitas Kunjungan</div><div class="panel-shell"><div class="panel-body">
     ${pjTable(['Customer','Klasifikasi','Kabupaten','Total Visit','Max/Minggu','Omzet'],d.efektivitas,r=>`<tr><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.total_visit}x</td><td>${r.max_minggu}x</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada customer yang ditandai tidak efektif. ✅')}
   </div></div>`;
@@ -1113,6 +1118,7 @@ function renderPjmds(beliF){
 function selectPjmds(name){
   PJMDS_SEL=name||null;
   PJMDS_SHOW_TOKO=false;
+  PJMDS_NOO_SHOWALL=false;
   render();
 }
 async function loadPjmdsManualMatch(){
@@ -1139,6 +1145,10 @@ function setPjmdsManualMatch(callName){
 function togglePjmdsToko(){
   if(!PJMDS_SEL)return;
   PJMDS_SHOW_TOKO=!PJMDS_SHOW_TOKO;
+  render();
+}
+function togglePjmdsNooShowAll(){
+  PJMDS_NOO_SHOWALL=!PJMDS_NOO_SHOWALL;
   render();
 }
 function renderPjmdsDetail(beliF){
