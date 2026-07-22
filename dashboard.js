@@ -2906,7 +2906,7 @@ function renderScorecard(){
   const pctCell=(val,target,fmt)=>{
     const pct=target>0?(val/target*100):0;
     const col=pct>=100?'var(--accent)':pct>=60?'var(--gold)':'var(--t3)';
-    return`<div>${fmt(val)}</div><div style="font-size:9px;color:${col};font-weight:700">${target>0?pct.toFixed(0)+'%':'-'}</div>`;
+    return`<div style="font-size:13px">${fmt(val)}</div><div style="font-size:12px;color:${col};font-weight:800">${target>0?pct.toFixed(0)+'%':'-'}</div>`;
   };
   let tB=0,tO=0,tD=0,unmatched=0;
   tb.innerHTML=rows.length?rows.map(r=>{
@@ -2918,18 +2918,18 @@ function renderScorecard(){
     const barW=Math.round(r.omzet/maxOmzet*100);
     const eaPct=r.eaCount?(v=>v/r.eaCount*100):null;
     return`<tr class="clickrow" onclick="selectPjmds('${r.name.replace(/'/g,"\\'")}');switchSubTab('pjmds','mds')">
-      <td class="td-main">${r.name} ${r.matched?'':'<span style="font-size:8px;color:var(--red)" title="Nama tidak ketemu di data Penjualan">⚠</span>'}</td>
-      <td class="td-dim">${r.area}</td>
-      <td class="td-dim">${r.notaFinal?rp(r.notaFinal):'—'}</td>
-      <td><div style="font-weight:800;color:var(--pink);font-size:11px">${r.omzet?rp(r.omzet):'—'}</div><div class="av-bg" style="margin-top:3px;max-width:90px"><div class="av-fill" style="width:${barW}%;background:var(--pink)"></div></div></td>
-      <td>${dTag}${dNote}</td>
+      <td class="td-main" style="font-size:13px">${r.name} ${r.matched?'':'<span style="font-size:10px;color:var(--red)" title="Nama tidak ketemu di data Penjualan">⚠</span>'}</td>
+      <td class="td-dim" style="font-size:13px">${r.area}</td>
+      <td class="td-dim" style="font-size:13px">${r.notaFinal?rp(r.notaFinal):'—'}</td>
+      <td><div style="font-weight:800;color:var(--pink);font-size:14px">${r.omzet?rp(r.omzet):'—'}</div><div class="av-bg" style="margin-top:3px;max-width:90px"><div class="av-fill" style="width:${barW}%;background:var(--pink)"></div></div></td>
+      <td style="font-size:13px">${dTag}${dNote}</td>
       <td>${pctCell(r.teaVolume,PJ_TARGET.tea,rp)}</td>
       <td>${pctCell(r.hiloVolume,PJ_TARGET.hilo,rp)}</td>
       <td>${pctCell(r.callCount,PJ_TARGET.call,fmtNum)}</td>
       <td>${pctCell(r.eaCount,PJ_TARGET.ea,fmtNum)}</td>
       <td>${pctCell(r.sekolahCount,PJ_TARGET.sekolah,fmtNum)}</td>
-      <td>${r.singleSkuCount}<div style="font-size:9px;color:var(--t3);font-weight:700">${eaPct?eaPct(r.singleSkuCount).toFixed(0)+'%':'-'}</div></td>
-      <td>${r.varian5Count}<div style="font-size:9px;color:var(--t3);font-weight:700">${eaPct?eaPct(r.varian5Count).toFixed(0)+'%':'-'}</div></td>
+      <td><div style="font-size:13px">${r.singleSkuCount}</div><div style="font-size:12px;color:var(--t3);font-weight:800">${eaPct?eaPct(r.singleSkuCount).toFixed(0)+'%':'-'}</div></td>
+      <td><div style="font-size:13px">${r.varian5Count}</div><div style="font-size:12px;color:var(--t3);font-weight:800">${eaPct?eaPct(r.varian5Count).toFixed(0)+'%':'-'}</div></td>
     </tr>`;
   }).join(''):`<tr><td colspan="12"><div class="empty-state">Tidak ada data untuk periode/filter ini.${PJ_RAW.call.length?'':' Upload data Penjualan (Call & Order) untuk kolom Omzet.'}</div></td></tr>`;
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};

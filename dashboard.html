@@ -295,8 +295,22 @@
           <div class="kpi-shell"><div class="kpi-inner"><div class="kpi-label">Selisih Omzet − Max(Beli,Nota)</div><div class="kpi-val sm" id="sc-diff">—</div><div class="kpi-sub">positif = omzet lebih besar</div></div></div>
           <div class="kpi-shell"><div class="kpi-inner"><div class="kpi-label">MDS Aktif</div><div class="kpi-val" style="color:var(--cyan)" id="sc-count">—</div><div class="kpi-sub" id="sc-unmatched">—</div></div></div>
         </div>
+        <div style="margin-bottom:10px">
+          <span class="freset" style="cursor:pointer" onclick="document.getElementById('sc-legend').classList.toggle('hidden')">ℹ️ Keterangan Kolom</span>
+        </div>
+        <div class="panel-shell hidden" id="sc-legend" style="margin-bottom:12px"><div class="panel-body" style="font-size:12.5px;line-height:1.9">
+          <div><b>Nota</b> — nilai terbesar antara Value Beli (hitungan qty×harga dari Beli Barang) dan Nota (nominal yang diinput MDS)</div>
+          <div><b>Total Omzet</b> — total seluruh nilai penjualan (Value) dari sheet Order pada periode ini</div>
+          <div><b>Selisih</b> — Total Omzet dikurangi Nota; merah besar = kemungkinan nota belum diinput atau salah input pengambilan</div>
+          <div><b>Volume NS Tea / Volume HILO</b> — nilai penjualan item NS Tea / brand HILO dari sheet Order, persentase dihitung dari target bulanan</div>
+          <div><b>Call</b> — jumlah kunjungan (baris Call) pada periode ini, persentase dari target Call</div>
+          <div><b>EA</b> — jumlah customer unik yang pernah order (Effective Account), persentase dari target EA</div>
+          <div><b>Sekolah Dikunjungi</b> — jumlah sekolah unik yang dikunjungi, persentase dari target sekolah</div>
+          <div><b>Cust. 1 SKU</b> — jumlah customer yang cuma pernah beli 1 varian Jeruk Peras/ASO, persentase dibanding EA</div>
+          <div><b>EA 5 Varian</b> — jumlah customer dengan minimal 5 varian item berbeda, persentase dibanding EA</div>
+        </div></div>
         <div class="panel-shell"><div class="panel-body">
-          <table><thead><tr>
+          <table class="sc-table"><thead><tr>
             <th onclick="scSortBy('name')">MDS</th><th>Area</th>
             <th onclick="scSortBy('notaFinal')">Nota</th>
             <th onclick="scSortBy('omzet')">Total Omzet</th>
