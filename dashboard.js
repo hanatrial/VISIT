@@ -113,7 +113,7 @@ function pjGuardedClick(inputId){
   if(pw!==PJ_UPDATE_PASSWORD){alert('Password salah.');return;}
   document.getElementById(inputId).click();
 }
-const PJ_TARGET={tea:2500000,hilo:3000000,call:550,ea:200,sekolah:35};
+const PJ_TARGET={tea:2500000,hilo:3000000,call:550,ea:200,sekolah:35,varian5:50};
 const PJ_SEKOLAH_EXCLUDE=new Set(['BUKAN SEKOLAH','OTHERS','BUKAN SEKOLA','TIDAK ADA']);
 const PJ_ASO_JUPE_ITEMS=new Set(['NS JERUK PERAS PLS 18PX40SX14G','NS ASO PLS 14GX18PX40S','NS AMERICAN SWEET ORANGE PLS 18PX40SX14G']);
 let PJ_RAW={call:[],order:[],meta:null};
@@ -2935,7 +2935,7 @@ function renderScorecard(){
       <td>${pctCell(r.eaCount,PJ_TARGET.ea,fmtNum)}</td>
       <td>${pctCell(r.sekolahCount,PJ_TARGET.sekolah,fmtNum)}</td>
       <td><div style="font-size:13px">${r.singleSkuCount}</div><div style="font-size:12px;color:var(--t3);font-weight:800">${eaPct?eaPct(r.singleSkuCount).toFixed(0)+'%':'-'}</div></td>
-      <td><div style="font-size:13px">${r.varian5Count}</div><div style="font-size:12px;color:var(--t3);font-weight:800">${eaPct?eaPct(r.varian5Count).toFixed(0)+'%':'-'}</div></td>
+      <td>${pctCell(r.varian5Count,PJ_TARGET.varian5,fmtNum)}</td>
     </tr>`;
   }).join(''):`<tr><td colspan="12"><div class="empty-state">Tidak ada data untuk periode/filter ini.${PJ_RAW.call.length?'':' Upload data Penjualan (Call & Order) untuk kolom Omzet.'}</div></td></tr>`;
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
