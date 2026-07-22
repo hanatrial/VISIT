@@ -2917,9 +2917,6 @@ function renderScorecard(){
     return`<tr class="clickrow" onclick="selectPjmds('${r.name.replace(/'/g,"\\'")}');switchSubTab('pjmds','mds')">
       <td class="td-main">${r.name} ${r.matched?'':'<span style="font-size:8px;color:var(--red)" title="Nama tidak ketemu di data Penjualan">⚠</span>'}</td>
       <td class="td-dim">${r.area}</td>
-      <td><span class="tag p sm">${r.trx||'—'}</span></td>
-      <td><span class="tag b sm">${r.ns}</span></td>
-      <td><span class="tag au sm">${r.hilo}</span></td>
       <td style="color:var(--violet);font-weight:700;font-size:11px">${r.beliVal?rp(r.beliVal):'—'}</td>
       <td class="td-dim">${r.nota?rp(r.nota):'—'}</td>
       <td><span class="tag t sm">${r.custCount||'—'}</span></td>
