@@ -418,7 +418,7 @@ function computePjmdsMdsData(selName){
   const nooPengembangan=[];
   Object.keys(custMap).forEach(k=>{
     const x=custMap[k],skuCount=allItemMap[k]?allItemMap[k].size:0;
-    if(x.omzet>0&&skuCount>=3){
+    if(x.omzet>0&&skuCount>=5){
       nooPengembangan.push({kode:k,nama:x.nama,kabupaten:x.kab,klasifikasi:pjMode(x.klas),sku_count:skuCount,omzet:x.omzet});
     }
   });
@@ -638,12 +638,12 @@ function renderPjmdsSalesDetail(mds){
     const nooShown=PJMDS_NOO_SHOWALL?nooAll:nooAll.slice(0,10);
     const nooTotalOmzet=nooAll.reduce((s,r)=>s+r.omzet,0);
     const nooToggleHint=nooAll.length>10?` <span style="color:var(--t3);font-weight:500;font-size:9px">(klik untuk ${PJMDS_NOO_SHOWALL?'ciutkan':'lihat semua'})</span>`:'';
-    html+=`<div class="ch-label" style="margin:16px 0 8px">NOO Pengembangan <span style="color:var(--t3);font-weight:500">· klik baris untuk lihat detail visit</span></div><div class="panel-shell"><div class="panel-body">
+    html+=`<div class="ch-label" style="margin:16px 0 8px">Toko 5 Varian <span style="color:var(--t3);font-weight:500">· klik baris untuk lihat detail visit</span></div><div class="panel-shell"><div class="panel-body">
     <div class="bento bento-2">
       <div class="kpi-shell"${nooAll.length>10?' style="cursor:pointer"':''} onclick="togglePjmdsNooShowAll()"><div class="kpi-inner" style="padding:12px 14px"><div class="kpi-label">Jumlah Customer${nooToggleHint}</div><div class="kpi-val" style="font-size:18px;color:var(--gold)">${nooAll.length}${nooAll.length>10?(PJMDS_NOO_SHOWALL?' ▲':' ▼'):''}</div></div></div>
       <div class="kpi-shell"><div class="kpi-inner" style="padding:12px 14px"><div class="kpi-label">Total Omzet</div><div class="kpi-val" style="font-size:18px;color:var(--accent)">${nooTotalOmzet?rp(nooTotalOmzet):'—'}</div></div></div>
     </div>
-    ${pjTable(['Customer','Klasifikasi','Kabupaten','Jumlah SKU','Omzet'],nooShown,r=>`<tr class="clickrow" style="cursor:pointer" onclick="pjOpenCustomerModal('${String(r.kode).replace(/'/g,"\\'")}')"><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.sku_count} SKU</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada customer NOO Pengembangan.')}
+    ${pjTable(['Customer','Klasifikasi','Kabupaten','Jumlah SKU','Omzet'],nooShown,r=>`<tr class="clickrow" style="cursor:pointer" onclick="pjOpenCustomerModal('${String(r.kode).replace(/'/g,"\\'")}')"><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.sku_count} SKU</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada customer Toko 5 Varian.')}
   </div></div>`;
   }
   html+=`<div class="ch-label" style="margin:16px 0 8px">Efektivitas Kunjungan</div><div class="panel-shell"><div class="panel-body">
