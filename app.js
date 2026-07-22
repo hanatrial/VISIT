@@ -1,7 +1,7 @@
 /* ─────────── DATA ─────────── */
 const MDS_BY_AREA = {
   'Bau Bau':        ['Rizal'],
-  'Bone':           ['A. Arwandi Amrah','M. Murdiono Arma'],
+  'Bone':           ['A. Arwandi Amrah','M. Murdiono Arma','Amal Akbar'],
   'Gorontalo':      ['Aditya Hulopi','Mohammad Rahman Marwan','Abd. Rahman Lahay','Satrio Yusuf'],
   'Kendari':        ['Laode Asrad Ilhamid','Abdul Rahman (Rangga)','Dwi Haryanto','Rosa Sasmita'],
   'Luwuk':          ['Kadek Adi Merta Sastrawan'],
@@ -10,7 +10,7 @@ const MDS_BY_AREA = {
   'Manado':         ['Melisa Pungky Mapaliey','Rivanti Gusti Husein','Ignacia Regina Naung','Ridlan Mangilong','Tesar','Meilani Watung'],
   'Palopo':         ['Tio Setiawan Rappun','Hijrayanti Mahruddin','Firman'],
   'Palu':           ['Muh Nasir K','Yuliana Rusli','Rafdi'],
-  'Pare-Pare':      ['Marwan'],
+  'Pare-Pare':      ['Marwan','Yurike Kyusuchi','Muhlis'],
   'Poso':           ['Syaifullah'],
 };
 const STORES_BY_AREA = {

@@ -4,7 +4,7 @@
 const DASH_PIN='NFI2026';
 const MDS_BY_AREA={
   'Bau Bau':['Rizal'],
-  'Bone':['A. Arwandi Amrah','M. Murdiono Arma'],
+  'Bone':['A. Arwandi Amrah','M. Murdiono Arma','Amal Akbar'],
   'Gorontalo':['Aditya Hulopi','Mohammad Rahman Marwan','Abd. Rahman Lahay','Satrio Yusuf'],
   'Kendari':['Laode Asrad Ilhamid','Abdul Rahman (Rangga)','Dwi Haryanto','Rosa Sasmita'],
   'Luwuk':['Kadek Adi Merta Sastrawan'],
@@ -13,9 +13,16 @@ const MDS_BY_AREA={
   'Manado':['Melisa Pungky Mapaliey','Rivanti Gusti Husein','Ignacia Regina Naung','Ridlan Mangilong','Tesar','Meilani Watung'],
   'Palopo':['Tio Setiawan Rappun','Hijrayanti Mahruddin','Firman'],
   'Palu':['Muh Nasir K','Yuliana Rusli','Rafdi'],
-  'Pare-Pare':['Marwan'],
+  'Pare-Pare':['Marwan','Yurike Kyusuchi','Muhlis'],
   'Poso':['Syaifullah'],
 };
+const MDS_ALIAS={'SUGI':'Sugiono'};
+function mdsMatch(beliName,rosterName){
+  if(!beliName||!rosterName)return false;
+  const a=String(beliName).trim().toUpperCase(),b=String(rosterName).trim().toUpperCase();
+  if(a===b)return true;
+  return MDS_ALIAS[a]&&MDS_ALIAS[a].toUpperCase()===b;
+}
 const NS_PRICE=11250, HILO_PRICE=16000, HILOPLS_PRICE=31500;
 // NS items to spotlight (partial match is fine)
 const NS_JP_KEY  = 'NS JERUK PERAS PLS';
@@ -1164,7 +1171,7 @@ function renderPjmdsDetail(beliF){
   const el=document.getElementById('pjmds-detail');
   if(!el)return;
   if(!PJMDS_SEL){el.innerHTML='<div class="panel-shell"><div class="panel-body" style="text-align:center;padding:32px;color:var(--t3)">Pilih nama MDS di atas untuk lihat detail pengambilan barang.</div></div>';return;}
-  const rows=beliF.filter(r=>r.mds===PJMDS_SEL).sort((a,b)=>b.timestamp-a.timestamp);
+  const rows=beliF.filter(r=>mdsMatch(r.mds,PJMDS_SEL)).sort((a,b)=>b.timestamp-a.timestamp);
   const totNota=rows.reduce((s,r)=>s+(r.nominal||0),0);
   const totValue=rows.reduce((s,r)=>{
     const nsR=r.groupTotals&&r.groupTotals.NS||0,hiR=r.groupTotals&&r.groupTotals.HILO||0;
@@ -1178,7 +1185,7 @@ function renderPjmdsDetail(beliF){
     if(r.timestamp)storeMap[k].dates.push(r.timestamp);
   });
   const storeRows=Object.values(storeMap).sort((a,b)=>b.count-a.count);
-  const kedaiCount=KEDAI_DB.stores.filter(s=>s.mds===PJMDS_SEL).length;
+  const kedaiCount=KEDAI_DB.stores.filter(s=>mdsMatch(s.mds,PJMDS_SEL)).length;
   const pjData=computePjmdsMdsData(PJMDS_SEL);
   const totPenjualan=pjData?pjData.kpi.total_penjualan:null;
 
@@ -2869,8 +2876,7 @@ function mdsAreaOf(name){
 function computeScorecardRows(){
   const beliF=filtered(BELI_ALL);
   return allMdsNames().map(name=>{
-    const nLow=name.toLowerCase();
-    const beli=beliF.filter(r=>(r.mds||'').toLowerCase()===nLow);
+    const beli=beliF.filter(r=>mdsMatch(r.mds,name));
     const trx=beli.length;
     const stores=new Set(beli.map(r=>r.store||'?')).size;
     const beliVal=beli.reduce((s,r)=>s+kalc(r),0);
