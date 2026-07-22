@@ -636,9 +636,9 @@ function renderPjmdsSalesDetail(mds){
   {
     const nooAll=d.noo_pengembangan;
     const nooShown=PJMDS_NOO_SHOWALL?nooAll:nooAll.slice(0,10);
-    html+=`<div class="ch-label" style="margin:16px 0 8px">NOO Pengembangan (${nooAll.length} customer) <span style="color:var(--t3);font-weight:500">· klik baris untuk lihat detail visit</span></div><div class="panel-shell"><div class="panel-body">
+    const nooToggle=nooAll.length>10?`<span class="tag ${PJMDS_NOO_SHOWALL?'g':'t'}" style="cursor:pointer;font-size:12px;padding:4px 12px;margin-left:8px" onclick="togglePjmdsNooShowAll()">${nooAll.length} customer ${PJMDS_NOO_SHOWALL?'▲':'▼'}</span>`:`<span style="color:var(--t3)">(${nooAll.length} customer)</span>`;
+    html+=`<div class="ch-label" style="margin:16px 0 8px">NOO Pengembangan ${nooToggle} <span style="color:var(--t3);font-weight:500">· klik baris untuk lihat detail visit</span></div><div class="panel-shell"><div class="panel-body">
     ${pjTable(['Customer','Klasifikasi','Kabupaten','Jumlah SKU','Omzet'],nooShown,r=>`<tr class="clickrow" style="cursor:pointer" onclick="pjOpenCustomerModal('${String(r.kode).replace(/'/g,"\\'")}')"><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.sku_count} SKU</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada customer NOO Pengembangan.')}
-    ${nooAll.length>10?`<div style="text-align:center;margin-top:10px"><span class="freset" style="cursor:pointer" onclick="togglePjmdsNooShowAll()">${PJMDS_NOO_SHOWALL?'▲ Tampilkan lebih sedikit':`▼ Lihat semua (${nooAll.length})`}</span></div>`:''}
   </div></div>`;
   }
   html+=`<div class="ch-label" style="margin:16px 0 8px">Efektivitas Kunjungan</div><div class="panel-shell"><div class="panel-body">
