@@ -416,16 +416,12 @@ function computePjmdsMdsData(selName){
     const k=r.KodeCustomer;if(!allItemMap[k])allItemMap[k]=new Set();allItemMap[k].add(r.NamaItem);
   });
   const nooPengembangan=[];
-  if(KEDAI_DB.stores.length){
-    const kodeSet=new Set(KEDAI_DB.stores.map(s=>String(s.kode||'').trim().toLowerCase()));
-    Object.keys(custMap).forEach(k=>{
-      const x=custMap[k],skuCount=allItemMap[k]?allItemMap[k].size:0;
-      const isNewCode=!kodeSet.has(String(k||'').trim().toLowerCase());
-      if(isNewCode&&x.omzet>0&&skuCount>=3){
-        nooPengembangan.push({kode:k,nama:x.nama,kabupaten:x.kab,klasifikasi:pjMode(x.klas),sku_count:skuCount,omzet:x.omzet});
-      }
-    });
-  }
+  Object.keys(custMap).forEach(k=>{
+    const x=custMap[k],skuCount=allItemMap[k]?allItemMap[k].size:0;
+    if(x.omzet>0&&skuCount>=3){
+      nooPengembangan.push({kode:k,nama:x.nama,kabupaten:x.kab,klasifikasi:pjMode(x.klas),sku_count:skuCount,omzet:x.omzet});
+    }
+  });
   nooPengembangan.sort((a,b)=>b.omzet-a.omzet);
 
   const teaVolume=o.filter(r=>r.Brand==='NUTRISARI'&&String(r.NamaItem).toUpperCase().includes('TEA PLS')).reduce((s,r)=>s+pjOrderValue(r),0);
@@ -637,8 +633,8 @@ function renderPjmdsSalesDetail(mds){
       <div class="kpi-shell"><div class="kpi-inner" style="padding:12px 14px"><div class="kpi-label">Total Value</div><div class="kpi-val" style="font-size:18px;color:var(--accent)">${d.single_sku_total_value?rp(d.single_sku_total_value):'—'}</div></div></div>
     </div>
   </div></div>`;
-  html+=`<div class="ch-label" style="margin:16px 0 8px">NOO Pengembangan (${d.noo_pengembangan.length} customer) <span style="color:var(--t3);font-weight:500">· klik baris untuk lihat detail visit</span> ${KEDAI_DB.stores.length?'':'<span style="color:var(--t3);font-weight:500">(upload database kedai dulu)</span>'}</div><div class="panel-shell"><div class="panel-body">
-    ${KEDAI_DB.stores.length?pjTable(['Customer','Klasifikasi','Kabupaten','Jumlah SKU','Omzet'],d.noo_pengembangan,r=>`<tr class="clickrow" style="cursor:pointer" onclick="pjOpenCustomerModal('${String(r.kode).replace(/'/g,"\\'")}')"><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.sku_count} SKU</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada customer NOO Pengembangan.'):'<div class="empty-state">Belum ada database kedai diupload.</div>'}
+  html+=`<div class="ch-label" style="margin:16px 0 8px">NOO Pengembangan (${d.noo_pengembangan.length} customer) <span style="color:var(--t3);font-weight:500">· klik baris untuk lihat detail visit</span></div><div class="panel-shell"><div class="panel-body">
+    ${pjTable(['Customer','Klasifikasi','Kabupaten','Jumlah SKU','Omzet'],d.noo_pengembangan,r=>`<tr class="clickrow" style="cursor:pointer" onclick="pjOpenCustomerModal('${String(r.kode).replace(/'/g,"\\'")}')"><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.sku_count} SKU</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada customer NOO Pengembangan.')}
   </div></div>`;
   html+=`<div class="ch-label" style="margin:16px 0 8px">Efektivitas Kunjungan</div><div class="panel-shell"><div class="panel-body">
     ${pjTable(['Customer','Klasifikasi','Kabupaten','Total Visit','Max/Minggu','Omzet'],d.efektivitas,r=>`<tr><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.total_visit}x</td><td>${r.max_minggu}x</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada customer yang ditandai tidak efektif. ✅')}
