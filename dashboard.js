@@ -80,17 +80,37 @@ let PJ_ROUTE_DATE=null;
 let cAV=null,cTrend=null,cBrand=null,mcAV=null,mcBrand=null;
 
 // ── PIN ─────────────────────────────────────────────────────────────────────
+const IS_MOBILE=(window.innerWidth||document.documentElement.clientWidth||0)<=768;
+function enterDash(){
+  document.getElementById('pin-screen').classList.add('hidden');
+  document.getElementById('app').classList.add('visible');
+  if(IS_MOBILE)stripMobileHeavy();
+  initDash();
+}
 function checkPin(){
   if(document.getElementById('pin-input').value===DASH_PIN){
-    document.getElementById('pin-screen').classList.add('hidden');
-    document.getElementById('app').classList.add('visible');
-    initDash();
+    try{sessionStorage.setItem('mds_dash_pin_ok','1');}catch(e){}
+    enterDash();
   }else{
     document.getElementById('pin-err').textContent='PIN salah, coba lagi.';
     document.getElementById('pin-input').value='';
   }
 }
-document.getElementById('pin-input').focus();
+/* On mobile, drop the heaviest never-shown content from the DOM entirely:
+   the Penjualan MDS and Sell Out Formula tabs, and the Chart.js canvases.
+   iOS silently kills (jetsam) the tab when it exceeds Safari's per-tab
+   memory ceiling, which reloads the page back to the PIN screen. */
+function stripMobileHeavy(){
+  ['sec-pjmds','sec-formula','ntab-pjmds','ntab-formula'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.remove();
+  });
+  document.querySelectorAll('.charts-row,.modal-charts').forEach(el=>el.remove());
+}
+/* If the tab reloaded (e.g. after an iOS memory kill), skip the PIN re-entry */
+let _pinOk=false;try{_pinOk=sessionStorage.getItem('mds_dash_pin_ok')==='1';}catch(e){}
+if(_pinOk){enterDash();}
+else document.getElementById('pin-input').focus();
 
 // ── HELPERS ─────────────────────────────────────────────────────────────────
 function brandOf(n){
@@ -929,6 +949,7 @@ function getBase(){return{
 };}
 
 function buildCharts(rkaF,beliF){
+  if(IS_MOBILE||!document.getElementById('chart-av'))return;
   const BASE=getBase();
   // 1. AV% bar
   const mav={};
@@ -2640,6 +2661,8 @@ function openMDS(name){
   const nota=beliF.reduce((s,r)=>s+(r.nominal||0),0);
   document.getElementById('m-nota-sub').textContent=`Nota: ${nota?rp(nota):'—'}`;
 
+  // Charts (skipped on mobile — Chart.js canvases are dropped to stay under iOS memory limit)
+  if(!IS_MOBILE&&document.getElementById('mc-av')){
   // Chart: AV per day
   const da={};
   rkaF.forEach(r=>{const k=r.timestamp.toLocaleDateString('id-ID',{day:'numeric',month:'short'});if(!da[k])da[k]={a:0,t:0};da[k].a+=(r.avail||0);da[k].t+=(r.avail||0)+(r.unavail||0);});
@@ -2662,6 +2685,7 @@ function openMDS(name){
     ]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{color:chartTick(),font:{size:9},boxWidth:8,padding:8}},tooltip:{backgroundColor:chartTooltipBg(),bodyColor:chartTooltipBody(),borderColor:chartBorder(),borderWidth:1,cornerRadius:8}},
       scales:{x:{stacked:true,ticks:{color:chartTick(),font:{size:8}},grid:{color:chartGrid()}},y:{stacked:true,ticks:{color:chartTick(),font:{size:8}},grid:{color:chartGrid()}}}}});
+  }
 
   // NS beli breakdown (purchase quantities per item)
   const nsBeliQty={};
