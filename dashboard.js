@@ -1100,8 +1100,10 @@ function render(){
   const sub=document.getElementById('ds-kalc-sub');
   if(sub)sub.textContent=FI?`Value item: ${document.getElementById('f-item').value}`:'NS×11.250 + HILO×16.000 + HILO SCHOOL PLS×31.500';
 
-  buildCharts(rkaF,beliF);
-  buildSpotlight(rkaF,beliF);
+  // Charts/spotlight must never block the data tables below — if Chart.js is
+  // slow/blocked or a canvas is missing, swallow it and keep rendering data.
+  try{buildCharts(rkaF,beliF);}catch(e){console.warn('buildCharts skipped',e);}
+  try{buildSpotlight(rkaF,beliF);}catch(e){console.warn('buildSpotlight skipped',e);}
 
   const nbRka=document.getElementById('nb-rka');if(nbRka)nbRka.textContent=rkaF.length||'—';
   const nbBeli=document.getElementById('nb-beli');if(nbBeli)nbBeli.textContent=beliF.length||'—';
