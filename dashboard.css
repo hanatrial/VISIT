@@ -41,7 +41,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;o
 .pin-eye{font-size:9px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--violet);background:var(--violet-g);padding:3px 12px;border-radius:20px;border:1px solid rgba(139,92,246,.2);margin-bottom:2px;}
 .pin-title{font-size:22px;font-weight:800;color:var(--t1);letter-spacing:-.5px;}
 .pin-sub{font-size:11px;color:var(--t3);}
-.pin-field{width:100%;margin-top:6px;background:rgba(255,255,255,.035);border:1px solid var(--border);border-radius:14px;padding:13px 18px;color:#fff;font-family:inherit;font-size:16px;text-align:center;letter-spacing:8px;outline:none;transition:all .35s var(--ease);}
+.pin-field{width:100%;margin-top:6px;background:rgba(255,255,255,.035);border:1px solid var(--border);border-radius:14px;padding:13px 18px;color:var(--t1);font-family:inherit;font-size:16px;text-align:center;letter-spacing:8px;outline:none;transition:all .35s var(--ease);}
 .pin-field:focus{border-color:rgba(139,92,246,.5);background:rgba(139,92,246,.04);box-shadow:0 0 0 3px rgba(139,92,246,.12);}
 .pin-err{font-size:11px;color:var(--red);min-height:14px;text-align:center;}
 .pin-cta{width:100%;padding:14px;background:linear-gradient(135deg,#8B5CF6,#6D28D9);color:#fff;font-family:inherit;font-weight:800;font-size:14px;border:none;border-radius:14px;cursor:pointer;transition:all .35s var(--ease);box-shadow:0 4px 20px rgba(139,92,246,.3);}
