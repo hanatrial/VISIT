@@ -107,9 +107,12 @@ function stripMobileHeavy(){
   });
   document.querySelectorAll('.charts-row,.modal-charts').forEach(el=>el.remove());
 }
-/* If the tab reloaded (e.g. after an iOS memory kill), skip the PIN re-entry */
+/* If the tab reloaded (e.g. after an iOS memory kill), skip the PIN re-entry.
+   Defer to the next tick: enterDash() -> initDash() -> render() reads state
+   vars (STOCK_ALL, NED_ALL, SPG_ALL, SUBTAB_*) that are declared later in this
+   file, so running it inline here would hit their temporal-dead-zone. */
 let _pinOk=false;try{_pinOk=sessionStorage.getItem('mds_dash_pin_ok')==='1';}catch(e){}
-if(_pinOk){enterDash();}
+if(_pinOk){setTimeout(enterDash,0);}
 else document.getElementById('pin-input').focus();
 
 // ── HELPERS ─────────────────────────────────────────────────────────────────
