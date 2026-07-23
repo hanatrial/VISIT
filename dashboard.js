@@ -2909,12 +2909,14 @@ function renderScorecard(){
     return SC_DIR*String(av||'').localeCompare(String(bv||''));
   });
   const maxOmzet=Math.max(...rows.map(r=>r.omzet),1);
+  const pctBadge=(txt,col,bg)=>`<span style="display:inline-block;margin-top:2px;padding:2px 8px;border-radius:8px;font-size:12px;font-weight:800;color:${col};background:${bg}">${txt}</span>`;
   const pctCell=(val,target,fmt)=>{
     const pct=target>0?(val/target*100):0;
     const col=pct>=100?'var(--green)':pct>=50?'var(--gold)':'var(--red)';
-    return`<div style="font-size:13px">${fmt(val)}</div><div style="font-size:12px;color:${col};font-weight:800">${target>0?pct.toFixed(0)+'%':'-'}</div>`;
+    const bg=pct>=100?'rgba(16,185,129,.15)':pct>=50?'rgba(245,158,11,.15)':'rgba(248,113,113,.15)';
+    return`<div style="font-size:13px">${fmt(val)}</div>${target>0?pctBadge(pct.toFixed(0)+'%',col,bg):'<span style="color:var(--t3)">-</span>'}`;
   };
-  const singleSkuColor=pct=>pct<10?'var(--green)':pct>40?'var(--red)':'var(--gold)';
+  const singleSkuColor=pct=>pct<10?['var(--green)','rgba(16,185,129,.15)']:pct>40?['var(--red)','rgba(248,113,113,.15)']:['var(--gold)','rgba(245,158,11,.15)'];
   let tB=0,tO=0,tD=0,unmatched=0;
   tb.innerHTML=rows.length?rows.map(r=>{
     tB+=r.notaFinal;tO+=r.omzet;tD+=r.selisih;if(!r.matched&&r.trx>0)unmatched++;
@@ -2935,7 +2937,7 @@ function renderScorecard(){
       <td>${pctCell(r.callCount,PJ_TARGET.call,fmtNum)}</td>
       <td>${pctCell(r.eaCount,PJ_TARGET.ea,fmtNum)}</td>
       <td>${pctCell(r.sekolahCount,PJ_TARGET.sekolah,fmtNum)}</td>
-      <td><div style="font-size:13px">${r.singleSkuCount}</div><div style="font-size:12px;color:${eaPct?singleSkuColor(eaPct(r.singleSkuCount)):'var(--t3)'};font-weight:800">${eaPct?eaPct(r.singleSkuCount).toFixed(0)+'%':'-'}</div></td>
+      <td><div style="font-size:13px">${r.singleSkuCount}</div>${eaPct?(([col,bg])=>pctBadge(eaPct(r.singleSkuCount).toFixed(0)+'%',col,bg))(singleSkuColor(eaPct(r.singleSkuCount))):'<span style="color:var(--t3)">-</span>'}</td>
       <td>${pctCell(r.varian5Count,PJ_TARGET.varian5,fmtNum)}</td>
     </tr>`;
   }).join(''):`<tr><td colspan="12"><div class="empty-state">Tidak ada data untuk periode/filter ini.${PJ_RAW.call.length?'':' Upload data Penjualan (Call & Order) untuk kolom Omzet.'}</div></td></tr>`;
