@@ -2911,9 +2911,10 @@ function renderScorecard(){
   const maxOmzet=Math.max(...rows.map(r=>r.omzet),1);
   const pctCell=(val,target,fmt)=>{
     const pct=target>0?(val/target*100):0;
-    const col=pct>=100?'var(--accent)':pct>=60?'var(--gold)':'var(--t3)';
+    const col=pct>=100?'var(--green)':pct>=50?'var(--gold)':'var(--red)';
     return`<div style="font-size:13px">${fmt(val)}</div><div style="font-size:12px;color:${col};font-weight:800">${target>0?pct.toFixed(0)+'%':'-'}</div>`;
   };
+  const singleSkuColor=pct=>pct<10?'var(--green)':pct>40?'var(--red)':'var(--gold)';
   let tB=0,tO=0,tD=0,unmatched=0;
   tb.innerHTML=rows.length?rows.map(r=>{
     tB+=r.notaFinal;tO+=r.omzet;tD+=r.selisih;if(!r.matched&&r.trx>0)unmatched++;
@@ -2934,7 +2935,7 @@ function renderScorecard(){
       <td>${pctCell(r.callCount,PJ_TARGET.call,fmtNum)}</td>
       <td>${pctCell(r.eaCount,PJ_TARGET.ea,fmtNum)}</td>
       <td>${pctCell(r.sekolahCount,PJ_TARGET.sekolah,fmtNum)}</td>
-      <td><div style="font-size:13px">${r.singleSkuCount}</div><div style="font-size:12px;color:var(--t3);font-weight:800">${eaPct?eaPct(r.singleSkuCount).toFixed(0)+'%':'-'}</div></td>
+      <td><div style="font-size:13px">${r.singleSkuCount}</div><div style="font-size:12px;color:${eaPct?singleSkuColor(eaPct(r.singleSkuCount)):'var(--t3)'};font-weight:800">${eaPct?eaPct(r.singleSkuCount).toFixed(0)+'%':'-'}</div></td>
       <td>${pctCell(r.varian5Count,PJ_TARGET.varian5,fmtNum)}</td>
     </tr>`;
   }).join(''):`<tr><td colspan="12"><div class="empty-state">Tidak ada data untuk periode/filter ini.${PJ_RAW.call.length?'':' Upload data Penjualan (Call & Order) untuk kolom Omzet.'}</div></td></tr>`;
