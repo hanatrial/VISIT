@@ -1,6 +1,23 @@
 // Route old getElementById('table-head/body') to correct suffixed IDs — cache-proof patch
 (function(){const _g=document.getElementById.bind(document);document.getElementById=function(id){const T=typeof TAB!=='undefined'?TAB:'rka';if(id==='table-head')return _g(T==='beli'?'table-head-beli':'table-head-rka')||_g(id);if(id==='table-body')return _g(T==='beli'?'table-body-beli':'table-body-rka')||_g(id);if(id==='tfoot')return _g(T==='beli'?'tfoot-beli':T==='stock'?'tfoot-stock':'tfoot-rka')||_g(id);return _g(id);};})();
 
+/* Lazy-load the spreadsheet library only when an import/export feature actually needs it,
+   instead of eagerly parsing ~1MB on every page load (iOS Safari has a tight per-tab
+   memory ceiling that this page was likely exceeding). */
+let _xlsxReadyPromise=null;
+function ensureXlsx(){
+  if(window.XLSX)return Promise.resolve();
+  if(!_xlsxReadyPromise){
+    _xlsxReadyPromise=new Promise((resolve,reject)=>{
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload=()=>resolve();
+      s.onerror=()=>{_xlsxReadyPromise=null;reject(new Error('Gagal memuat pustaka XLSX'));};
+      document.head.appendChild(s);
+    });
+  }
+  return _xlsxReadyPromise;
+}
 const DASH_PIN='NFI2026';
 const MDS_BY_AREA={
   'Bau Bau':['Rizal'],
@@ -290,6 +307,7 @@ async function handlePjmdsDataFile(file){
   const el=document.getElementById('pjdata-status');
   el.textContent='<span class="spinner"></span>Membaca '+file.name+'…';
   try{
+    await ensureXlsx();
     const buf=await file.arrayBuffer();
     const wb=XLSX.read(buf,{type:'array',cellDates:true});
     const callSheet=findSheetPj(wb,'Call');
@@ -722,6 +740,7 @@ async function handleKedaiFile(file){
   const el=document.getElementById('kedai-status');
   el.textContent='Membaca '+file.name+'…';
   try{
+    await ensureXlsx();
     const buf=await file.arrayBuffer();
     const wb=XLSX.read(buf,{type:'array'});
     const sheet=wb.Sheets[wb.SheetNames[0]];
@@ -760,7 +779,8 @@ function initDash(){
   loadPjmdsManualMatch();
   loadDashState();
   loadAll();
-  setInterval(loadAll,30000);
+  /* Dropped the old setInterval(loadAll,30000) — onSnapshot below already keeps data
+     live after the initial load, so the 30s poll was pure redundant background work. */
   db.collection('rka_logs').limit(2000).onSnapshot({includeMetadataChanges:true},s=>{
     if(s.metadata.fromCache)return;
     RKA_ALL=[];s.forEach(d=>{const v=d.data();RKA_ALL.push({...v,timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
@@ -1879,7 +1899,8 @@ function renderFormula(stockF){
   const nbF=document.getElementById('nb-formula');if(nbF)nbF.textContent=rows.length||'—';
   const tf=document.getElementById('tfoot-formula');if(tf)tf.textContent=`${rows.length} toko · Awal − Akhir (belum termasuk In Transit — gabungkan di sub-tab "Kalkulasi Manual")`;
 }
-function downloadFormulaTemplate(){
+async function downloadFormulaTemplate(){
+  await ensureXlsx();
   const stockF=filteredStock();
   const rows=computeStoreStockMap(stockF);
   const data=[['Toko','Nilai In Transit (Rp)']].concat(rows.map(r=>[r.store,0]));
@@ -1892,6 +1913,7 @@ async function handleFormulaImportFile(file){
   const el=document.getElementById('formula-import-status');
   if(el)el.textContent='Membaca '+file.name+'…';
   try{
+    await ensureXlsx();
     const buf=await file.arrayBuffer();
     const wb=XLSX.read(buf,{type:'array'});
     const sheet=wb.Sheets[wb.SheetNames[0]];
@@ -1926,6 +1948,7 @@ async function handleTxImportFile(file){
   const el=document.getElementById('tx-import-status');
   if(el)el.textContent='Membaca '+file.name+'…';
   try{
+    await ensureXlsx();
     const buf=await file.arrayBuffer();
     const wb=XLSX.read(buf,{type:'array'});
     const sheet=wb.Sheets[wb.SheetNames[0]];
@@ -2951,8 +2974,9 @@ function renderScorecard(){
   const tf=document.getElementById('sc-tfoot');
   if(tf)tf.textContent=`${rows.length} MDS · klik baris untuk buka detail · klik judul kolom untuk sortir`;
 }
-function exportMdsScorecard(){
+async function exportMdsScorecard(){
   if(!PJ_RAW.call.length){alert('Data Penjualan (Call & Order) belum diupload — scorecard butuh data itu untuk kolom Omzet.');return;}
+  await ensureXlsx();
   const rows=computeScorecardRows();
   if(!rows.length){alert('Tidak ada data untuk periode/filter ini.');return;}
   rows.sort((a,b)=>b.omzet-a.omzet);
