@@ -2928,7 +2928,10 @@ function toggleRkaDetail(tr, vid){
   det.className='item-detail-row';
   det.innerHTML=html;
   tr.parentNode.insertBefore(det,tr.nextSibling);
-  tr.querySelector('span[style*="▾"]').textContent='▴';
+  // guard: this used to throw when the caret span was absent, which aborted the
+  // function before the photo hydration below ever ran
+  const caret=tr.querySelector('span[style*="▾"]');
+  if(caret)caret.textContent='▴';
   if(det.querySelector('[data-ph]')&&r._docId)hydratePhotos(det,'rka_logs',r._docId);
 }
 /* Fill the placeholders left by the expand handlers with the real base64 images,
