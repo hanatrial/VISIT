@@ -731,19 +731,73 @@ async function fetchPhotoData(coll,docId){
     return snap.exists?(snap.data().photoData||null):null;
   }catch(e){console.warn('photo fetch failed',e);return null;}
 }
+
+/* Stripping photoData in our own arrays is not enough: the Firestore SDK still
+   downloads and caches every full document, which measured as a +522MB heap spike.
+   The SDK has no field masks, but the Firestore REST API does — so on mobile we list
+   these two collections over REST with an explicit field mask that simply never
+   includes photoData. The photos are then fetched one at a time, on demand. */
+const FS_PROJECT='mds-visit', FS_KEY='AIzaSyCtYc8uZICLzQrA1b7l00Yo_9V_rqNVOu0';
+const RKA_FIELDS=['id','timestamp','mds','area','store','avail','unavail','items'];
+const BELI_FIELDS=['id','timestamp','mds','area','store','nominal','totalRenceng','groupTotals','itemQty'];
+function fsVal(v){
+  if(v==null)return null;
+  if('stringValue'in v)return v.stringValue;
+  if('integerValue'in v)return +v.integerValue;
+  if('doubleValue'in v)return v.doubleValue;
+  if('booleanValue'in v)return v.booleanValue;
+  if('timestampValue'in v)return new Date(v.timestampValue);
+  if('nullValue'in v)return null;
+  if('mapValue'in v){const o={},f=v.mapValue.fields||{};Object.keys(f).forEach(k=>o[k]=fsVal(f[k]));return o;}
+  if('arrayValue'in v)return (v.arrayValue.values||[]).map(fsVal);
+  return null;
+}
+function fsDoc(d){
+  const o={_docId:d.name.split('/').pop(),_lite:true};
+  const f=d.fields||{};
+  Object.keys(f).forEach(k=>o[k]=fsVal(f[k]));
+  if(!(o.timestamp instanceof Date))o.timestamp=new Date();
+  return o;
+}
+async function restList(coll,fields){
+  const mask=fields.map(f=>'mask.fieldPaths='+encodeURIComponent(f)).join('&');
+  const base=`https://firestore.googleapis.com/v1/projects/${FS_PROJECT}/databases/(default)/documents/${coll}`;
+  let out=[],token='';
+  for(let i=0;i<50;i++){
+    const url=`${base}?key=${FS_KEY}&pageSize=300&${mask}`+(token?`&pageToken=${encodeURIComponent(token)}`:'');
+    const r=await fetch(url);
+    if(!r.ok)throw new Error(`${coll} REST ${r.status}`);
+    const j=await r.json();
+    (j.documents||[]).forEach(d=>out.push(fsDoc(d)));
+    token=j.nextPageToken||'';
+    if(!token)break;
+  }
+  out.sort((a,b)=>b.timestamp-a.timestamp);
+  return out;
+}
 function loadAll(){
   if(!db){console.error('loadAll: db undefined');return;}
   const SRV={source:'server'};
-  db.collection('rka_logs').limit(2000).get(SRV).then(s=>{
-    RKA_ALL=[];s.forEach(d=>RKA_ALL.push(liteDoc(d)));
-    RKA_ALL.sort((a,b)=>b.timestamp-a.timestamp);
-    buildMonthOpts();render();
-  }).catch(e=>console.error('rka_logs get failed',e.code,e.message));
-  db.collection('beli_logs').limit(2000).get(SRV).then(s=>{
-    BELI_ALL=[];s.forEach(d=>BELI_ALL.push(liteDoc(d)));
-    BELI_ALL.sort((a,b)=>b.timestamp-a.timestamp);
-    buildMonthOpts();render();
-  }).catch(e=>console.error('beli_logs get failed',e.code,e.message));
+  if(IS_MOBILE){
+    // REST + field mask: never downloads photoData at all (see restList comment)
+    restList('rka_logs',RKA_FIELDS).then(rows=>{
+      RKA_ALL=rows;buildMonthOpts();render();
+    }).catch(e=>console.error('rka_logs REST failed',e.message));
+    restList('beli_logs',BELI_FIELDS).then(rows=>{
+      BELI_ALL=rows;buildMonthOpts();render();
+    }).catch(e=>console.error('beli_logs REST failed',e.message));
+  }else{
+    db.collection('rka_logs').limit(2000).get(SRV).then(s=>{
+      RKA_ALL=[];s.forEach(d=>RKA_ALL.push(liteDoc(d)));
+      RKA_ALL.sort((a,b)=>b.timestamp-a.timestamp);
+      buildMonthOpts();render();
+    }).catch(e=>console.error('rka_logs get failed',e.code,e.message));
+    db.collection('beli_logs').limit(2000).get(SRV).then(s=>{
+      BELI_ALL=[];s.forEach(d=>BELI_ALL.push(liteDoc(d)));
+      BELI_ALL.sort((a,b)=>b.timestamp-a.timestamp);
+      buildMonthOpts();render();
+    }).catch(e=>console.error('beli_logs get failed',e.code,e.message));
+  }
   db.collection('stock_logs').get(SRV)
     .catch(()=>db.collection('stock_logs').get())
     .then(s=>{
@@ -837,18 +891,23 @@ function initDash(){
   loadAll();
   /* Dropped the old setInterval(loadAll,30000) — onSnapshot below already keeps data
      live after the initial load, so the 30s poll was pure redundant background work. */
-  db.collection('rka_logs').limit(2000).onSnapshot({includeMetadataChanges:true},s=>{
-    if(s.metadata.fromCache)return;
-    RKA_ALL=[];s.forEach(d=>RKA_ALL.push(liteDoc(d)));
-    RKA_ALL.sort((a,b)=>b.timestamp-a.timestamp);
-    buildMonthOpts();render();
-  },e=>console.error('rka snap err',e));
-  db.collection('beli_logs').limit(2000).onSnapshot({includeMetadataChanges:true},s=>{
-    if(s.metadata.fromCache)return;
-    BELI_ALL=[];s.forEach(d=>BELI_ALL.push(liteDoc(d)));
-    BELI_ALL.sort((a,b)=>b.timestamp-a.timestamp);
-    buildMonthOpts();render();
-  },e=>console.error('beli snap err',e));
+  /* Live listeners on these two would pull the full documents (photos and all) back
+     into the SDK cache, undoing the masked REST load — so on mobile they stay off and
+     the data is refreshed by pulling to reload instead. */
+  if(!IS_MOBILE){
+    db.collection('rka_logs').limit(2000).onSnapshot({includeMetadataChanges:true},s=>{
+      if(s.metadata.fromCache)return;
+      RKA_ALL=[];s.forEach(d=>RKA_ALL.push(liteDoc(d)));
+      RKA_ALL.sort((a,b)=>b.timestamp-a.timestamp);
+      buildMonthOpts();render();
+    },e=>console.error('rka snap err',e));
+    db.collection('beli_logs').limit(2000).onSnapshot({includeMetadataChanges:true},s=>{
+      if(s.metadata.fromCache)return;
+      BELI_ALL=[];s.forEach(d=>BELI_ALL.push(liteDoc(d)));
+      BELI_ALL.sort((a,b)=>b.timestamp-a.timestamp);
+      buildMonthOpts();render();
+    },e=>console.error('beli snap err',e));
+  }
   db.collection('stock_logs').limit(2000).onSnapshot({includeMetadataChanges:true},s=>{
     if(s.metadata.fromCache)return;
     STOCK_ALL=[];s.forEach(d=>{const v=d.data();STOCK_ALL.push({...v,timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
@@ -2827,7 +2886,9 @@ function toggleRkaDetail(tr, vid){
   _expandedRkaVid=vid;
   const r=RKA_ALL.find(x=>x.id===vid)||{};
   const items=r.items||{};
-  const photos=Object.assign({},r.photoUrls||{},r.photoData||{});
+  // _lite records (masked REST load) carry no photo field at all — offer all three
+  // slots and let hydratePhotos() resolve which actually exist.
+  const photos=r._lite?{0:true,1:true,2:true}:Object.assign({},r.photoUrls||{},r.photoData||{});
   const groups={NS:[],HILO:[],TS:[],O:[]};
   Object.entries(items).sort(([a],[b])=>a.localeCompare(b)).forEach(([n,ada])=>{
     const b=brandOf(n); (groups[b]||groups.O).push({n,ada});
@@ -2884,7 +2945,9 @@ async function hydratePhotos(detRow,coll,docId){
       img.onclick=function(){this.style.maxWidth=this.style.maxWidth?'':'none';this.style.width=this.style.width==='auto'?'100%':'auto';};
       el.replaceWith(img);
     }else{
-      el.textContent='Foto tidak tersedia';
+      // no photo in that slot — drop the label+placeholder wrapper entirely
+      const wrap=el.parentElement;
+      if(wrap&&wrap.parentElement)wrap.remove(); else el.textContent='Foto tidak tersedia';
     }
   });
 }
@@ -2900,7 +2963,7 @@ function toggleBeliDetail(tr, bid){
   }
   _expandedBeliVid=bid;
   const r=BELI_ALL.find(x=>x.id===bid)||{};
-  const photo=r.photoData||r.photoUrl||'';
+  const photo=r._lite?true:(r.photoData||r.photoUrl||'');
   const iq=r.itemQty||{};
   let html=`<td colspan="99" style="padding:8px 16px 14px;background:${ov(1)};border-top:none;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">`;
   // photo
