@@ -709,16 +709,38 @@ function renderPjmdsSalesDetail(mds){
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
+/* rka_logs / beli_logs embed base64 photos in `photoData`: ~250-430KB per visit doc
+   and ~50KB per purchase doc — measured at ~71MB across the two collections, fetched
+   on every load AND again by the onSnapshot listener. Retaining that is what exhausted
+   iOS Safari's per-tab memory and got the tab killed (the "back to PIN" loop).
+   We keep only a truthy presence marker so the existing "has photo" badges still work,
+   and fetch the real image on demand when a row is expanded. */
+function liteDoc(d){
+  const v=d.data();
+  const o={...v,_docId:d.id,timestamp:v.timestamp?v.timestamp.toDate():new Date()};
+  if(o.photoData){
+    o.photoData=(typeof o.photoData==='string')
+      ? true
+      : Object.keys(o.photoData).reduce((m,k)=>{if(o.photoData[k])m[k]=true;return m;},{});
+  }
+  return o;
+}
+async function fetchPhotoData(coll,docId){
+  try{
+    const snap=await db.collection(coll).doc(docId).get();
+    return snap.exists?(snap.data().photoData||null):null;
+  }catch(e){console.warn('photo fetch failed',e);return null;}
+}
 function loadAll(){
   if(!db){console.error('loadAll: db undefined');return;}
   const SRV={source:'server'};
   db.collection('rka_logs').limit(2000).get(SRV).then(s=>{
-    RKA_ALL=[];s.forEach(d=>{const v=d.data();RKA_ALL.push({...v,timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
+    RKA_ALL=[];s.forEach(d=>RKA_ALL.push(liteDoc(d)));
     RKA_ALL.sort((a,b)=>b.timestamp-a.timestamp);
     buildMonthOpts();render();
   }).catch(e=>console.error('rka_logs get failed',e.code,e.message));
   db.collection('beli_logs').limit(2000).get(SRV).then(s=>{
-    BELI_ALL=[];s.forEach(d=>{const v=d.data();BELI_ALL.push({...v,timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
+    BELI_ALL=[];s.forEach(d=>BELI_ALL.push(liteDoc(d)));
     BELI_ALL.sort((a,b)=>b.timestamp-a.timestamp);
     buildMonthOpts();render();
   }).catch(e=>console.error('beli_logs get failed',e.code,e.message));
@@ -817,13 +839,13 @@ function initDash(){
      live after the initial load, so the 30s poll was pure redundant background work. */
   db.collection('rka_logs').limit(2000).onSnapshot({includeMetadataChanges:true},s=>{
     if(s.metadata.fromCache)return;
-    RKA_ALL=[];s.forEach(d=>{const v=d.data();RKA_ALL.push({...v,timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
+    RKA_ALL=[];s.forEach(d=>RKA_ALL.push(liteDoc(d)));
     RKA_ALL.sort((a,b)=>b.timestamp-a.timestamp);
     buildMonthOpts();render();
   },e=>console.error('rka snap err',e));
   db.collection('beli_logs').limit(2000).onSnapshot({includeMetadataChanges:true},s=>{
     if(s.metadata.fromCache)return;
-    BELI_ALL=[];s.forEach(d=>{const v=d.data();BELI_ALL.push({...v,timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
+    BELI_ALL=[];s.forEach(d=>BELI_ALL.push(liteDoc(d)));
     BELI_ALL.sort((a,b)=>b.timestamp-a.timestamp);
     buildMonthOpts();render();
   },e=>console.error('beli snap err',e));
@@ -2811,14 +2833,23 @@ function toggleRkaDetail(tr, vid){
     const b=brandOf(n); (groups[b]||groups.O).push({n,ada});
   });
   let html=`<td colspan="99" style="padding:6px 16px 12px;background:${ov(1)};border-top:none">`;
-  const photoVals=Object.values(photos).filter(Boolean);
+  const photoKeys=Object.keys(photos).filter(k=>photos[k]);
   const photoLabels=['TS Sweetener','HILO Box','NS & HILO Polos'];
-  if(photoVals.length){
+  if(photoKeys.length){
     html+='<div style="display:flex;gap:8px;margin-bottom:10px">';
-    Object.entries(photos).forEach(([idx,url])=>{
-      if(!url)return;
-      const isData=url.startsWith('data:');
-      html+=`<div style="flex:1;max-width:140px"><div style="font-size:8px;color:var(--t3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.08em">${photoLabels[idx]||'Foto '+(+idx+1)}</div>${isData?`<img src="${url}" style="width:100%;border-radius:8px;border:1px solid var(--border);object-fit:cover;aspect-ratio:4/3;cursor:zoom-in" onclick="this.style.maxWidth=this.style.maxWidth?'':'none';this.style.width=this.style.width==='auto'?'100%':'auto'">` :`<a href="${url}" target="_blank"><img src="${url}" style="width:100%;border-radius:8px;border:1px solid var(--border);object-fit:cover;aspect-ratio:4/3" loading="lazy"></a>`}</div>`;
+    photoKeys.forEach(idx=>{
+      const url=photos[idx];
+      const lbl=`<div style="font-size:8px;color:var(--t3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.08em">${photoLabels[idx]||'Foto '+(+idx+1)}</div>`;
+      let body;
+      if(url===true){
+        // base64 stripped at ingest — placeholder, filled in by hydrateRkaPhotos()
+        body=`<div data-ph="${idx}" style="width:100%;aspect-ratio:4/3;border-radius:8px;border:1px solid var(--border);background:${ov(3)};display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--t3)">Memuat…</div>`;
+      }else if(typeof url==='string'&&url.startsWith('data:')){
+        body=`<img src="${url}" style="width:100%;border-radius:8px;border:1px solid var(--border);object-fit:cover;aspect-ratio:4/3;cursor:zoom-in" onclick="this.style.maxWidth=this.style.maxWidth?'':'none';this.style.width=this.style.width==='auto'?'100%':'auto'">`;
+      }else{
+        body=`<a href="${url}" target="_blank"><img src="${url}" style="width:100%;border-radius:8px;border:1px solid var(--border);object-fit:cover;aspect-ratio:4/3" loading="lazy"></a>`;
+      }
+      html+=`<div style="flex:1;max-width:140px">${lbl}${body}</div>`;
     });
     html+='</div>';
   }
@@ -2837,6 +2868,25 @@ function toggleRkaDetail(tr, vid){
   det.innerHTML=html;
   tr.parentNode.insertBefore(det,tr.nextSibling);
   tr.querySelector('span[style*="▾"]').textContent='▴';
+  if(det.querySelector('[data-ph]')&&r._docId)hydratePhotos(det,'rka_logs',r._docId);
+}
+/* Fill the placeholders left by the expand handlers with the real base64 images,
+   fetched one document at a time so the heavy data never sits in memory. */
+async function hydratePhotos(detRow,coll,docId){
+  const pd=await fetchPhotoData(coll,docId);
+  detRow.querySelectorAll('[data-ph]').forEach(el=>{
+    const idx=el.getAttribute('data-ph');
+    const url=(pd&&typeof pd==='object')?pd[idx]:(typeof pd==='string'?pd:null);
+    if(url){
+      const img=document.createElement('img');
+      img.src=url;
+      img.style.cssText='width:100%;border-radius:8px;border:1px solid var(--border);object-fit:cover;aspect-ratio:4/3;cursor:zoom-in';
+      img.onclick=function(){this.style.maxWidth=this.style.maxWidth?'':'none';this.style.width=this.style.width==='auto'?'100%':'auto';};
+      el.replaceWith(img);
+    }else{
+      el.textContent='Foto tidak tersedia';
+    }
+  });
 }
 
 function toggleBeliDetail(tr, bid){
@@ -2855,10 +2905,15 @@ function toggleBeliDetail(tr, bid){
   let html=`<td colspan="99" style="padding:8px 16px 14px;background:${ov(1)};border-top:none;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">`;
   // photo
   if(photo){
-    const isData=photo.startsWith('data:');
-    const imgHtml=isData
-      ?`<img src="${photo}" style="max-width:220px;width:100%;border-radius:8px;border:1px solid var(--border);object-fit:contain;cursor:zoom-in" onclick="this.style.maxWidth=this.style.maxWidth?'':'none';this.style.width=this.style.width==='auto'?'100%':'auto'">`
-      :`<a href="${photo}" target="_blank"><img src="${photo}" style="max-width:220px;width:100%;border-radius:8px;border:1px solid var(--border);object-fit:contain" loading="lazy"></a>`;
+    let imgHtml;
+    if(photo===true){
+      // base64 stripped at ingest — placeholder, filled in by hydratePhotos()
+      imgHtml=`<div data-ph="0" style="width:220px;max-width:100%;aspect-ratio:4/3;border-radius:8px;border:1px solid var(--border);background:${ov(3)};display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--t3)">Memuat…</div>`;
+    }else if(photo.startsWith('data:')){
+      imgHtml=`<img src="${photo}" style="max-width:220px;width:100%;border-radius:8px;border:1px solid var(--border);object-fit:contain;cursor:zoom-in" onclick="this.style.maxWidth=this.style.maxWidth?'':'none';this.style.width=this.style.width==='auto'?'100%':'auto'">`;
+    }else{
+      imgHtml=`<a href="${photo}" target="_blank"><img src="${photo}" style="max-width:220px;width:100%;border-radius:8px;border:1px solid var(--border);object-fit:contain" loading="lazy"></a>`;
+    }
     html+=`<div><div style="font-size:8px;color:var(--t3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.08em">Foto Nota</div>${imgHtml}</div>`;
   }
   // items
@@ -2884,6 +2939,7 @@ function toggleBeliDetail(tr, bid){
   det.className='item-detail-row';
   det.innerHTML=html;
   tr.parentNode.insertBefore(det,tr.nextSibling);
+  if(det.querySelector('[data-ph]')&&r._docId)hydratePhotos(det,'beli_logs',r._docId);
 }
 
 // ── EXPORT CSV ────────────────────────────────────────────────────────────────
