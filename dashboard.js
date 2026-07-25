@@ -80,7 +80,11 @@ let PJ_ROUTE_DATE=null;
 let cAV=null,cTrend=null,cBrand=null,mcAV=null,mcBrand=null;
 
 // ── PIN ─────────────────────────────────────────────────────────────────────
-const IS_MOBILE=(window.innerWidth||document.documentElement.clientWidth||0)<=768;
+/* Narrow viewport OR a true touch device (no mouse). The touch check keeps a phone
+   in landscape (~874px wide) on the mobile path; a touchscreen laptop still reports
+   hover:hover, so it correctly stays on the full desktop path. */
+function _isTouchOnly(){try{return matchMedia('(hover: none) and (pointer: coarse)').matches;}catch(e){return false;}}
+const IS_MOBILE=((window.innerWidth||document.documentElement.clientWidth||0)<=768)||_isTouchOnly();
 function enterDash(){
   document.getElementById('pin-screen').classList.add('hidden');
   document.getElementById('app').classList.add('visible');
@@ -797,9 +801,16 @@ function initDash(){
   if(ff)ff.addEventListener('change',e=>{if(e.target.files[0])handleFormulaImportFile(e.target.files[0]);e.target.value='';});
   const tf=document.getElementById('tx-import-input');
   if(tf)tf.addEventListener('change',e=>{if(e.target.files[0])handleTxImportFile(e.target.files[0]);e.target.value='';});
-  loadKedaiDb();
-  loadPjmdsData();
-  loadPjmdsManualMatch();
+  /* These three feed ONLY the Penjualan MDS tab, which stripMobileHeavy() removes
+     on phones. Measured payload: pjmds_data ~8.3MB JSON / 26k row objects, kedai_db
+     ~0.7MB / 10k store objects — together enough to blow iOS Safari's per-tab memory
+     ceiling and get the tab killed (which is what bounced the user back to the PIN
+     screen). PJ_RAW/KEDAI_DB keep their empty defaults, which every consumer handles. */
+  if(!IS_MOBILE){
+    loadKedaiDb();
+    loadPjmdsData();
+    loadPjmdsManualMatch();
+  }
   loadDashState();
   loadAll();
   /* Dropped the old setInterval(loadAll,30000) — onSnapshot below already keeps data
