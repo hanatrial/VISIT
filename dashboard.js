@@ -778,26 +778,31 @@ async function restList(coll,fields){
 function loadAll(){
   if(!db){console.error('loadAll: db undefined');return;}
   const SRV={source:'server'};
-  if(IS_MOBILE){
-    // REST + field mask: never downloads photoData at all (see restList comment)
-    restList('rka_logs',RKA_FIELDS).then(rows=>{
-      RKA_ALL=rows;buildMonthOpts();render();
-    }).catch(e=>console.error('rka_logs REST failed',e.message));
-    restList('beli_logs',BELI_FIELDS).then(rows=>{
-      BELI_ALL=rows;buildMonthOpts();render();
-    }).catch(e=>console.error('beli_logs REST failed',e.message));
-  }else{
+  /* Masked REST on every device, not just mobile: the SDK path pulls the embedded
+     photos with it, measured at 9.3s for rka_logs alone (plus ~31MB more for
+     beli_logs) versus 0.6s for the masked request. That download is why the desktop
+     dashboard sat empty for so long. Photos are fetched on demand on row expand.
+     Falls back to the SDK if the REST call ever fails. */
+  restList('rka_logs',RKA_FIELDS).then(rows=>{
+    RKA_ALL=rows;buildMonthOpts();render();
+  }).catch(e=>{
+    console.warn('rka_logs REST failed, falling back to SDK',e.message);
     db.collection('rka_logs').limit(2000).get(SRV).then(s=>{
       RKA_ALL=[];s.forEach(d=>RKA_ALL.push(liteDoc(d)));
       RKA_ALL.sort((a,b)=>b.timestamp-a.timestamp);
       buildMonthOpts();render();
-    }).catch(e=>console.error('rka_logs get failed',e.code,e.message));
+    }).catch(err=>console.error('rka_logs get failed',err.code,err.message));
+  });
+  restList('beli_logs',BELI_FIELDS).then(rows=>{
+    BELI_ALL=rows;buildMonthOpts();render();
+  }).catch(e=>{
+    console.warn('beli_logs REST failed, falling back to SDK',e.message);
     db.collection('beli_logs').limit(2000).get(SRV).then(s=>{
       BELI_ALL=[];s.forEach(d=>BELI_ALL.push(liteDoc(d)));
       BELI_ALL.sort((a,b)=>b.timestamp-a.timestamp);
       buildMonthOpts();render();
-    }).catch(e=>console.error('beli_logs get failed',e.code,e.message));
-  }
+    }).catch(err=>console.error('beli_logs get failed',err.code,err.message));
+  });
   db.collection('stock_logs').get(SRV)
     .catch(()=>db.collection('stock_logs').get())
     .then(s=>{
@@ -891,23 +896,10 @@ function initDash(){
   loadAll();
   /* Dropped the old setInterval(loadAll,30000) — onSnapshot below already keeps data
      live after the initial load, so the 30s poll was pure redundant background work. */
-  /* Live listeners on these two would pull the full documents (photos and all) back
-     into the SDK cache, undoing the masked REST load — so on mobile they stay off and
-     the data is refreshed by pulling to reload instead. */
-  if(!IS_MOBILE){
-    db.collection('rka_logs').limit(2000).onSnapshot({includeMetadataChanges:true},s=>{
-      if(s.metadata.fromCache)return;
-      RKA_ALL=[];s.forEach(d=>RKA_ALL.push(liteDoc(d)));
-      RKA_ALL.sort((a,b)=>b.timestamp-a.timestamp);
-      buildMonthOpts();render();
-    },e=>console.error('rka snap err',e));
-    db.collection('beli_logs').limit(2000).onSnapshot({includeMetadataChanges:true},s=>{
-      if(s.metadata.fromCache)return;
-      BELI_ALL=[];s.forEach(d=>BELI_ALL.push(liteDoc(d)));
-      BELI_ALL.sort((a,b)=>b.timestamp-a.timestamp);
-      buildMonthOpts();render();
-    },e=>console.error('beli snap err',e));
-  }
+  /* No live listeners on rka_logs/beli_logs on any device: a listener re-downloads the
+     full documents (photos included) in the background, which is exactly the ~71MB cost
+     the masked REST load above avoids. These two refresh on page reload; the small
+     collections below keep their live listeners. */
   db.collection('stock_logs').limit(2000).onSnapshot({includeMetadataChanges:true},s=>{
     if(s.metadata.fromCache)return;
     STOCK_ALL=[];s.forEach(d=>{const v=d.data();STOCK_ALL.push({...v,timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
