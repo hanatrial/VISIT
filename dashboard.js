@@ -725,10 +725,16 @@ function liteDoc(d){
   }
   return o;
 }
+/* Fetched over REST rather than the SDK: with no active listener on these collections
+   the SDK's single-doc get was observed hanging past 30s while the REST call returns
+   in well under a second. Masked to photoData so only the image comes back. */
 async function fetchPhotoData(coll,docId){
   try{
-    const snap=await db.collection(coll).doc(docId).get();
-    return snap.exists?(snap.data().photoData||null):null;
+    const url=`https://firestore.googleapis.com/v1/projects/${FS_PROJECT}/databases/(default)/documents/${coll}/${encodeURIComponent(docId)}?key=${FS_KEY}&mask.fieldPaths=photoData`;
+    const r=await fetch(url);
+    if(!r.ok)throw new Error('REST '+r.status);
+    const j=await r.json();
+    return (j.fields&&j.fields.photoData)?fsVal(j.fields.photoData):null;
   }catch(e){console.warn('photo fetch failed',e);return null;}
 }
 
