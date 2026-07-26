@@ -23338,8 +23338,9 @@ function addNewStore(flow){
   }
   sel.value=nw;
   document.getElementById(inputId).value='';
+  // class only — an inline display:none here would outrank .add-box.open and stop the
+  // box from ever reopening for the rest of the session
   document.getElementById(boxId).classList.remove('open');
-  document.getElementById(boxId).style.display='none';
   if(flow==='rka')rkaCheck(1);
   else if(flow==='beli')beliCheck(1);
   else if(flow==='ned')nedCheck(1);
@@ -24562,8 +24563,11 @@ function initSpg(){
   AREAS.forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; as.appendChild(o); });
   document.getElementById('spg-nama-input').value='';
   spgFillNames();
+  // visibility is driven purely by the .open class (.add-box{display:none} /
+  // .add-box.open{display:block}); setting inline display here would outrank the
+  // class and permanently prevent toggleBox() from ever showing the box
   const nbox=document.getElementById('spg-nama-box');
-  if(nbox){nbox.classList.remove('open');nbox.style.display='none';}
+  if(nbox)nbox.classList.remove('open');
   const todayStr=new Date().toISOString().slice(0,10);
   const dateInput=document.getElementById('spg-date-input');
   dateInput.value=todayStr;
@@ -24603,8 +24607,7 @@ function addNewSpgName(){
   }
   sel.value=nw;
   document.getElementById('spg-nama-input').value='';
-  const box=document.getElementById('spg-nama-box');
-  box.classList.remove('open'); box.style.display='none';
+  document.getElementById('spg-nama-box').classList.remove('open');
   spgCheck(0);
 }
 function spgCheck(step){
