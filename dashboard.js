@@ -1805,69 +1805,82 @@ const SPG_RANK_COLS=[
   {label:'HI LO Teen',group:'HI LO Teen'},
   {label:'HI LO Platinum',group:'HI LO Platinum'}
 ];
+/* Builds one ranking table. `entityOf` picks what is being ranked (SPG name or store)
+   and `otherOf` the opposite dimension, counted as a distinct-value column. Both
+   rankings share the same omzet/priority/category maths. */
+function spgRankSection(rows,area,cfg){
+  const prioSet=new Set(SPG_PRIO_GROUPS.flatMap(g=>g.items));
+  const by={};
+  rows.forEach(r=>{
+    const n=String(cfg.entityOf(r)||'?').trim();
+    // normalise case/spacing so one SPG or one toko never splits across rows
+    const key=_spgKey(n);
+    if(!by[key])by[key]={nama:n,spellings:{},omzet:0,prio:0,grp:{},days:new Set(),others:new Set()};
+    const e=by[key];
+    e.spellings[n]=(e.spellings[n]||0)+1;
+    e.omzet+=(r.totalOmzet||0);
+    const other=cfg.otherOf(r);
+    if(other)e.others.add(_spgKey(other));
+    e.days.add(r.timestamp.toISOString().slice(0,10));
+    Object.entries(r.items||{}).forEach(([nm,{omzet}])=>{
+      if(prioSet.has(nm))e.prio+=(omzet||0);
+      const g=SPG_GROUP_OF[nm];
+      if(g)e.grp[g]=(e.grp[g]||0)+(omzet||0);
+    });
+  });
+  const list=Object.values(by).sort((a,b)=>b.omzet-a.omzet);
+  // show whichever spelling appears most often in the data
+  list.forEach(e=>{e.nama=Object.entries(e.spellings).sort((x,y)=>y[1]-x[1])[0][0];});
+  const areaTotal=list.reduce((s,e)=>s+e.omzet,0);
+  let html=`<div style="font-size:12px;font-weight:700;color:var(--t2);margin:0 0 8px">${cfg.icon} Ranking ${cfg.title} — ${area}`;
+  if(list.length)html+=`<span style="font-weight:500;color:var(--t3)"> · ${list.length} ${cfg.unit} · total ${rp(areaTotal)}</span>`;
+  html+='</div>';
+  html+='<div class="panel-shell" style="margin-bottom:20px"><div class="panel-body">';
+  if(!list.length){
+    html+=`<div class="empty-state">Belum ada laporan SPG di ${area} untuk periode/filter ini.</div>`;
+  }else{
+    html+=`<table><thead><tr><th>#</th><th>${cfg.entityHead}</th><th>Hari Jualan</th><th>${cfg.otherHead}</th><th>Total Omzet</th><th>Avg / Hari</th>`
+      +SPG_RANK_COLS.map(c=>`<th>${c.label}</th>`).join('')
+      +'<th>Omzet Prioritas</th><th>% Prioritas</th></tr></thead><tbody>';
+    list.forEach((e,i)=>{
+      const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
+      const avg=e.days.size?Math.round(e.omzet/e.days.size):0;
+      const prioPct=e.omzet?Math.round(e.prio/e.omzet*100):0;
+      const rankCol=i===0?'var(--gold)':i===1?'var(--t2)':i===2?'#CD7F32':'var(--t3)';
+      html+=`<tr>
+        <td style="font-weight:800;color:${rankCol};font-size:13px">${medal}</td>
+        <td class="td-main">${e.nama}</td>
+        <td class="td-mid">${e.days.size}</td>
+        <td class="td-dim">${e.others.size}</td>
+        <td style="font-weight:700;color:var(--green)">${rp(e.omzet)}</td>
+        <td class="td-mid">${rp(avg)}</td>
+        ${SPG_RANK_COLS.map(c=>{const v=e.grp[c.group]||0;return `<td style="color:${v?'var(--cyan)':'var(--t3)'};font-weight:${v?600:400}">${v?rp(v):'—'}</td>`;}).join('')}
+        <td style="color:var(--violet);font-weight:600">${e.prio?rp(e.prio):'—'}</td>
+        <td class="td-dim">${prioPct}%</td>
+      </tr>`;
+    });
+    html+='</tbody></table>';
+  }
+  return html+'</div></div>';
+}
 function renderSpgRank(spgF){
   const host=document.getElementById('spg-rank-body');
   if(!host)return;
-  const prioSet=new Set(SPG_PRIO_GROUPS.flatMap(g=>g.items));
   // Areas the user asked for first, then any other area that has data
   const present=[...new Set(spgF.map(r=>(r.area||'?').trim()))];
   const areas=SPG_RANK_AREAS.concat(present.filter(a=>!SPG_RANK_AREAS.includes(a)).sort());
+  const SPG_CFG={icon:'🏆',title:'SPG',unit:'SPG',entityHead:'Nama SPG',otherHead:'Toko',
+    entityOf:r=>r.nama,otherOf:r=>r.store};
+  const TOKO_CFG={icon:'🏪',title:'Toko',unit:'toko',entityHead:'Nama Toko',otherHead:'SPG',
+    entityOf:r=>r.store,otherOf:r=>r.nama};
   let html='';
   areas.forEach(area=>{
     const rows=spgF.filter(r=>(r.area||'').trim().toLowerCase()===area.toLowerCase());
-    const byName={};
-    rows.forEach(r=>{
-      const n=(r.nama||'?').trim();
-      // group case-insensitively: older records use spellings like "Lilis suriani" /
-      // "SALSA SYABILLA ZAHRA" while the new picker submits Title Case, and the same
-      // person must not split into two ranking rows
-      const key=_spgKey(n);
-      if(!byName[key])byName[key]={nama:n,spellings:{},laporan:0,omzet:0,prio:0,grp:{},days:new Set(),stores:new Set()};
-      const e=byName[key];
-      e.spellings[n]=(e.spellings[n]||0)+1;
-      e.laporan++; e.omzet+=(r.totalOmzet||0);
-      if(r.store)e.stores.add(String(r.store).trim().toLowerCase());
-      e.days.add(r.timestamp.toISOString().slice(0,10));
-      Object.entries(r.items||{}).forEach(([nm,{omzet}])=>{
-        if(prioSet.has(nm))e.prio+=(omzet||0);
-        const g=SPG_GROUP_OF[nm];
-        if(g)e.grp[g]=(e.grp[g]||0)+(omzet||0);
-      });
-    });
-    const list=Object.values(byName).sort((a,b)=>b.omzet-a.omzet);
-    // show whichever spelling of the name appears most often
-    list.forEach(e=>{e.nama=Object.entries(e.spellings).sort((x,y)=>y[1]-x[1])[0][0];});
-    const areaTotal=list.reduce((s,e)=>s+e.omzet,0);
-    html+=`<div style="font-size:12px;font-weight:700;color:var(--t2);margin:0 0 8px">🏆 Ranking SPG — ${area}`;
-    if(list.length)html+=`<span style="font-weight:500;color:var(--t3)"> · ${list.length} SPG · total ${rp(areaTotal)}</span>`;
-    html+='</div>';
-    html+='<div class="panel-shell" style="margin-bottom:20px"><div class="panel-body">';
-    if(!list.length){
-      html+=`<div class="empty-state">Belum ada laporan SPG di ${area} untuk periode/filter ini.</div>`;
-    }else{
-      html+='<table><thead><tr><th>#</th><th>Nama SPG</th><th>Hari Jualan</th><th>Toko</th><th>Total Omzet</th><th>Avg / Hari</th>'
-        +SPG_RANK_COLS.map(c=>`<th>${c.label}</th>`).join('')
-        +'<th>Omzet Prioritas</th><th>% Prioritas</th></tr></thead><tbody>';
-      list.forEach((e,i)=>{
-        const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
-        const avg=e.days.size?Math.round(e.omzet/e.days.size):0;
-        const prioPct=e.omzet?Math.round(e.prio/e.omzet*100):0;
-        const rankCol=i===0?'var(--gold)':i===1?'var(--t2)':i===2?'#CD7F32':'var(--t3)';
-        html+=`<tr>
-          <td style="font-weight:800;color:${rankCol};font-size:13px">${medal}</td>
-          <td class="td-main">${e.nama}</td>
-          <td class="td-mid">${e.days.size}</td>
-          <td class="td-dim">${e.stores.size}</td>
-          <td style="font-weight:700;color:var(--green)">${rp(e.omzet)}</td>
-          <td class="td-mid">${rp(avg)}</td>
-          ${SPG_RANK_COLS.map(c=>{const v=e.grp[c.group]||0;return `<td style="color:${v?'var(--cyan)':'var(--t3)'};font-weight:${v?600:400}">${v?rp(v):'—'}</td>`;}).join('')}
-          <td style="color:var(--violet);font-weight:600">${e.prio?rp(e.prio):'—'}</td>
-          <td class="td-dim">${prioPct}%</td>
-        </tr>`;
-      });
-      html+='</tbody></table>';
-    }
-    html+='</div></div>';
+    html+=spgRankSection(rows,area,SPG_CFG);
+  });
+  areas.forEach(area=>{
+    const rows=spgF.filter(r=>(r.area||'').trim().toLowerCase()===area.toLowerCase());
+    html+=spgRankSection(rows,area,TOKO_CFG);
   });
   host.innerHTML=html;
 }
