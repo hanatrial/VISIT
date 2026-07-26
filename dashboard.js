@@ -1652,14 +1652,22 @@ function onSpgReportSearch(v){
   if(inp&&document.activeElement!==inp){inp.focus();inp.selectionStart=inp.selectionEnd=inp.value.length;}
 }
 function renderSpgReport(spgF){
-  let names=[...new Set(spgF.map(r=>r.nama||'?'))].map(n=>({
-    n,omzet:spgF.filter(r=>(r.nama||'?')===n).reduce((s,r)=>s+(r.totalOmzet||0),0),
-    cnt:spgF.filter(r=>(r.nama||'?')===n).length
-  })).sort((a,b)=>b.omzet-a.omzet);
+  // identity is the lowercased name so older spellings ("Lilis suriani") and the
+  // Title Case ones the new picker submits resolve to one person
+  const agg={};
+  spgF.forEach(r=>{
+    const n=(r.nama||'?').trim(), k=n.toLowerCase();
+    if(!agg[k])agg[k]={key:k,spellings:{},omzet:0,cnt:0};
+    agg[k].spellings[n]=(agg[k].spellings[n]||0)+1;
+    agg[k].omzet+=(r.totalOmzet||0); agg[k].cnt++;
+  });
+  const names=Object.values(agg).sort((a,b)=>b.omzet-a.omzet);
+  names.forEach(x=>{x.n=Object.entries(x.spellings).sort((p,q)=>q[1]-p[1])[0][0];});
   const q=SPG_REPORT_SEARCH.trim().toLowerCase();
   const shown=q?names.filter(x=>x.n.toLowerCase().includes(q)):names;
-  if(SPG_REPORT_SEL&&!names.some(x=>x.n===SPG_REPORT_SEL))SPG_REPORT_SEL='';
-  if((!SPG_REPORT_SEL||(q&&!shown.some(x=>x.n===SPG_REPORT_SEL)))&&shown.length)SPG_REPORT_SEL=shown[0].n;
+  if(SPG_REPORT_SEL&&!names.some(x=>x.key===SPG_REPORT_SEL))SPG_REPORT_SEL='';
+  if((!SPG_REPORT_SEL||(q&&!shown.some(x=>x.key===SPG_REPORT_SEL)))&&shown.length)SPG_REPORT_SEL=shown[0].key;
+  const selDisp=(names.find(x=>x.key===SPG_REPORT_SEL)||{}).n||SPG_REPORT_SEL;
   const listEl=document.getElementById('spg-report-list');
   const detEl=document.getElementById('spg-report-detail');
   if(!listEl||!detEl)return;
@@ -1669,9 +1677,9 @@ function renderSpgReport(spgF){
     return;
   }
   listEl.innerHTML=shown.length?shown.map(x=>{
-    return`<div class="pill ${x.n===SPG_REPORT_SEL?'on':''}" onclick="selectSpgReportName('${_escJs(x.n)}')">${x.n} <span style="opacity:.7">(${x.cnt}) · ${rp(x.omzet)}</span></div>`;
+    return`<div class="pill ${x.key===SPG_REPORT_SEL?'on':''}" onclick="selectSpgReportName('${_escJs(x.key)}')">${x.n} <span style="opacity:.7">(${x.cnt}) · ${rp(x.omzet)}</span></div>`;
   }).join(''):'<div class="empty-state" style="padding:8px 0">Tidak ada nama yang cocok.</div>';
-  const rows=spgF.filter(r=>(r.nama||'?')===SPG_REPORT_SEL).sort((a,b)=>a.timestamp-b.timestamp);
+  const rows=spgF.filter(r=>(r.nama||'?').trim().toLowerCase()===SPG_REPORT_SEL).sort((a,b)=>a.timestamp-b.timestamp);
   const totalOmzet=rows.reduce((s,r)=>s+(r.totalOmzet||0),0);
   const avgOmzet=rows.length?Math.round(totalOmzet/rows.length):0;
   const storesActive=new Set(rows.map(r=>r.store||'?')).size;
@@ -1687,7 +1695,7 @@ function renderSpgReport(spgF){
     <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(139,92,246,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--violet),transparent 70%)"></div><div class="kpi-label">Omzet Item Prioritas</div><div class="kpi-val sm" style="color:var(--violet)">${prioTotal?rp(prioTotal):'—'}</div><div class="kpi-sub">${totalOmzet?Math.round(prioTotal/totalOmzet*100):0}% dari total omzet</div></div></div>
   </div>`;
 
-  html+='<div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">Omzet Harian — '+SPG_REPORT_SEL+'</div>';
+  html+='<div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">Omzet Harian — '+selDisp+'</div>';
   html+='<div class="panel-shell" style="margin-bottom:20px"><div class="panel-body">';
   html+='<table><thead><tr><th>Tanggal</th><th>Area</th><th>Toko</th><th>Item</th><th>Total Omzet</th></tr></thead><tbody>';
   html+=rows.length?rows.map(r=>{
@@ -1697,7 +1705,7 @@ function renderSpgReport(spgF){
   }).join(''):'<tr><td colspan="5"><div class="empty-state">Belum ada laporan.</div></td></tr>';
   html+='</tbody></table></div></div>';
 
-  html+='<div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">Rekap per Grup Item Prioritas — '+SPG_REPORT_SEL+'</div>';
+  html+='<div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">Rekap per Grup Item Prioritas — '+selDisp+'</div>';
   html+='<div class="panel-shell"><div class="panel-body">';
   html+='<table><thead><tr><th>Grup Item</th><th>Qty (renceng)</th><th>Omzet</th><th>% dari Total</th></tr></thead><tbody>';
   html+=grpRowsHtml;
@@ -1796,14 +1804,21 @@ function renderSpgRank(spgF){
     const byName={};
     rows.forEach(r=>{
       const n=(r.nama||'?').trim();
-      if(!byName[n])byName[n]={nama:n,laporan:0,omzet:0,prio:0,days:new Set(),stores:new Set()};
-      const e=byName[n];
+      // group case-insensitively: older records use spellings like "Lilis suriani" /
+      // "SALSA SYABILLA ZAHRA" while the new picker submits Title Case, and the same
+      // person must not split into two ranking rows
+      const key=n.toLowerCase();
+      if(!byName[key])byName[key]={nama:n,spellings:{},laporan:0,omzet:0,prio:0,days:new Set(),stores:new Set()};
+      const e=byName[key];
+      e.spellings[n]=(e.spellings[n]||0)+1;
       e.laporan++; e.omzet+=(r.totalOmzet||0);
       if(r.store)e.stores.add(String(r.store).trim().toLowerCase());
       e.days.add(r.timestamp.toISOString().slice(0,10));
       Object.entries(r.items||{}).forEach(([nm,{omzet}])=>{ if(prioSet.has(nm))e.prio+=(omzet||0); });
     });
     const list=Object.values(byName).sort((a,b)=>b.omzet-a.omzet);
+    // show whichever spelling of the name appears most often
+    list.forEach(e=>{e.nama=Object.entries(e.spellings).sort((x,y)=>y[1]-x[1])[0][0];});
     const areaTotal=list.reduce((s,e)=>s+e.omzet,0);
     html+=`<div style="font-size:12px;font-weight:700;color:var(--t2);margin:0 0 8px">🏆 Ranking SPG — ${area}`;
     if(list.length)html+=`<span style="font-weight:500;color:var(--t3)"> · ${list.length} SPG · total ${rp(areaTotal)}</span>`;
