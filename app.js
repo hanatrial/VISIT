@@ -23414,7 +23414,9 @@ const SPG_NAMES_BY_AREA = {
   'Kendari': ['Andi Sriwahyuni','Nabila Febriani','Nur Alvina Azizah Buburanda','Yuliana']
 };
 function canonicalSpgName(area,name){
-  const n=String(name).trim();
+  // collapse internal whitespace too, not just trim: "siti  RAHMA" and "siti RAHMA"
+  // must resolve to one person, otherwise the picker just moves the duplicate problem
+  const n=String(name).trim().replace(/\s+/g,' ');
   return (SPG_NAMES_BY_AREA[area]||[]).find(s=>_sameName(s,n))||n;
 }
 function _mergeSpgNames(area,names){

@@ -1603,6 +1603,8 @@ const SPG_PRIO_GROUPS=[
   {label:'HI LO Active Granola Berry Berry Honey',items:["HI LO ACTIVE GRANOLA BERRY BERRY HONEY 12PX150G"]}
 ];
 function _escJs(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+/* One identity per SPG regardless of letter case or stray internal spacing */
+function _spgKey(n){return String(n||'?').trim().replace(/\s+/g,' ').toLowerCase();}
 /* Non-priority items containing "PLS" are split out as NS Polos / Hilo Polos; everything else falls to Item Lainnya */
 function _spgLainBucket(nm){
   const u=nm.toUpperCase();
@@ -1654,7 +1656,7 @@ function renderSpgReport(spgF){
   // Title Case ones the new picker submits resolve to one person
   const agg={};
   spgF.forEach(r=>{
-    const n=(r.nama||'?').trim(), k=n.toLowerCase();
+    const n=(r.nama||'?').trim(), k=_spgKey(n);
     if(!agg[k])agg[k]={key:k,spellings:{},omzet:0,cnt:0};
     agg[k].spellings[n]=(agg[k].spellings[n]||0)+1;
     agg[k].omzet+=(r.totalOmzet||0); agg[k].cnt++;
@@ -1677,7 +1679,7 @@ function renderSpgReport(spgF){
   listEl.innerHTML=shown.length?shown.map(x=>{
     return`<div class="pill ${x.key===SPG_REPORT_SEL?'on':''}" onclick="selectSpgReportName('${_escJs(x.key)}')">${x.n} <span style="opacity:.7">(${x.cnt}) · ${rp(x.omzet)}</span></div>`;
   }).join(''):'<div class="empty-state" style="padding:8px 0">Tidak ada nama yang cocok.</div>';
-  const rows=spgF.filter(r=>(r.nama||'?').trim().toLowerCase()===SPG_REPORT_SEL).sort((a,b)=>a.timestamp-b.timestamp);
+  const rows=spgF.filter(r=>_spgKey(r.nama||'?')===SPG_REPORT_SEL).sort((a,b)=>a.timestamp-b.timestamp);
   const totalOmzet=rows.reduce((s,r)=>s+(r.totalOmzet||0),0);
   const avgOmzet=rows.length?Math.round(totalOmzet/rows.length):0;
   const storesActive=new Set(rows.map(r=>r.store||'?')).size;
@@ -1805,7 +1807,7 @@ function renderSpgRank(spgF){
       // group case-insensitively: older records use spellings like "Lilis suriani" /
       // "SALSA SYABILLA ZAHRA" while the new picker submits Title Case, and the same
       // person must not split into two ranking rows
-      const key=n.toLowerCase();
+      const key=_spgKey(n);
       if(!byName[key])byName[key]={nama:n,spellings:{},laporan:0,omzet:0,prio:0,days:new Set(),stores:new Set()};
       const e=byName[key];
       e.spellings[n]=(e.spellings[n]||0)+1;
