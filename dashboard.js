@@ -1572,16 +1572,20 @@ function toggleSpgDetail(tr,idx){
 }
 /* ── SPG REPORT (per-SPG evaluation) ─────────────────────────────────────── */
 const SPG_PRIO_GROUPS=[
-  {label:'HI LO School, Teen & Platinum',items:[
+  {label:'HI LO School',items:[
     "HI LO SCHOOL CHOCOLATE 12DX250G","HI LO SCHOOL CHOCOLATE 12DX500G","HI LO SCHOOL CHOCOLATE 6DX750G",
     "HI LO SCHOOL VANILLA 12DX250G","HI LO SCHOOL VANILLA VEGIBERI 12DX500G","HI LO SCHOOL VANILLA VEGIBERI 6DX750G",
     "HI LO SCHOOL HONEY 12DX250G","HI LO SCHOOL HONEY 12DX500G","HI LO SCHOOL STRAWBERRY CHEESECAKE 12DX500G",
     "HI LO SCHOOL BUBBLE GUM 12DX500G","HI LO SCHOOL COTTON CANDY 12DX500G","HI LO SCHOOL ORIGINAL 12DX12SX25G",
-    "HI LO SCHOOL SUSU COKELAT 8GUSX10SX35G","HI LO SCHOOL SUSU VANILLA 8GUSX10SX35G",
+    "HI LO SCHOOL SUSU COKELAT 8GUSX10SX35G","HI LO SCHOOL SUSU VANILLA 8GUSX10SX35G"
+  ]},
+  {label:'HI LO Teen',items:[
     "HI LO TEEN CHOCOLATE 12DX250G","HI LO TEEN CHOCOLATE 12DX500G","HI LO TEEN CHOCOLATE 6DX750G",
     "HI LO TEEN VANILLA CARAMEL 12DX250G","HI LO TEEN VANILLA CARAMEL 12DX500G","HI LO TEEN VANILLA CARAMEL 6DX750G",
     "HI LO TEEN KOREAN BANANA 12DX250G","HI LO TEEN POPCORN CARAMEL 12DX500G",
-    "HI LO TEEN HIPROTEIN ORIGINAL 12DX10SX33G","HI LO TEEN HIPROTEIN MELON 12DX400G",
+    "HI LO TEEN HIPROTEIN ORIGINAL 12DX10SX33G","HI LO TEEN HIPROTEIN MELON 12DX400G"
+  ]},
+  {label:'HI LO Platinum',items:[
     "HI LO PLATINUM ORIGINAL 12DX12SX30G","HI LO PLATINUM SWISS CHOCOLATE 12DX12SX34G",
     "HI LO PLATINUM +HMB VANILLA 12DX8SX42G","HI LO PLATINUM +HMB CHOCO MOCHA 12DX8SX40G"
   ]},
@@ -1791,6 +1795,16 @@ function renderSpgPerStore(spgF){
 }
 /* ── SPG RANKING (per area) ───────────────────────────────────────────────── */
 const SPG_RANK_AREAS=['Makassar','Kendari'];
+// item name -> priority group label, so the ranking can break omzet out per category
+const SPG_GROUP_OF=(()=>{const m={};SPG_PRIO_GROUPS.forEach(g=>g.items.forEach(i=>m[i]=g.label));return m;})();
+// the per-category omzet columns shown in the ranking table
+const SPG_RANK_COLS=[
+  {label:'TS Oil',group:'Oil'},
+  {label:'Beras Porang',group:'TS Beras (kecuali Shirataki Noodles)'},
+  {label:'HI LO School',group:'HI LO School'},
+  {label:'HI LO Teen',group:'HI LO Teen'},
+  {label:'HI LO Platinum',group:'HI LO Platinum'}
+];
 function renderSpgRank(spgF){
   const host=document.getElementById('spg-rank-body');
   if(!host)return;
@@ -1808,13 +1822,17 @@ function renderSpgRank(spgF){
       // "SALSA SYABILLA ZAHRA" while the new picker submits Title Case, and the same
       // person must not split into two ranking rows
       const key=_spgKey(n);
-      if(!byName[key])byName[key]={nama:n,spellings:{},laporan:0,omzet:0,prio:0,days:new Set(),stores:new Set()};
+      if(!byName[key])byName[key]={nama:n,spellings:{},laporan:0,omzet:0,prio:0,grp:{},days:new Set(),stores:new Set()};
       const e=byName[key];
       e.spellings[n]=(e.spellings[n]||0)+1;
       e.laporan++; e.omzet+=(r.totalOmzet||0);
       if(r.store)e.stores.add(String(r.store).trim().toLowerCase());
       e.days.add(r.timestamp.toISOString().slice(0,10));
-      Object.entries(r.items||{}).forEach(([nm,{omzet}])=>{ if(prioSet.has(nm))e.prio+=(omzet||0); });
+      Object.entries(r.items||{}).forEach(([nm,{omzet}])=>{
+        if(prioSet.has(nm))e.prio+=(omzet||0);
+        const g=SPG_GROUP_OF[nm];
+        if(g)e.grp[g]=(e.grp[g]||0)+(omzet||0);
+      });
     });
     const list=Object.values(byName).sort((a,b)=>b.omzet-a.omzet);
     // show whichever spelling of the name appears most often
@@ -1827,12 +1845,13 @@ function renderSpgRank(spgF){
     if(!list.length){
       html+=`<div class="empty-state">Belum ada laporan SPG di ${area} untuk periode/filter ini.</div>`;
     }else{
-      html+='<table><thead><tr><th>#</th><th>Nama SPG</th><th>Hari Jualan</th><th>Toko</th><th>Total Omzet</th><th>Avg / Hari</th><th>Omzet Prioritas</th><th>% Prioritas</th><th>Kontribusi Area</th></tr></thead><tbody>';
+      html+='<table><thead><tr><th>#</th><th>Nama SPG</th><th>Hari Jualan</th><th>Toko</th><th>Total Omzet</th><th>Avg / Hari</th>'
+        +SPG_RANK_COLS.map(c=>`<th>${c.label}</th>`).join('')
+        +'<th>Omzet Prioritas</th><th>% Prioritas</th></tr></thead><tbody>';
       list.forEach((e,i)=>{
         const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
         const avg=e.days.size?Math.round(e.omzet/e.days.size):0;
         const prioPct=e.omzet?Math.round(e.prio/e.omzet*100):0;
-        const share=areaTotal?Math.round(e.omzet/areaTotal*100):0;
         const rankCol=i===0?'var(--gold)':i===1?'var(--t2)':i===2?'#CD7F32':'var(--t3)';
         html+=`<tr>
           <td style="font-weight:800;color:${rankCol};font-size:13px">${medal}</td>
@@ -1841,9 +1860,9 @@ function renderSpgRank(spgF){
           <td class="td-dim">${e.stores.size}</td>
           <td style="font-weight:700;color:var(--green)">${rp(e.omzet)}</td>
           <td class="td-mid">${rp(avg)}</td>
+          ${SPG_RANK_COLS.map(c=>{const v=e.grp[c.group]||0;return `<td style="color:${v?'var(--cyan)':'var(--t3)'};font-weight:${v?600:400}">${v?rp(v):'—'}</td>`;}).join('')}
           <td style="color:var(--violet);font-weight:600">${e.prio?rp(e.prio):'—'}</td>
           <td class="td-dim">${prioPct}%</td>
-          <td class="td-dim">${share}%</td>
         </tr>`;
       });
       html+='</tbody></table>';
