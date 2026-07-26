@@ -706,13 +706,23 @@
         <div class="s-sub">Area dan nama SPG</div>
         <div class="field">
           <label class="f-label">Nama Area</label>
-          <select class="f-input sel" id="spg-area-sel" onchange="spgCheck(0)">
+          <select class="f-input sel" id="spg-area-sel" onchange="spgAreaChanged()">
             <option value="">— Pilih Area —</option>
           </select>
         </div>
         <div class="field">
           <label class="f-label">Nama SPG</label>
-          <input type="text" class="f-input" id="spg-nama-input" placeholder="Ketik nama…" oninput="spgCheck(0)">
+          <select class="f-input sel" id="spg-nama-sel" onchange="spgCheck(0)">
+            <option value="">— Pilih Nama SPG —</option>
+          </select>
+        </div>
+        <div class="add-trigger" onclick="toggleBox('spg-nama-box')"><span>+</span> Tambah nama SPG baru</div>
+        <div class="add-box" id="spg-nama-box">
+          <div class="field" style="margin-bottom:8px">
+            <label class="f-label">Nama SPG Baru</label>
+            <input type="text" class="f-input" id="spg-nama-input" placeholder="Ketik nama…" oninput="spgCheck(0)">
+          </div>
+          <button class="save-store-btn" onclick="addNewSpgName()">✓ Simpan Nama</button>
         </div>
         <div class="field">
           <label class="f-label">Tanggal Jualan</label>
@@ -814,10 +824,10 @@
 
 </div><!-- #app -->
 
-<script src="app.js?v=12"></script>
+<script src="app.js?v=13"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
-<script src="app-init.js?v=2"></script>
+<script src="app-init.js?v=3"></script>
 </body>
 </html>

@@ -23405,6 +23405,50 @@ async function loadSpgCustomStores(){
   }catch(e){console.warn('loadSpgCustomStores failed',e);}
 }
 
+/* SPG name roster — seeded from the names already submitted in spg_daily_logs, so the
+   field becomes a picker instead of free text (which was producing typo variants of
+   the same person). New names added in the app are persisted and shared across devices. */
+const SPG_NAMES_BY_AREA = {
+  'Makassar': ['Amel','Ike Putri Magfirah','Kamalia','Lilis Suriani','Muliani','Nadia','Natasya','Resky Audina','Rhiby Aliyah Pratiwi','Salsa Syabilla Zahra','Sujar Event','Yuninda Natasya Amey'],
+  'Kendari': ['Andi Sriwahyuni','Nabila Febriani','Nur Alvina Azizah Buburanda','Yuliana']
+};
+function canonicalSpgName(area,name){
+  const n=String(name).trim();
+  return (SPG_NAMES_BY_AREA[area]||[]).find(s=>_sameName(s,n))||n;
+}
+function _mergeSpgNames(area,names){
+  if(!Array.isArray(names))return;
+  if(!SPG_NAMES_BY_AREA[area])SPG_NAMES_BY_AREA[area]=[];
+  names.forEach(s=>{ if(s&&!SPG_NAMES_BY_AREA[area].some(x=>_sameName(x,s)))SPG_NAMES_BY_AREA[area].push(s); });
+  SPG_NAMES_BY_AREA[area].sort((a,b)=>a.localeCompare(b));
+  try{
+    const saved=JSON.parse(localStorage.getItem('mds_spg_names')||'{}');
+    if(!saved[area])saved[area]=[];
+    names.forEach(s=>{if(s&&!saved[area].includes(s))saved[area].push(s);});
+    localStorage.setItem('mds_spg_names',JSON.stringify(saved));
+  }catch(e){}
+}
+(function(){try{const s=JSON.parse(localStorage.getItem('mds_spg_names')||'{}');Object.entries(s).forEach(([a,v])=>_mergeSpgNames(a,v));}catch(e){}})();
+function saveSpgName(area,name){
+  _mergeSpgNames(area,[name]);
+  try{
+    if(typeof db!=='undefined'){
+      db.collection('app_data').doc('spg_names').set(
+        {[area]:firebase.firestore.FieldValue.arrayUnion(name)},{merge:true}
+      ).catch(e=>console.warn('spg name save failed',e));
+    }
+  }catch(e){}
+}
+async function loadSpgNames(){
+  try{
+    if(typeof db==='undefined')return;
+    const doc=await db.collection('app_data').doc('spg_names').get();
+    if(!doc.exists)return;
+    Object.entries(doc.data()).forEach(([a,v])=>_mergeSpgNames(a,v));
+    if(typeof spgFillNames==='function'&&document.getElementById('spg-area-sel'))spgFillNames();
+  }catch(e){console.warn('loadSpgNames failed',e);}
+}
+
 /* ─────────── STATE ─────────── */
 const R = { step:0, area:'', mds:'', store:'', photos:{}, items:{}, photoUploads:{}, uploadsDone:{} };
 const B = { step:0, area:'', mds:'', store:'', photo:null, qty:{}, photoUpload:null };
@@ -24517,6 +24561,9 @@ function initSpg(){
   as.innerHTML='<option value="">— Pilih Area —</option>';
   AREAS.forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; as.appendChild(o); });
   document.getElementById('spg-nama-input').value='';
+  spgFillNames();
+  const nbox=document.getElementById('spg-nama-box');
+  if(nbox){nbox.classList.remove('open');nbox.style.display='none';}
   const todayStr=new Date().toISOString().slice(0,10);
   const dateInput=document.getElementById('spg-date-input');
   dateInput.value=todayStr;
@@ -24528,11 +24575,43 @@ function initSpg(){
   spgUpdateStepper();
   document.querySelectorAll('#s-spg .step-section').forEach((s,i)=>s.classList.toggle('active',i===0));
 }
+/* Repopulate the name picker for the chosen area. Called on init, on area change,
+   and again once the shared roster finishes loading from Firestore. */
+function spgFillNames(){
+  const sel=document.getElementById('spg-nama-sel');
+  if(!sel)return;
+  const area=document.getElementById('spg-area-sel').value;
+  const prev=sel.value;
+  sel.innerHTML='<option value="">— Pilih Nama SPG —</option>';
+  (SPG_NAMES_BY_AREA[area]||[]).forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; sel.appendChild(o); });
+  if(prev&&[...sel.options].some(o=>o.value===prev))sel.value=prev;
+}
+function spgAreaChanged(){
+  spgFillNames();
+  spgCheck(0);
+}
+function addNewSpgName(){
+  const area=document.getElementById('spg-area-sel').value;
+  if(!area){alert('Pilih area dulu sebelum tambah nama SPG.');return;}
+  let nw=document.getElementById('spg-nama-input').value.trim();
+  if(!nw)return;
+  nw=canonicalSpgName(area,nw);
+  const sel=document.getElementById('spg-nama-sel');
+  if(![...sel.options].some(o=>o.value===nw)){
+    saveSpgName(area,nw);
+    spgFillNames();
+  }
+  sel.value=nw;
+  document.getElementById('spg-nama-input').value='';
+  const box=document.getElementById('spg-nama-box');
+  box.classList.remove('open'); box.style.display='none';
+  spgCheck(0);
+}
 function spgCheck(step){
   let ok=false;
   if(step===0){
     const area=document.getElementById('spg-area-sel').value;
-    const nama=document.getElementById('spg-nama-input').value.trim();
+    const nama=document.getElementById('spg-nama-sel').value||document.getElementById('spg-nama-input').value.trim();
     const date=document.getElementById('spg-date-input').value;
     ok=!!(area&&nama&&date);
     document.getElementById('spg-next-0').disabled=!ok;
@@ -24547,7 +24626,10 @@ function spgNext(step){
   if(step===0){
     if(!spgCheck(0)) return;
     SG.area=document.getElementById('spg-area-sel').value;
-    SG.nama=canonicalMds(SG.area,document.getElementById('spg-nama-input').value);
+    const typed=document.getElementById('spg-nama-input').value.trim();
+    const picked=document.getElementById('spg-nama-sel').value;
+    SG.nama=canonicalSpgName(SG.area,picked||typed);
+    if(!picked&&typed)saveSpgName(SG.area,SG.nama);
     SG.date=document.getElementById('spg-date-input').value;
     const ss=document.getElementById('spg-store-sel');
     ss.innerHTML='<option value="">— Pilih Toko —</option>';

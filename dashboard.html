@@ -463,6 +463,7 @@
         <div class="sub-tab on spg" id="stab-spg-log" onclick="switchSubTab('spg','log')">📋 Riwayat Laporan</div>
         <div class="sub-tab spg" id="stab-spg-report" onclick="switchSubTab('spg','report')">🧑‍💼 SPG Report</div>
         <div class="sub-tab spg" id="stab-spg-store" onclick="switchSubTab('spg','store')">🏪 Per Toko</div>
+        <div class="sub-tab spg" id="stab-spg-rank" onclick="switchSubTab('spg','rank')">🏆 Ranking Jualan</div>
       </div>
       <div id="spg-log-wrap">
         <div class="panel-shell"><div class="panel-body">
@@ -483,6 +484,9 @@
           <div id="spg-store-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;max-height:180px;overflow-y:auto"></div>
           <div id="spg-store-detail"></div>
         </div></div>
+      </div>
+      <div id="spg-rank-wrap" style="display:none">
+        <div id="spg-rank-body"></div>
       </div>
     </div>
   </div>
@@ -529,6 +533,6 @@
   </div></div>
 </div>
 
-<script src="dashboard.js?v=23"></script>
+<script src="dashboard.js?v=24"></script>
 </body>
 </html>

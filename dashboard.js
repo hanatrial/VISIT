@@ -1159,10 +1159,11 @@ function switchSubTab(main,sub){
     ['log','urgent'].forEach(s=>{const el=document.getElementById('stab-ned-'+s);if(el)el.classList.toggle('on',s===sub);});
   }else if(main==='spg'){
     SUBTAB_SPG=sub;
-    ['log','report','store'].forEach(s=>{const el=document.getElementById('stab-spg-'+s);if(el)el.classList.toggle('on',s===sub);});
+    ['log','report','store','rank'].forEach(s=>{const el=document.getElementById('stab-spg-'+s);if(el)el.classList.toggle('on',s===sub);});
     const lw=document.getElementById('spg-log-wrap');if(lw)lw.style.display=sub==='log'?'block':'none';
     const rw=document.getElementById('spg-report-wrap');if(rw)rw.style.display=sub==='report'?'block':'none';
     const stw=document.getElementById('spg-store-wrap');if(stw)stw.style.display=sub==='store'?'block':'none';
+    const rkw=document.getElementById('spg-rank-wrap');if(rkw)rkw.style.display=sub==='rank'?'block':'none';
   }else{
     SUBTAB_BELI=sub;
     ['log','analisis'].forEach(s=>{const el=document.getElementById('stab-beli-'+s);if(el)el.classList.toggle('on',s===sub);});
@@ -1227,7 +1228,8 @@ function render(){
   }else if(TAB==='spg'){
     if(SUBTAB_SPG==='log')renderSpgLog(spgF);
     else if(SUBTAB_SPG==='report')renderSpgReport(spgF);
-    else renderSpgPerStore(spgF);
+    else if(SUBTAB_SPG==='store')renderSpgPerStore(spgF);
+    else renderSpgRank(spgF);
   }
 }
 
@@ -1778,6 +1780,62 @@ function renderSpgPerStore(spgF){
   html+='</tbody></table></div></div>';
 
   detEl.innerHTML=html;
+}
+/* ── SPG RANKING (per area) ───────────────────────────────────────────────── */
+const SPG_RANK_AREAS=['Makassar','Kendari'];
+function renderSpgRank(spgF){
+  const host=document.getElementById('spg-rank-body');
+  if(!host)return;
+  const prioSet=new Set(SPG_PRIO_GROUPS.flatMap(g=>g.items));
+  // Areas the user asked for first, then any other area that has data
+  const present=[...new Set(spgF.map(r=>(r.area||'?').trim()))];
+  const areas=SPG_RANK_AREAS.concat(present.filter(a=>!SPG_RANK_AREAS.includes(a)).sort());
+  let html='';
+  areas.forEach(area=>{
+    const rows=spgF.filter(r=>(r.area||'').trim().toLowerCase()===area.toLowerCase());
+    const byName={};
+    rows.forEach(r=>{
+      const n=(r.nama||'?').trim();
+      if(!byName[n])byName[n]={nama:n,laporan:0,omzet:0,prio:0,days:new Set(),stores:new Set()};
+      const e=byName[n];
+      e.laporan++; e.omzet+=(r.totalOmzet||0);
+      if(r.store)e.stores.add(String(r.store).trim().toLowerCase());
+      e.days.add(r.timestamp.toISOString().slice(0,10));
+      Object.entries(r.items||{}).forEach(([nm,{omzet}])=>{ if(prioSet.has(nm))e.prio+=(omzet||0); });
+    });
+    const list=Object.values(byName).sort((a,b)=>b.omzet-a.omzet);
+    const areaTotal=list.reduce((s,e)=>s+e.omzet,0);
+    html+=`<div style="font-size:12px;font-weight:700;color:var(--t2);margin:0 0 8px">🏆 Ranking SPG — ${area}`;
+    if(list.length)html+=`<span style="font-weight:500;color:var(--t3)"> · ${list.length} SPG · total ${rp(areaTotal)}</span>`;
+    html+='</div>';
+    html+='<div class="panel-shell" style="margin-bottom:20px"><div class="panel-body">';
+    if(!list.length){
+      html+=`<div class="empty-state">Belum ada laporan SPG di ${area} untuk periode/filter ini.</div>`;
+    }else{
+      html+='<table><thead><tr><th>#</th><th>Nama SPG</th><th>Hari Jualan</th><th>Toko</th><th>Total Omzet</th><th>Avg / Hari</th><th>Omzet Prioritas</th><th>% Prioritas</th><th>Kontribusi Area</th></tr></thead><tbody>';
+      list.forEach((e,i)=>{
+        const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
+        const avg=e.days.size?Math.round(e.omzet/e.days.size):0;
+        const prioPct=e.omzet?Math.round(e.prio/e.omzet*100):0;
+        const share=areaTotal?Math.round(e.omzet/areaTotal*100):0;
+        const rankCol=i===0?'var(--gold)':i===1?'var(--t2)':i===2?'#CD7F32':'var(--t3)';
+        html+=`<tr>
+          <td style="font-weight:800;color:${rankCol};font-size:13px">${medal}</td>
+          <td class="td-main">${e.nama}</td>
+          <td class="td-mid">${e.days.size}</td>
+          <td class="td-dim">${e.stores.size}</td>
+          <td style="font-weight:700;color:var(--green)">${rp(e.omzet)}</td>
+          <td class="td-mid">${rp(avg)}</td>
+          <td style="color:var(--violet);font-weight:600">${e.prio?rp(e.prio):'—'}</td>
+          <td class="td-dim">${prioPct}%</td>
+          <td class="td-dim">${share}%</td>
+        </tr>`;
+      });
+      html+='</tbody></table>';
+    }
+    html+='</div></div>';
+  });
+  host.innerHTML=html;
 }
 function renderStockLog(stockF){
   const awal=stockF.filter(r=>r.stockType==='awal').length;
