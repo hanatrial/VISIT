@@ -679,11 +679,16 @@ function renderPjmdsSalesDetail(mds){
       const kodeNorm=String(r.kode||'').trim().toLowerCase();
       const isKedai=KEDAI_DB.stores.some(s=>String(s.kode||'').trim().toLowerCase()===kodeNorm);
       const isReg=!!DISTRIBUTOR_REG[r.kode];
+      const kodeEsc=String(r.kode).replace(/'/g,"\\'");
+      const namaEsc=String(r.nama||'').replace(/'/g,"\\'");
+      const mdsEsc=String(PJMDS_SEL||'').replace(/'/g,"\\'");
       const distCell=isKedai?`<span class="tag t sm" title="Terdaftar di Database Kedai — bisa didaftarkan ke distributor">📋 Bisa Distributor</span>
         <label style="display:inline-flex;align-items:center;gap:4px;margin-left:6px;cursor:pointer" onclick="event.stopPropagation()">
-          <input type="checkbox" ${isReg?'checked':''} onchange="toggleDistributorReg('${String(r.kode).replace(/'/g,"\\'")}')">
+          <input type="checkbox" ${isReg?'checked':''} onchange="toggleDistributorReg('${kodeEsc}')">
           <span style="font-size:10px;color:${isReg?'var(--green)':'var(--t3)'}">${isReg?'Sudah':'Belum'}</span>
-        </label>`:'<span style="color:var(--t3)">—</span>';
+        </label>
+        <span style="font-size:10px;color:var(--t3);margin-left:6px;cursor:pointer;text-decoration:underline" title="Batalkan status Bisa Distributor" onclick="event.stopPropagation();undoDistributor('${kodeEsc}')">↩️ Undo</span>`
+        :`<span style="font-size:11px;color:var(--accent);cursor:pointer;text-decoration:underline" onclick="event.stopPropagation();proposeDistributor('${kodeEsc}','${namaEsc}','${mdsEsc}')">＋ Ajukan Distributor</span>`;
       return`<tr class="clickrow" style="cursor:pointer" onclick="pjOpenCustomerModal('${String(r.kode).replace(/'/g,"\\'")}')"><td>${i+1}</td><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.visits}x</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td><td>${distCell}</td></tr>`;
     },'Tidak ada data customer.')}
   </div></div>`;
@@ -903,6 +908,28 @@ async function handleKedaiFile(file){
     console.error(err);
     el.textContent='Gagal membaca file: '+(err.message||err);
   }
+}
+async function proposeDistributor(kode,nama,mds){
+  if(!kode||!dbSulawesi)return;
+  const kodeNorm=String(kode).trim().toLowerCase();
+  if(KEDAI_DB.stores.some(s=>String(s.kode||'').trim().toLowerCase()===kodeNorm))return;
+  const area=mdsAreaOf(mds)||'';
+  const entry={kode:String(kode).trim(),nama:nama||'',mds:mds||'',area};
+  KEDAI_DB={stores:[...KEDAI_DB.stores,entry],meta:{...(KEDAI_DB.meta||{}),updatedAt:new Date().toISOString()}};
+  try{
+    await dbSulawesi.collection('kedai_db').doc('main').set({stores:KEDAI_DB.stores,meta:KEDAI_DB.meta});
+  }catch(e){console.error('proposeDistributor save failed',e);}
+  render();
+}
+async function undoDistributor(kode){
+  if(!kode||!dbSulawesi)return;
+  const kodeNorm=String(kode).trim().toLowerCase();
+  KEDAI_DB={stores:KEDAI_DB.stores.filter(s=>String(s.kode||'').trim().toLowerCase()!==kodeNorm),meta:{...(KEDAI_DB.meta||{}),updatedAt:new Date().toISOString()}};
+  if(DISTRIBUTOR_REG[kode]){delete DISTRIBUTOR_REG[kode];saveDistributorReg();}
+  try{
+    await dbSulawesi.collection('kedai_db').doc('main').set({stores:KEDAI_DB.stores,meta:KEDAI_DB.meta});
+  }catch(e){console.error('undoDistributor save failed',e);}
+  render();
 }
 function initDash(){
   switchTab('rka');
