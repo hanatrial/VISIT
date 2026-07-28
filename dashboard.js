@@ -573,27 +573,35 @@ function pjOpenRoute(){
   if(!stops.length){alert('Tidak ada koordinat kunjungan untuk tanggal ini.');return;}
   window.open(pjBuildMapsUrl(stops),'_blank');
 }
-function pjWeeklyRouteStops(mds){
-  const dates=pjAvailableDates(mds).slice(0,7);
+function pjRangeRouteStops(mds,nDays){
+  const dates=pjAvailableDates(mds).slice(0,nDays);
   const chronological=[...dates].reverse();
   let all=[];
   chronological.forEach(dk=>{all=all.concat(pjRouteStops(mds,dk));});
   return all;
 }
+function pjWeeklyRouteStops(mds){return pjRangeRouteStops(mds,7);}
+function pjMonthlyRouteStops(mds){return pjRangeRouteStops(mds,30);}
 function pjDownsampleStops(stops,max){
   if(stops.length<=max)return stops;
   const out=[];
   for(let i=0;i<max;i++)out.push(stops[Math.round(i*(stops.length-1)/(max-1))]);
   return out;
 }
-function pjOpenWeeklyRoute(){
-  if(!PJMDS_SEL)return;
-  const stops=pjWeeklyRouteStops(PJMDS_SEL);
-  if(!stops.length){alert('Tidak ada koordinat kunjungan dalam 7 hari terakhir.');return;}
+function pjOpenRangeRoute(stops,label){
+  if(!stops.length){alert(`Tidak ada koordinat kunjungan dalam ${label} terakhir.`);return;}
   const MAX_PIN=23;
   const shown=pjDownsampleStops(stops,MAX_PIN);
-  if(stops.length>MAX_PIN)alert(`Ada ${stops.length} titik dalam 7 hari terakhir. Google Maps membatasi jumlah titik per rute, jadi ditampilkan ${shown.length} titik yang mewakili sebaran seminggu (bukan rute penuh dengan petunjuk arah).`);
+  if(stops.length>MAX_PIN)alert(`Ada ${stops.length} titik dalam ${label} terakhir. Google Maps membatasi jumlah titik per rute, jadi ditampilkan ${shown.length} titik yang mewakili sebaran ${label} (bukan rute penuh dengan petunjuk arah).`);
   window.open(pjBuildMapsUrl(shown),'_blank');
+}
+function pjOpenWeeklyRoute(){
+  if(!PJMDS_SEL)return;
+  pjOpenRangeRoute(pjWeeklyRouteStops(PJMDS_SEL),'7 hari');
+}
+function pjOpenMonthlyRoute(){
+  if(!PJMDS_SEL)return;
+  pjOpenRangeRoute(pjMonthlyRouteStops(PJMDS_SEL),'30 hari');
 }
 function pjParseCoord(s){
   const m=String(s||'').match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
@@ -619,6 +627,7 @@ function pjRouteModalBody(mds,dateKey){
       </select>
       <button class="exp-btn" onclick="pjOpenRoute()" ${withCoordCount?'':'disabled'}>🗺️ Buka Rute (${withCoordCount} titik)</button>
       <button class="exp-btn" onclick="pjOpenWeeklyRoute()" title="Gabungkan semua titik kunjungan 7 hari terakhir jadi satu rute">🗓️ Rute Mingguan</button>
+      <button class="exp-btn" onclick="pjOpenMonthlyRoute()" title="Gabungkan semua titik kunjungan 30 hari terakhir jadi satu rute">📅 Rute Bulanan</button>
     </div>
     ${withCoordCount<totalVisitCount?`<div style="font-size:11px;color:var(--t3);margin-bottom:8px">${totalVisitCount-withCoordCount} visit tanpa koordinat tidak diikutkan</div>`:''}
     ${stops.length?(()=>{
