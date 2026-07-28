@@ -75,6 +75,7 @@ function toggleTheme(){
 applyTheme(localStorage.getItem('mds_theme')||'dark');
 let _expandedRkaVid=null,_expandedBeliVid=null;
 let KEDAI_DB={stores:[],meta:null},PJMDS_SEL=null,PJMDS_SHOW_TOKO=false,PJMDS_NOO_SHOWALL=false;
+let DISTRIBUTOR_REG={};
 let PJMDS_MANUAL_MATCH={};
 let PJ_ROUTE_DATE=null;
 let cAV=null,cTrend=null,cBrand=null,mcAV=null,mcBrand=null;
@@ -674,7 +675,17 @@ function renderPjmdsSalesDetail(mds){
     ${pjKpiCard('Sekolah Dikunjungi',d.kpi.total_sekolah,PJ_TARGET.sekolah,fmtNum)}
   </div>`;
   html+=`<div class="ch-label" style="margin:16px 0 8px">Top 10 Customer <span style="color:var(--t3);font-weight:500">· klik baris untuk lihat detail visit</span></div><div class="panel-shell"><div class="panel-body">
-    ${pjTable(['','Customer','Klasifikasi','Kabupaten','Visit','Omzet'],d.top_customer,(r,i)=>`<tr class="clickrow" style="cursor:pointer" onclick="pjOpenCustomerModal('${String(r.kode).replace(/'/g,"\\'")}')"><td>${i+1}</td><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.visits}x</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada data customer.')}
+    ${pjTable(['','Customer','Klasifikasi','Kabupaten','Visit','Omzet','Distributor'],d.top_customer,(r,i)=>{
+      const kodeNorm=String(r.kode||'').trim().toLowerCase();
+      const isKedai=KEDAI_DB.stores.some(s=>String(s.kode||'').trim().toLowerCase()===kodeNorm);
+      const isReg=!!DISTRIBUTOR_REG[r.kode];
+      const distCell=isKedai?`<span class="tag t sm" title="Terdaftar di Database Kedai — bisa didaftarkan ke distributor">📋 Bisa Distributor</span>
+        <label style="display:inline-flex;align-items:center;gap:4px;margin-left:6px;cursor:pointer" onclick="event.stopPropagation()">
+          <input type="checkbox" ${isReg?'checked':''} onchange="toggleDistributorReg('${String(r.kode).replace(/'/g,"\\'")}')">
+          <span style="font-size:10px;color:${isReg?'var(--green)':'var(--t3)'}">${isReg?'Sudah':'Belum'}</span>
+        </label>`:'<span style="color:var(--t3)">—</span>';
+      return`<tr class="clickrow" style="cursor:pointer" onclick="pjOpenCustomerModal('${String(r.kode).replace(/'/g,"\\'")}')"><td>${i+1}</td><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.visits}x</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td><td>${distCell}</td></tr>`;
+    },'Tidak ada data customer.')}
   </div></div>`;
   html+=`<div class="ch-label" style="margin:16px 0 8px">Top 5 Sekolah <span style="color:var(--t3);font-weight:500">· klik baris untuk lihat kantin & customer</span></div><div class="panel-shell"><div class="panel-body">
     ${pjTable(['','Nama Sekolah','Kabupaten','Kantin','Visit','Omzet'],d.top_sekolah,(r,i)=>`<tr class="clickrow" style="cursor:pointer" onclick="pjOpenSekolahModal('${r.nama.replace(/'/g,"\\'")}')"><td>${i+1}</td><td class="td-main">${r.nama}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.kantin}</td><td>${r.visits}x</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td></tr>`,'Tidak ada data sekolah.')}
@@ -842,6 +853,24 @@ function loadKedaiDb(){
     renderKedaiStatus();
   }).catch(e=>{console.error('kedai_db load failed',e.code,e.message);renderKedaiStatus();});
 }
+function loadDistributorReg(){
+  if(!dbSulawesi)return;
+  dbSulawesi.collection('distributor_reg').doc('main').get().then(doc=>{
+    if(doc.exists)DISTRIBUTOR_REG=doc.data().registered||{};
+    render();
+  }).catch(e=>console.error('distributor_reg load failed',e.code,e.message));
+}
+function saveDistributorReg(){
+  if(!dbSulawesi)return;
+  dbSulawesi.collection('distributor_reg').doc('main').set({registered:DISTRIBUTOR_REG,updatedAt:new Date().toISOString()}).catch(e=>console.error('distributor_reg save failed',e));
+}
+function toggleDistributorReg(kode){
+  if(!kode)return;
+  if(DISTRIBUTOR_REG[kode])delete DISTRIBUTOR_REG[kode];
+  else DISTRIBUTOR_REG[kode]=true;
+  saveDistributorReg();
+  render();
+}
 function renderKedaiStatus(){
   const el=document.getElementById('kedai-status');if(!el)return;
   if(KEDAI_DB.stores.length){
@@ -888,13 +917,14 @@ function initDash(){
   if(ff)ff.addEventListener('change',e=>{if(e.target.files[0])handleFormulaImportFile(e.target.files[0]);e.target.value='';});
   const tf=document.getElementById('tx-import-input');
   if(tf)tf.addEventListener('change',e=>{if(e.target.files[0])handleTxImportFile(e.target.files[0]);e.target.value='';});
-  /* These three feed ONLY the Penjualan MDS tab, which stripMobileHeavy() removes
+  /* These four feed ONLY the Penjualan MDS tab, which stripMobileHeavy() removes
      on phones. Measured payload: pjmds_data ~8.3MB JSON / 26k row objects, kedai_db
      ~0.7MB / 10k store objects — together enough to blow iOS Safari's per-tab memory
      ceiling and get the tab killed (which is what bounced the user back to the PIN
      screen). PJ_RAW/KEDAI_DB keep their empty defaults, which every consumer handles. */
   if(!IS_MOBILE){
     loadKedaiDb();
+    loadDistributorReg();
     loadPjmdsData();
     loadPjmdsManualMatch();
   }
