@@ -102,11 +102,14 @@ function checkPin(){
   }
 }
 /* On mobile, drop the heaviest never-shown content from the DOM entirely:
-   the Penjualan MDS and Sell Out Formula tabs, and the Chart.js canvases.
-   iOS silently kills (jetsam) the tab when it exceeds Safari's per-tab
-   memory ceiling, which reloads the page back to the PIN screen. */
+   the Sell Out Formula tab and the Chart.js canvases. Penjualan MDS is
+   temporarily NOT stripped here (under trial on mobile) even though it's
+   the heaviest of the three — see the loadKedaiDb/loadPjmdsData call site
+   below for the same trial flag. iOS silently kills (jetsam) the tab when
+   it exceeds Safari's per-tab memory ceiling, which reloads the page back
+   to the PIN screen — watch for that if Penjualan MDS is opened on phone. */
 function stripMobileHeavy(){
-  ['sec-pjmds','sec-formula','ntab-pjmds','ntab-formula'].forEach(id=>{
+  ['sec-formula','ntab-formula'].forEach(id=>{
     const el=document.getElementById(id);
     if(el)el.remove();
   });
@@ -951,12 +954,12 @@ function initDash(){
   if(ff)ff.addEventListener('change',e=>{if(e.target.files[0])handleFormulaImportFile(e.target.files[0]);e.target.value='';});
   const tf=document.getElementById('tx-import-input');
   if(tf)tf.addEventListener('change',e=>{if(e.target.files[0])handleTxImportFile(e.target.files[0]);e.target.value='';});
-  /* These four feed ONLY the Penjualan MDS tab, which stripMobileHeavy() removes
-     on phones. Measured payload: pjmds_data ~8.3MB JSON / 26k row objects, kedai_db
-     ~0.7MB / 10k store objects — together enough to blow iOS Safari's per-tab memory
-     ceiling and get the tab killed (which is what bounced the user back to the PIN
-     screen). PJ_RAW/KEDAI_DB keep their empty defaults, which every consumer handles. */
-  if(!IS_MOBILE){
+  /* These four feed the Penjualan MDS tab. Measured payload: pjmds_data ~8.3MB JSON /
+     26k row objects, kedai_db ~0.7MB / 10k store objects — together enough to blow
+     iOS Safari's per-tab memory ceiling and get the tab killed (bounces the user back
+     to the PIN screen). Previously gated behind !IS_MOBILE; temporarily always-on
+     while trialing Penjualan MDS on phones — watch for reload-to-PIN symptoms. */
+  {
     loadKedaiDb();
     loadDistributorReg();
     loadPjmdsData();
