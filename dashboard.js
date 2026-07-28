@@ -680,16 +680,20 @@ function renderPjmdsSalesDetail(mds){
       const kedaiEntry=KEDAI_DB.stores.find(s=>String(s.kode||'').trim().toLowerCase()===kodeNorm);
       const isKedai=!!kedaiEntry;
       const isManual=!!(kedaiEntry&&kedaiEntry.manual);
-      const isReg=!!DISTRIBUTOR_REG[r.kode];
+      const regStatus=DISTRIBUTOR_REG[r.kode]||'belum';
       const kodeEsc=String(r.kode).replace(/'/g,"\\'");
       const namaEsc=String(r.nama||'').replace(/'/g,"\\'");
       const mdsEsc=String(PJMDS_SEL||'').replace(/'/g,"\\'");
       const undoBtn=isManual?`<span style="font-size:10px;color:var(--t3);margin-left:6px;cursor:pointer;text-decoration:underline" title="Batalkan status Bisa Distributor" onclick="event.stopPropagation();undoDistributor('${kodeEsc}')">↩️ Undo</span>`:'';
+      const statusBtn=(val,label,onCol,onBg)=>{
+        const on=regStatus===val;
+        return`<span onclick="event.stopPropagation();setDistributorStatus('${kodeEsc}','${val}')" style="cursor:pointer;font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;margin-left:4px;color:${on?onCol:'var(--t3)'};background:${on?onBg:'transparent'};border:1px solid ${on?onCol:'var(--border)'}">${label}</span>`;
+      };
       const distCell=isKedai?`<span class="tag t sm" title="Terdaftar di Database Kedai — bisa didaftarkan ke distributor">📋 Bisa Distributor</span>
-        <label style="display:inline-flex;align-items:center;gap:4px;margin-left:6px;cursor:pointer" onclick="event.stopPropagation()">
-          <input type="checkbox" ${isReg?'checked':''} onchange="toggleDistributorReg('${kodeEsc}')">
-          <span style="font-size:10px;color:${isReg?'var(--green)':'var(--t3)'}">${isReg?'Sudah':'Belum'}</span>
-        </label>
+        <span style="display:inline-flex;align-items:center;margin-left:2px">
+          ${statusBtn('sudah','Sudah','var(--green)','rgba(16,185,129,.15)')}
+          ${statusBtn('x','✕','var(--red)','rgba(248,113,113,.15)')}
+        </span>
         ${undoBtn}`
         :`<span style="font-size:11px;color:var(--accent);cursor:pointer;text-decoration:underline" onclick="event.stopPropagation();proposeDistributor('${kodeEsc}','${namaEsc}','${mdsEsc}')">＋ Ajukan Distributor</span>`;
       return`<tr class="clickrow" style="cursor:pointer" onclick="pjOpenCustomerModal('${String(r.kode).replace(/'/g,"\\'")}')"><td>${i+1}</td><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.visits}x</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td><td>${distCell}</td></tr>`;
@@ -872,10 +876,10 @@ function saveDistributorReg(){
   if(!dbSulawesi)return;
   dbSulawesi.collection('distributor_reg').doc('main').set({registered:DISTRIBUTOR_REG,updatedAt:new Date().toISOString()}).catch(e=>console.error('distributor_reg save failed',e));
 }
-function toggleDistributorReg(kode){
+function setDistributorStatus(kode,status){
   if(!kode)return;
-  if(DISTRIBUTOR_REG[kode])delete DISTRIBUTOR_REG[kode];
-  else DISTRIBUTOR_REG[kode]=true;
+  if(DISTRIBUTOR_REG[kode]===status)delete DISTRIBUTOR_REG[kode];
+  else DISTRIBUTOR_REG[kode]=status;
   saveDistributorReg();
   render();
 }
