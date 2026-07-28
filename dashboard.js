@@ -553,6 +553,20 @@ function pjOpenRoute(){
   if(!stops.length){alert('Tidak ada koordinat kunjungan untuk tanggal ini.');return;}
   window.open(pjBuildMapsUrl(stops),'_blank');
 }
+function pjWeeklyRouteStops(mds){
+  const dates=pjAvailableDates(mds).slice(0,7);
+  const chronological=[...dates].reverse();
+  let all=[];
+  chronological.forEach(dk=>{all=all.concat(pjRouteStops(mds,dk));});
+  return all;
+}
+function pjOpenWeeklyRoute(){
+  if(!PJMDS_SEL)return;
+  const stops=pjWeeklyRouteStops(PJMDS_SEL);
+  if(!stops.length){alert('Tidak ada koordinat kunjungan dalam 7 hari terakhir.');return;}
+  if(stops.length>23&&!confirm(`Ada ${stops.length} titik dalam 7 hari terakhir — Google Maps kadang membatasi jumlah waypoint di satu rute dan bisa gagal/terpotong. Tetap buka?`))return;
+  window.open(pjBuildMapsUrl(stops),'_blank');
+}
 function pjParseCoord(s){
   const m=String(s||'').match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
   return m?{lat:parseFloat(m[1]),lng:parseFloat(m[2])}:null;
@@ -576,6 +590,7 @@ function pjRouteModalBody(mds,dateKey){
         ${dates.map(dk=>{const dt=new Date(dk);const label=dt.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});return`<option value="${dk}"${dk===dateKey?' selected':''}>${label}</option>`;}).join('')}
       </select>
       <button class="exp-btn" onclick="pjOpenRoute()" ${withCoordCount?'':'disabled'}>🗺️ Buka Rute (${withCoordCount} titik)</button>
+      <button class="exp-btn" onclick="pjOpenWeeklyRoute()" title="Gabungkan semua titik kunjungan 7 hari terakhir jadi satu rute">🗓️ Rute Mingguan</button>
     </div>
     ${withCoordCount<totalVisitCount?`<div style="font-size:11px;color:var(--t3);margin-bottom:8px">${totalVisitCount-withCoordCount} visit tanpa koordinat tidak diikutkan</div>`:''}
     ${stops.length?(()=>{
