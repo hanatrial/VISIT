@@ -3258,12 +3258,31 @@ function computeScorecardRows(){
       omzet,selisih:omzet-notaFinal,matched:!!resolved};
   }).filter(r=>r.trx>0||r.omzet>0);
 }
+function scPctCapped(val,target){return target>0?Math.min(val/target*100,100):0;}
+function scRankScore(r){
+  const scoreVarian5=scPctCapped(r.varian5Count,PJ_TARGET.varian5)/100*20;
+  const pct1sku=r.eaCount?(r.singleSkuCount/r.eaCount*100):0;
+  const scoreSingleSku=Math.max(0,100-Math.min(pct1sku,100))/100*20;
+  const scoreSekolah=scPctCapped(r.sekolahCount,PJ_TARGET.sekolah)/100*20;
+  const scoreEa=scPctCapped(r.eaCount,PJ_TARGET.ea)/100*15;
+  const scoreTea=scPctCapped(r.teaVolume,PJ_TARGET.tea)/100*10;
+  const scoreHilo=scPctCapped(r.hiloVolume,PJ_TARGET.hilo)/100*10;
+  const scoreCall=scPctCapped(r.callCount,PJ_TARGET.call)/100*5;
+  return scoreVarian5+scoreSingleSku+scoreSekolah+scoreEa+scoreTea+scoreHilo+scoreCall;
+}
+function scAssignRanks(rows){
+  const sorted=[...rows].sort((a,b)=>scRankScore(b)-scRankScore(a));
+  const rankByName={};
+  sorted.forEach((r,i)=>{rankByName[r.name]=i+1;});
+  rows.forEach(r=>{r.rank=rankByName[r.name];});
+  return rows;
+}
 let SC_SORT='omzet',SC_DIR=-1;
 function scSortBy(c){if(SC_SORT===c)SC_DIR*=-1;else{SC_SORT=c;SC_DIR=-1;}renderScorecard();}
 function renderScorecard(){
   const tb=document.getElementById('sc-body');
   if(!tb)return;
-  const rows=computeScorecardRows();
+  const rows=scAssignRanks(computeScorecardRows());
   rows.sort((a,b)=>{
     const av=a[SC_SORT],bv=b[SC_SORT];
     if(typeof av==='number')return SC_DIR*(av-bv);
@@ -3288,6 +3307,7 @@ function renderScorecard(){
     const barW=Math.round(r.omzet/maxOmzet*100);
     const eaPct=r.eaCount?(v=>v/r.eaCount*100):null;
     return`<tr class="clickrow" onclick="selectPjmds('${r.name.replace(/'/g,"\\'")}');switchSubTab('pjmds','mds')">
+      <td style="text-align:center;font-size:13px;font-weight:800">${r.rank}</td>
       <td class="td-main" style="font-size:13px">${r.name} ${r.matched?'':'<span style="font-size:10px;color:var(--red)" title="Nama tidak ketemu di data Penjualan">⚠</span>'}</td>
       <td class="td-dim" style="font-size:13px">${r.area}</td>
       <td class="td-dim" style="font-size:13px">${r.notaFinal?rp(r.notaFinal):'—'}</td>
@@ -3301,7 +3321,7 @@ function renderScorecard(){
       <td><div style="font-size:13px">${r.singleSkuCount}</div>${eaPct?(([col,bg])=>pctBadge(eaPct(r.singleSkuCount).toFixed(0)+'%',col,bg))(singleSkuColor(eaPct(r.singleSkuCount))):'<span style="color:var(--t3)">-</span>'}</td>
       <td>${pctCell(r.varian5Count,PJ_TARGET.varian5,fmtNum)}</td>
     </tr>`;
-  }).join(''):`<tr><td colspan="12"><div class="empty-state">Tidak ada data untuk periode/filter ini.${PJ_RAW.call.length?'':' Upload data Penjualan (Call & Order) untuk kolom Omzet.'}</div></td></tr>`;
+  }).join(''):`<tr><td colspan="13"><div class="empty-state">Tidak ada data untuk periode/filter ini.${PJ_RAW.call.length?'':' Upload data Penjualan (Call & Order) untuk kolom Omzet.'}</div></td></tr>`;
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
   set('sc-beli',tB?rp(tB):'—');
   set('sc-omzet',tO?rp(tO):'—');

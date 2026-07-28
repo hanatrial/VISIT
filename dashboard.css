@@ -154,7 +154,7 @@ th:hover{color:var(--t2);}
 .sc-table th{font-size:11px;position:sticky;top:0;background:var(--ov2);z-index:2;box-shadow:0 1px 0 var(--border);}
 .sc-table td{font-size:13px;border-bottom:1px solid var(--border);}
 .sc-table td div{white-space:nowrap;}
-.sc-table td:nth-child(10),.sc-table td:nth-child(10) div{text-align:center;}
+.sc-table td:nth-child(11),.sc-table td:nth-child(11) div{text-align:center;}
 td{padding:10px 14px;border-top:1px solid var(--ov2);vertical-align:middle;}
 tr:hover td{background:var(--ov1);}
 .td-id{font-weight:700;color:var(--violet);font-size:9.5px;letter-spacing:.05em;}
