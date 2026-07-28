@@ -1358,14 +1358,22 @@ function renderPjmdsDetail(beliF){
 }
 
 // ── STOCK HELPERS ───────────────────────────────────────────────────────────
+/* Shared by filteredStock/Ned/Spg: applies both ends of Range Tanggal. These three
+   previously only checked getCutoff() (the range start) and never read RF_TO, so
+   moving the end date had no effect — filtered() for RKA/Beli already did this
+   correctly and is the reference here. */
+function _inRangeAndMonth(ts){
+  if(MF){const m=ts.getFullYear()+'-'+String(ts.getMonth()+1).padStart(2,'0');return m===MF;}
+  if(ts<getCutoff())return false;
+  if(DF==='range'&&RF_TO){const end=new Date(RF_TO);end.setHours(23,59,59,999);if(ts>end)return false;}
+  return true;
+}
 function filteredStock(){
   const area=(document.getElementById('f-area')?.value||'').toLowerCase();
   const mds=(document.getElementById('f-mds')?.value||'').toLowerCase();
   const store=(document.getElementById('f-store')?.value||'').toLowerCase();
-  const cut=getCutoff();
   return STOCK_ALL.filter(r=>{
-    if(r.timestamp<cut)return false;
-    if(MF){const d=r.timestamp;const m=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');if(m!==MF)return false;}
+    if(!_inRangeAndMonth(r.timestamp))return false;
     if(area&&!((r.area||'').toLowerCase().includes(area)))return false;
     if(mds&&!((r.nama||'').toLowerCase().includes(mds)))return false;
     if(store&&!((r.store||'').toLowerCase().includes(store)))return false;
@@ -1376,10 +1384,8 @@ function filteredNed(){
   const area=(document.getElementById('f-area')?.value||'').toLowerCase();
   const mds=(document.getElementById('f-mds')?.value||'').toLowerCase();
   const store=(document.getElementById('f-store')?.value||'').toLowerCase();
-  const cut=getCutoff();
   return NED_ALL.filter(r=>{
-    if(r.timestamp<cut)return false;
-    if(MF){const d=r.timestamp;const m=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');if(m!==MF)return false;}
+    if(!_inRangeAndMonth(r.timestamp))return false;
     if(area&&!((r.area||'').toLowerCase().includes(area)))return false;
     if(mds&&!((r.nama||'').toLowerCase().includes(mds)))return false;
     if(store&&!((r.store||'').toLowerCase().includes(store)))return false;
@@ -1390,10 +1396,8 @@ function filteredSpg(){
   const area=(document.getElementById('f-area')?.value||'').toLowerCase();
   const mds=(document.getElementById('f-mds')?.value||'').toLowerCase();
   const store=(document.getElementById('f-store')?.value||'').toLowerCase();
-  const cut=getCutoff();
   return SPG_ALL.filter(r=>{
-    if(r.timestamp<cut)return false;
-    if(MF){const d=r.timestamp;const m=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');if(m!==MF)return false;}
+    if(!_inRangeAndMonth(r.timestamp))return false;
     if(area&&!((r.area||'').toLowerCase().includes(area)))return false;
     if(mds&&!((r.nama||'').toLowerCase().includes(mds)))return false;
     if(store&&!((r.store||'').toLowerCase().includes(store)))return false;
