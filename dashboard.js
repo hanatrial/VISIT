@@ -580,12 +580,20 @@ function pjWeeklyRouteStops(mds){
   chronological.forEach(dk=>{all=all.concat(pjRouteStops(mds,dk));});
   return all;
 }
+function pjDownsampleStops(stops,max){
+  if(stops.length<=max)return stops;
+  const out=[];
+  for(let i=0;i<max;i++)out.push(stops[Math.round(i*(stops.length-1)/(max-1))]);
+  return out;
+}
 function pjOpenWeeklyRoute(){
   if(!PJMDS_SEL)return;
   const stops=pjWeeklyRouteStops(PJMDS_SEL);
   if(!stops.length){alert('Tidak ada koordinat kunjungan dalam 7 hari terakhir.');return;}
-  if(stops.length>23&&!confirm(`Ada ${stops.length} titik dalam 7 hari terakhir — Google Maps kadang membatasi jumlah waypoint di satu rute dan bisa gagal/terpotong. Tetap buka?`))return;
-  window.open(pjBuildMapsUrl(stops),'_blank');
+  const MAX_PIN=23;
+  const shown=pjDownsampleStops(stops,MAX_PIN);
+  if(stops.length>MAX_PIN)alert(`Ada ${stops.length} titik dalam 7 hari terakhir. Google Maps membatasi jumlah titik per rute, jadi ditampilkan ${shown.length} titik yang mewakili sebaran seminggu (bukan rute penuh dengan petunjuk arah).`);
+  window.open(pjBuildMapsUrl(shown),'_blank');
 }
 function pjParseCoord(s){
   const m=String(s||'').match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
