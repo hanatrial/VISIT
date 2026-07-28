@@ -677,17 +677,20 @@ function renderPjmdsSalesDetail(mds){
   html+=`<div class="ch-label" style="margin:16px 0 8px">Top 10 Customer <span style="color:var(--t3);font-weight:500">· klik baris untuk lihat detail visit</span></div><div class="panel-shell"><div class="panel-body">
     ${pjTable(['','Customer','Klasifikasi','Kabupaten','Visit','Omzet','Distributor'],d.top_customer,(r,i)=>{
       const kodeNorm=String(r.kode||'').trim().toLowerCase();
-      const isKedai=KEDAI_DB.stores.some(s=>String(s.kode||'').trim().toLowerCase()===kodeNorm);
+      const kedaiEntry=KEDAI_DB.stores.find(s=>String(s.kode||'').trim().toLowerCase()===kodeNorm);
+      const isKedai=!!kedaiEntry;
+      const isManual=!!(kedaiEntry&&kedaiEntry.manual);
       const isReg=!!DISTRIBUTOR_REG[r.kode];
       const kodeEsc=String(r.kode).replace(/'/g,"\\'");
       const namaEsc=String(r.nama||'').replace(/'/g,"\\'");
       const mdsEsc=String(PJMDS_SEL||'').replace(/'/g,"\\'");
+      const undoBtn=isManual?`<span style="font-size:10px;color:var(--t3);margin-left:6px;cursor:pointer;text-decoration:underline" title="Batalkan status Bisa Distributor" onclick="event.stopPropagation();undoDistributor('${kodeEsc}')">↩️ Undo</span>`:'';
       const distCell=isKedai?`<span class="tag t sm" title="Terdaftar di Database Kedai — bisa didaftarkan ke distributor">📋 Bisa Distributor</span>
         <label style="display:inline-flex;align-items:center;gap:4px;margin-left:6px;cursor:pointer" onclick="event.stopPropagation()">
           <input type="checkbox" ${isReg?'checked':''} onchange="toggleDistributorReg('${kodeEsc}')">
           <span style="font-size:10px;color:${isReg?'var(--green)':'var(--t3)'}">${isReg?'Sudah':'Belum'}</span>
         </label>
-        <span style="font-size:10px;color:var(--t3);margin-left:6px;cursor:pointer;text-decoration:underline" title="Batalkan status Bisa Distributor" onclick="event.stopPropagation();undoDistributor('${kodeEsc}')">↩️ Undo</span>`
+        ${undoBtn}`
         :`<span style="font-size:11px;color:var(--accent);cursor:pointer;text-decoration:underline" onclick="event.stopPropagation();proposeDistributor('${kodeEsc}','${namaEsc}','${mdsEsc}')">＋ Ajukan Distributor</span>`;
       return`<tr class="clickrow" style="cursor:pointer" onclick="pjOpenCustomerModal('${String(r.kode).replace(/'/g,"\\'")}')"><td>${i+1}</td><td class="td-main">${r.nama}</td><td class="td-dim">${r.klasifikasi||'-'}</td><td class="td-dim">${r.kabupaten||'-'}</td><td>${r.visits}x</td><td style="color:var(--accent);font-weight:700">${rp(r.omzet)}</td><td>${distCell}</td></tr>`;
     },'Tidak ada data customer.')}
@@ -914,7 +917,7 @@ async function proposeDistributor(kode,nama,mds){
   const kodeNorm=String(kode).trim().toLowerCase();
   if(KEDAI_DB.stores.some(s=>String(s.kode||'').trim().toLowerCase()===kodeNorm))return;
   const area=mdsAreaOf(mds)||'';
-  const entry={kode:String(kode).trim(),nama:nama||'',mds:mds||'',area};
+  const entry={kode:String(kode).trim(),nama:nama||'',mds:mds||'',area,manual:true};
   KEDAI_DB={stores:[...KEDAI_DB.stores,entry],meta:{...(KEDAI_DB.meta||{}),updatedAt:new Date().toISOString()}};
   try{
     await dbSulawesi.collection('kedai_db').doc('main').set({stores:KEDAI_DB.stores,meta:KEDAI_DB.meta});
