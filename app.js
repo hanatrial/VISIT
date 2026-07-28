@@ -1,3 +1,33 @@
+/* ─────────── FIRESTORE RECOVERY ───────────
+   The SDK internally kills ("terminates") the Firestore client when its IndexedDB
+   persistence layer hits an unrecoverable error — commonly when the app is
+   backgrounded on very low battery, mid-write. Every further call then throws
+   "The client has already been terminated." with no way to recover the SAME client;
+   the fix is to delete the Firebase app instance and re-run initFirebaseApp() (from
+   app-init.js) to get a fresh one, then retry the write. */
+function isFirestoreTerminated(e){ return !!(e&&/already been terminated/i.test(e.message||'')); }
+let _reinitInFlight=null;
+async function reinitFirebase(){
+  if(_reinitInFlight)return _reinitInFlight;
+  _reinitInFlight=(async()=>{
+    try{
+      if(typeof firebase!=='undefined'&&firebase.apps)await Promise.all(firebase.apps.map(a=>a.delete().catch(()=>{})));
+    }catch(e){console.warn('firebase app delete failed',e);}
+    if(typeof initFirebaseApp==='function')initFirebaseApp();
+  })();
+  try{ await _reinitInFlight; } finally { _reinitInFlight=null; }
+}
+async function withFirestoreRetry(writeFn){
+  try{
+    return await writeFn();
+  }catch(e){
+    if(!isFirestoreTerminated(e))throw e;
+    console.warn('Firestore client terminated — reconnecting and retrying save once');
+    await reinitFirebase();
+    return await writeFn();
+  }
+}
+
 /* ─────────── DATA ─────────── */
 const MDS_BY_AREA = {
   'Bau Bau':        ['Rizal'],
@@ -23744,13 +23774,14 @@ async function submitRka(){
     const _tout=new Promise((_,r)=>setTimeout(()=>r(new Error('Tersimpan offline — akan sinkron otomatis saat sinyal bagus')),30000));
     const _SITEMS=getStoreItems();
     const _namedItems={};Object.entries(R.items).forEach(([i,v])=>{const nm=_SITEMS[+i];if(nm)_namedItems[nm]=v;});
-    await Promise.race([db.collection('rka_logs').add({id,area:R.area,mds:R.mds,store:R.store,timestamp:firebase.firestore.FieldValue.serverTimestamp(),avail,unavail,items:_namedItems,...(photoOk>0?{photoData}:{})}),_tout]);
+    await withFirestoreRetry(()=>Promise.race([db.collection('rka_logs').add({id,area:R.area,mds:R.mds,store:R.store,timestamp:firebase.firestore.FieldValue.serverTimestamp(),avail,unavail,items:_namedItems,...(photoOk>0?{photoData}:{})}),_tout]));
     document.getElementById('rka-sm-status').textContent='✅ Tersimpan ke server';
     document.getElementById('rka-sm-foto').textContent=photoOk>0?`✅ ${photoOk} foto`:'—';
   }catch(e){
     console.warn('Firestore rka failed',e);
     const offline=String(e.message).includes('offline');
-    document.getElementById('rka-sm-status').textContent=(offline?'⏳ ':'❌ ')+e.message;
+    const msg=isFirestoreTerminated(e)?'Gagal tersambung ke server — data ini TIDAK tersimpan, mohon input ulang.':e.message;
+    document.getElementById('rka-sm-status').textContent=(offline?'⏳ ':'❌ ')+msg;
     document.getElementById('rka-sm-foto').textContent='—';
   }
 }
@@ -23932,13 +23963,14 @@ async function submitBeli(){
     if(typeof db==='undefined') throw new Error('db not initialized');
     const _iq={};BELI_FLAT.forEach((nm,ii)=>{if(B.qty[ii])_iq[nm]=B.qty[ii];});
     const _tout=new Promise((_,r)=>setTimeout(()=>r(new Error('Tersimpan offline — akan sinkron otomatis saat sinyal bagus')),30000));
-    await Promise.race([db.collection('beli_logs').add({id,area:B.area,mds:B.mds,store:B.store,timestamp:firebase.firestore.FieldValue.serverTimestamp(),nominal:parseNominal(document.getElementById('beli-nominal').value),groupTotals:Object.assign({},groupTotals),totalRenceng,itemQty:_iq,...(photoData?{photoData}:{})}),_tout]);
+    await withFirestoreRetry(()=>Promise.race([db.collection('beli_logs').add({id,area:B.area,mds:B.mds,store:B.store,timestamp:firebase.firestore.FieldValue.serverTimestamp(),nominal:parseNominal(document.getElementById('beli-nominal').value),groupTotals:Object.assign({},groupTotals),totalRenceng,itemQty:_iq,...(photoData?{photoData}:{})}),_tout]));
     document.getElementById('beli-sm-status').textContent='✅ Tersimpan ke server';
     document.getElementById('beli-sm-foto').textContent=photoData?'✅ Foto':'—';
   }catch(e){
     console.warn('Firestore beli failed',e);
     const offline=String(e.message).includes('offline');
-    document.getElementById('beli-sm-status').textContent=(offline?'⏳ ':'❌ ')+e.message;
+    const msg=isFirestoreTerminated(e)?'Gagal tersambung ke server — data ini TIDAK tersimpan, mohon input ulang.':e.message;
+    document.getElementById('beli-sm-status').textContent=(offline?'⏳ ':'❌ ')+msg;
     document.getElementById('beli-sm-foto').textContent='—';
   }
 }
@@ -24355,17 +24387,17 @@ function submitStock(){
   const itemsFlat={};
   Object.entries(SK.items).forEach(([name,v])=>{ itemsFlat[name]={krt:v.krt,rncg:v.rncg}; });
   if(typeof db!=='undefined'){
-    db.collection('stock_logs').add({
+    withFirestoreRetry(()=>db.collection('stock_logs').add({
       id, area:SK.area, status:SK.status, nama:SK.nama, store:SK.store,
       stockType:SK.stockType,
       timestamp:firebase.firestore.FieldValue.serverTimestamp(),
       items:itemsFlat,
       totalNilai:grandTotal
-    }).then(()=>{
+    })).then(()=>{
       console.log('stock_logs write OK', id);
     }).catch(e=>{
       console.error('stock_logs FAILED',e);
-      alert('Firestore error: '+e.code+' — '+e.message);
+      alert('Gagal menyimpan, silakan input ulang. ('+(e.code||'')+' — '+e.message+')');
     });
   } else {
     alert('DB not initialized — Firebase failed to load');
@@ -24530,13 +24562,13 @@ function submitNed(){
   document.getElementById('ned-success-store').textContent=ND.store+' · '+ND.area;
   document.getElementById('ned-success-count').textContent=cnt+' item NED tercatat';
   if(typeof db!=='undefined'){
-    db.collection('ned_logs').add({
+    withFirestoreRetry(()=>db.collection('ned_logs').add({
       id, area:ND.area, status:ND.status, nama:ND.nama, store:ND.store,
       timestamp:firebase.firestore.FieldValue.serverTimestamp(),
       items:ND.items,
       itemCount:cnt
-    }).then(()=>console.log('ned_logs write OK',id))
-    .catch(e=>{console.error('ned_logs FAILED',e);alert('Firestore error: '+e.code+' — '+e.message);});
+    })).then(()=>console.log('ned_logs write OK',id))
+    .catch(e=>{console.error('ned_logs FAILED',e);alert('Gagal menyimpan, silakan input ulang. ('+(e.code||'')+' — '+e.message+')');});
   } else { alert('DB not initialized'); }
   nedStep=4;
   nedUpdateStepper();
@@ -24826,15 +24858,15 @@ function submitSpg(){
   document.getElementById('spg-success-total').textContent='Total Omzet: Rp '+SG.total.toLocaleString('id-ID');
   const salesTimestamp=SG.date?firebase.firestore.Timestamp.fromDate(new Date(SG.date+'T12:00:00')):firebase.firestore.FieldValue.serverTimestamp();
   if(typeof db!=='undefined'){
-    db.collection('spg_daily_logs').add({
+    withFirestoreRetry(()=>db.collection('spg_daily_logs').add({
       id, area:SG.area, nama:SG.nama, store:SG.store,
       tanggalJualan:SG.date,
       timestamp:salesTimestamp,
       submittedAt:firebase.firestore.FieldValue.serverTimestamp(),
       items:SG.items,
       totalOmzet:SG.total
-    }).then(()=>console.log('spg_daily_logs write OK',id))
-    .catch(e=>{console.error('spg_daily_logs FAILED',e);alert('Firestore error: '+e.code+' — '+e.message);});
+    })).then(()=>console.log('spg_daily_logs write OK',id))
+    .catch(e=>{console.error('spg_daily_logs FAILED',e);alert('Gagal menyimpan, silakan input ulang. ('+(e.code||'')+' — '+e.message+')');});
   } else { alert('DB not initialized'); }
   spgStep=4;
   spgUpdateStepper();

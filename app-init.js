@@ -1,10 +1,13 @@
-try{
-  const firebaseConfig={apiKey:"AIzaSyCtYc8uZICLzQrA1b7l00Yo_9V_rqNVOu0",authDomain:"mds-visit.firebaseapp.com",projectId:"mds-visit",storageBucket:"mds-visit.firebasestorage.app",messagingSenderId:"732603054928",appId:"1:732603054928:web:9f946bfa13d56d860a8a55"};
-  firebase.initializeApp(firebaseConfig);
-  window.db=firebase.firestore();
-  window.db.enablePersistence({synchronizeTabs:true}).catch(e=>console.warn('persistence unavailable',e.code||e));
-  window.storage=firebase.storage();
-}catch(e){console.warn('Firebase init failed',e);}
+const FIREBASE_CONFIG={apiKey:"AIzaSyCtYc8uZICLzQrA1b7l00Yo_9V_rqNVOu0",authDomain:"mds-visit.firebaseapp.com",projectId:"mds-visit",storageBucket:"mds-visit.firebasestorage.app",messagingSenderId:"732603054928",appId:"1:732603054928:web:9f946bfa13d56d860a8a55"};
+function initFirebaseApp(){
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);
+    window.db=firebase.firestore();
+    window.db.enablePersistence({synchronizeTabs:true}).catch(e=>console.warn('persistence unavailable',e.code||e));
+    window.storage=firebase.storage();
+  }catch(e){console.warn('Firebase init failed',e);}
+}
+initFirebaseApp();
 loadCustomStores();
 loadSpgCustomStores();
 loadSpgNames();
