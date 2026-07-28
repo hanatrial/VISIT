@@ -19,6 +19,7 @@ function ensureXlsx(){
   return _xlsxReadyPromise;
 }
 const DASH_PIN='NFI2026';
+const DASH_PIN_MDS_ONLY='MDS2026';
 const MDS_BY_AREA={
   'Bau Bau':['Rizal'],
   'Bone':['A. Arwandi Amrah','M. Murdiono Arma','Amal Akbar'],
@@ -86,15 +87,34 @@ let cAV=null,cTrend=null,cBrand=null,mcAV=null,mcBrand=null;
    hover:hover, so it correctly stays on the full desktop path. */
 function _isTouchOnly(){try{return matchMedia('(hover: none) and (pointer: coarse)').matches;}catch(e){return false;}}
 const IS_MOBILE=((window.innerWidth||document.documentElement.clientWidth||0)<=768)||_isTouchOnly();
+let RESTRICT_TO_PJMDS=false;
+/* PIN "MDS2026" logs in but only shows the Penjualan MDS tab in the nav —
+   everything inside that tab (uploads, edits, checkboxes, modals, etc.)
+   stays fully functional, it's just the OTHER tabs (Visit RKA, Beli Barang,
+   Stock Sell Out, Sell Out Formula, NED Toko, Report Harian SPG) that are
+   hidden from the nav bar so this PIN can't wander into unrelated data. */
+function restrictToPjmds(){
+  ['ntab-rka','ntab-beli','ntab-stock','ntab-formula','ntab-ned','ntab-spg'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.remove();
+  });
+  switchTab('pjmds');
+}
 function enterDash(){
   document.getElementById('pin-screen').classList.add('hidden');
   document.getElementById('app').classList.add('visible');
   if(IS_MOBILE)stripMobileHeavy();
   initDash();
+  if(RESTRICT_TO_PJMDS)restrictToPjmds();
 }
 function checkPin(){
-  if(document.getElementById('pin-input').value===DASH_PIN){
-    try{sessionStorage.setItem('mds_dash_pin_ok','1');}catch(e){}
+  const val=document.getElementById('pin-input').value;
+  if(val===DASH_PIN||val===DASH_PIN_MDS_ONLY){
+    RESTRICT_TO_PJMDS=(val===DASH_PIN_MDS_ONLY);
+    try{
+      sessionStorage.setItem('mds_dash_pin_ok','1');
+      sessionStorage.setItem('mds_dash_pin_mode',RESTRICT_TO_PJMDS?'mds_only':'full');
+    }catch(e){}
     enterDash();
   }else{
     document.getElementById('pin-err').textContent='PIN salah, coba lagi.';
@@ -119,7 +139,7 @@ function stripMobileHeavy(){
    Defer to the next tick: enterDash() -> initDash() -> render() reads state
    vars (STOCK_ALL, NED_ALL, SPG_ALL, SUBTAB_*) that are declared later in this
    file, so running it inline here would hit their temporal-dead-zone. */
-let _pinOk=false;try{_pinOk=sessionStorage.getItem('mds_dash_pin_ok')==='1';}catch(e){}
+let _pinOk=false;try{_pinOk=sessionStorage.getItem('mds_dash_pin_ok')==='1';RESTRICT_TO_PJMDS=sessionStorage.getItem('mds_dash_pin_mode')==='mds_only';}catch(e){}
 if(_pinOk){setTimeout(enterDash,0);}
 else document.getElementById('pin-input').focus();
 
