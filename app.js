@@ -24888,7 +24888,9 @@ function shareSpgWhatsApp(){
   if(prioEntries.length){
     text+='⭐ *PRIORITAS*\n';
     prioEntries.forEach(([name,{qty,omzet}])=>{
-      text+='• '+name+'\n   '+qty+' rnc = Rp '+omzet.toLocaleString('id-ID')+'\n';
+      const line=qty+' rnc = Rp '+omzet.toLocaleString('id-ID');
+      if(qty>=5)text+='• *'+name+'*\n   *'+line+'*\n';
+      else text+='• '+name+'\n   '+line+'\n';
     });
     text+='_Subtotal Prioritas: Rp '+prioTotal.toLocaleString('id-ID')+'_\n';
     text+='─────────────────\n';
