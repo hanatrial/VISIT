@@ -1260,8 +1260,8 @@ function switchTab(t){
     const el=document.getElementById('ntab-'+x);
     if(el){el.classList.toggle('on',x===t);el.classList.toggle(x,true);}
   });
-  document.getElementById('sec-rka').style.display=t==='rka'?'block':'none';
-  document.getElementById('sec-beli').style.display=t==='beli'?'block':'none';
+  const sr=document.getElementById('sec-rka');if(sr)sr.style.display=t==='rka'?'block':'none';
+  const sb=document.getElementById('sec-beli');if(sb)sb.style.display=t==='beli'?'block':'none';
   const ss=document.getElementById('sec-stock');if(ss)ss.style.display=t==='stock'?'block':'none';
   const sp=document.getElementById('sec-pjmds');if(sp)sp.style.display=t==='pjmds'?'block':'none';
   const sf=document.getElementById('sec-formula');if(sf)sf.style.display=t==='formula'?'block':'none';
