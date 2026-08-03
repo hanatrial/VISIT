@@ -1026,8 +1026,10 @@ function initDash(){
      slow loads on mobile data, on top of the iOS memory-ceiling risk the earlier
      comment warned about. The !IS_MOBILE gate here was briefly removed to trial
      Penjualan MDS on phones; restored after the user reported the dashboard being
-     noticeably slower on phone than laptop. Penjualan MDS is desktop-only again. */
-  if(!IS_MOBILE&&has('sec-pjmds')){
+     noticeably slower on phone than laptop. Penjualan MDS is desktop-only again —
+     EXCEPT under the restricted "MDS2026" PIN, whose entire purpose is showing
+     Penjualan MDS on any device including phones, so it still loads there. */
+  if((!IS_MOBILE||RESTRICT_TO_PJMDS)&&has('sec-pjmds')){
     loadKedaiDb();
     loadDistributorReg();
     loadPjmdsData();
