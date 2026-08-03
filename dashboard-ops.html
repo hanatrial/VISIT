@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>MDS Dashboard — Stock & SPG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<link rel="stylesheet" href="dashboard.css?v=7">
+</head>
+<body>
+<div id="pin-screen">
+  <div class="pin-shell"><div class="pin-inner">
+    <div class="pin-orb">📦</div>
+    <div class="pin-eye">Nutrifood Sulawesi</div>
+    <div class="pin-title">MDS Visit Dashboard</div>
+    <div class="pin-sub">Masukkan PIN supervisor untuk melanjutkan</div>
+    <input id="pin-input" class="pin-field" type="password" placeholder="••••••••" maxlength="20" onkeydown="if(event.key==='Enter')checkPin()">
+    <div class="pin-err" id="pin-err"></div>
+    <button class="pin-cta" onclick="checkPin()">Masuk →</button>
+  </div></div>
+</div>
+<div id="app">
+  <div class="topbar">
+    <div class="tb-left">
+      <div class="tb-logo">📦</div>
+      <div><div class="tb-title">MDS Visit — Dashboard</div><div class="tb-sub">Stock &amp; SPG · Supervisor View</div></div>
+    </div>
+    <div class="tb-right">
+      <a href="dashboard.html" class="theme-toggle" style="text-decoration:none;font-size:13px" title="Dashboard Visit &amp; Penjualan">📊</a>
+      <div class="live-pill"><div class="live-dot"></div>Live</div>
+      <div class="tb-date" id="tb-date"></div>
+      <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Ganti tema">🌙</button>
+    </div>
+  </div>
+  <div class="main-nav">
+    <div class="nav-tab on stock" id="ntab-stock" onclick="switchTab('stock')">📦 Stock Sell Out <span class="nav-badge" id="nb-stock">—</span></div>
+    <div class="nav-tab formula" id="ntab-formula" onclick="switchTab('formula')">🧮 Sell Out Formula <span class="nav-badge" id="nb-formula">—</span></div>
+    <div class="nav-tab ned" id="ntab-ned" onclick="switchTab('ned')">⏰ NED Toko <span class="nav-badge" id="nb-ned">—</span></div>
+    <div class="nav-tab spg" id="ntab-spg" onclick="switchTab('spg')">💵 Report Harian SPG <span class="nav-badge" id="nb-spg">—</span></div>
+  </div>
+  <div class="main">
+    <div class="filter-shell"><div class="filter-inner">
+      <span class="fl">Periode</span>
+      <select id="f-period-sel" class="month-sel" onchange="setDateFilterSel(this.value)">
+        <option value="today">Hari Ini</option>
+        <option value="week">7 Hari</option>
+        <option value="30d">30 Hari</option>
+        <option value="all" selected>Semua</option>
+        <option value="range">Range Tanggal</option>
+      </select>
+      <span id="f-range-wrap" style="display:none;align-items:center;gap:4px">
+        <input type="date" id="f-date-from" class="fi" style="width:118px" oninput="setRangeDates()">
+        <span class="fl" style="opacity:.4">–</span>
+        <input type="date" id="f-date-to" class="fi" style="width:118px" oninput="setRangeDates()">
+      </span>
+      <div class="fsep"></div>
+      <span class="fl">Bulan</span>
+      <select id="f-month-sel" class="month-sel" onchange="setMonthPill(+this.value||0)">
+        <option value="0">Semua</option>
+        <option value="1">Januari</option>
+        <option value="2">Februari</option>
+        <option value="3">Maret</option>
+        <option value="4">April</option>
+        <option value="5">Mei</option>
+        <option value="6">Juni</option>
+        <option value="7">Juli</option>
+        <option value="8">Agustus</option>
+        <option value="9">September</option>
+        <option value="10">Oktober</option>
+        <option value="11">November</option>
+        <option value="12">Desember</option>
+      </select>
+      <div class="fsep"></div>
+      <select class="fi" id="f-area" style="width:110px" onchange="render()">
+        <option value="">Semua Area</option>
+        <option>Bau Bau</option><option>Bone</option><option>Gorontalo</option><option>Kendari</option><option>Luwuk</option><option>Makassar</option><option>Mamuju</option><option>Manado</option><option>Palopo</option><option>Palu</option><option>Pare-Pare</option><option>Poso</option>
+      </select>
+      <input class="fi" id="f-mds" placeholder="MDS…" style="width:100px" oninput="render()">
+      <input class="fi" id="f-store" placeholder="Toko…" style="width:110px" oninput="render()">
+      <span class="freset" onclick="clearFilters()">✕ Reset</span>
+      <button class="exp-btn" onclick="exportCSV()">↓ Export CSV</button>
+    </div></div>
+
+    <!-- STOCK SELL OUT SECTION -->
+    <div id="sec-stock">
+      <div class="bento bento-4">
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(245,158,11,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 0% 0%,var(--amber),transparent 70%)"></div><div class="kpi-label">Total Entri Stock</div><div class="kpi-val" style="color:var(--amber)" id="ds-stk-total">—</div><div class="kpi-sub">input stock MDS/SPG</div></div></div>
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(6,182,212,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 50% 0%,var(--cyan),transparent 70%)"></div><div class="kpi-label">Stock Awal</div><div class="kpi-val" style="color:var(--cyan)" id="ds-stk-awal">—</div><div class="kpi-sub">entri awal bulan</div></div></div>
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(16,185,129,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--green),transparent 70%)"></div><div class="kpi-label">Stock Akhir</div><div class="kpi-val" style="color:var(--green)" id="ds-stk-akhir">—</div><div class="kpi-sub">entri akhir bulan</div></div></div>
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(139,92,246,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--violet),transparent 70%)"></div><div class="kpi-label">Total Nilai Stock</div><div class="kpi-val sm" style="color:var(--violet)" id="ds-stk-nilai">—</div><div class="kpi-sub">akumulasi totalNilai</div></div></div>
+      </div>
+      <div class="sub-nav">
+        <div class="sub-tab on stock" id="stab-stock-log" onclick="switchSubTab('stock','log')">📋 Riwayat Stock</div>
+        <div class="sub-tab stock" id="stab-stock-item" onclick="switchSubTab('stock','item')">📦 Detail per Toko</div>
+      </div>
+      <div class="panel-shell"><div class="panel-body">
+        <table><thead id="table-head-stock"></thead><tbody id="table-body-stock"></tbody></table>
+        <div class="tfoot-row" id="tfoot-stock"></div>
+      </div></div>
+    </div>
+
+    <!-- SELL OUT FORMULA SECTION -->
+    <div id="sec-formula" style="display:none">
+      <div class="bento bento-4">
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(6,182,212,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 0% 0%,var(--cyan),transparent 70%)"></div><div class="kpi-label">Total Stock Awal</div><div class="kpi-val sm" style="color:var(--cyan)" id="fm-awal">—</div><div class="kpi-sub">semua toko terfilter</div></div></div>
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(245,158,11,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 50% 0%,var(--amber),transparent 70%)"></div><div class="kpi-label">Total Stock Akhir</div><div class="kpi-val sm" style="color:var(--amber)" id="fm-akhir">—</div><div class="kpi-sub">semua toko terfilter</div></div></div>
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(139,92,246,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--violet),transparent 70%)"></div><div class="kpi-label">Total In Transit Tersimpan</div><div class="kpi-val sm" style="color:var(--violet)" id="fm-transit">—</div><div class="kpi-sub">lihat sub-tab Kalkulasi Manual</div></div></div>
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(16,185,129,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--green),transparent 70%)"></div><div class="kpi-label">Total Selisih (Awal − Akhir)</div><div class="kpi-val sm" style="color:var(--green)" id="fm-sellout">—</div><div class="kpi-sub">belum termasuk In Transit</div></div></div>
+      </div>
+      <div class="panel-shell" style="margin-bottom:16px"><div class="panel-body" style="padding:14px 18px">
+        <div style="font-size:11px;color:var(--t2);line-height:1.6">
+          <strong style="color:var(--t1)">Formula:</strong> Sell Out = Stock Awal + In Transit − Stock Akhir<br>
+          Stock Awal &amp; Stock Akhir diambil otomatis dari data <em>Stock Sell Out</em> (sesuai filter periode/area di atas). In Transit diisi manual atau diimport dari Excel (barang yang masuk ke toko selama periode berjalan).
+        </div>
+      </div></div>
+
+      <div class="sub-nav">
+        <div class="sub-tab on formula" id="stab-formula-summary" onclick="switchSubTab('formula','summary')">📊 Ringkasan per Toko</div>
+        <div class="sub-tab formula" id="stab-formula-calc" onclick="switchSubTab('formula','calc')">🧮 Kalkulasi Manual</div>
+        <div class="sub-tab formula" id="stab-formula-detail" onclick="switchSubTab('formula','detail')">🧾 Detail Item per Toko</div>
+      </div>
+
+      <div id="formula-summary-wrap">
+        <div class="panel-shell"><div class="panel-body" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 18px">
+          <div class="ch-label" style="margin-bottom:0">📥 Import Nilai In Transit (langsung ke baris toko)</div>
+          <div>
+            <button class="exp-btn" onclick="downloadFormulaTemplate()">↓ Download Template</button>
+            <button class="exp-btn" onclick="document.getElementById('formula-import-input').click()">↑ Import Excel</button>
+            <input type="file" id="formula-import-input" accept=".xlsx,.xls,.csv" style="display:none">
+          </div>
+        </div></div>
+        <div id="formula-import-status" style="font-size:10px;color:var(--t3);margin:6px 2px 12px"></div>
+        <div style="font-size:10px;color:var(--t3);margin:0 2px 16px">Import ini tidak langsung masuk ke baris toko di bawah — setiap toko dari file Excel akan ditambahkan sebagai baris terpisah di sub-tab "Kalkulasi Manual", lalu kamu pilih sendiri pasangan Stock Awal/Akhirnya di sana.</div>
+
+        <div class="panel-shell"><div class="panel-body">
+          <table><thead id="table-head-formula"><tr>
+            <th>Toko</th><th>Area</th><th>Bulan</th><th>Stock Awal</th><th>Stock Akhir</th><th>Selisih (Awal − Akhir)</th>
+          </tr></thead><tbody id="table-body-formula"></tbody></table>
+          <div class="tfoot-row" id="tfoot-formula"></div>
+        </div></div>
+      </div>
+
+      <div id="formula-calc-wrap" style="display:none">
+        <div class="panel-shell" style="margin-bottom:16px"><div class="panel-body" style="padding:14px 18px">
+          <div class="ch-label" style="margin-bottom:8px">📆 Hitung In Transit dari Detail Transaksi (pilih tanggal)</div>
+          <div style="font-size:10px;color:var(--t3);margin-bottom:10px">Import file Excel transaksi (kolom: Customer SO Group Area, Month of Invoice Date SO, Day of Invoice Date SO, Item Group, Value) — lalu pilih toko dan tanggal-tanggal pengiriman yang mau dihitung sebagai In Transit. Data ini hanya tersimpan sementara di sesi ini (perlu diimport ulang jika halaman di-refresh).</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+            <button class="exp-btn" onclick="document.getElementById('tx-import-input').click()">↑ Import Excel Transaksi</button>
+            <input type="file" id="tx-import-input" accept=".xlsx,.xls,.csv" style="display:none">
+            <select id="tx-store-select" class="fi" style="width:260px" onchange="selectTxStore(this.value)"><option value="">— Import file dulu —</option></select>
+          </div>
+          <div id="tx-import-status" style="font-size:10px;color:var(--t3);margin-bottom:8px"></div>
+          <div id="tx-dates-wrap"></div>
+          <div id="tx-sum-box" style="display:none;align-items:center;gap:14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+            <div><div style="font-size:9px;color:var(--t3)">Total In Transit Terpilih</div><div style="font-size:18px;font-weight:800;color:var(--violet)" id="tx-sum-val">—</div><div style="font-size:9px;color:var(--t3)" id="tx-sum-count"></div></div>
+            <button class="exp-btn" id="tx-apply-btn" onclick="applyTxToStore()">✓ Simpan sebagai In Transit (baris terpisah)</button>
+          </div>
+        </div></div>
+
+        <div class="panel-shell" style="margin-bottom:16px"><div class="panel-body">
+          <div class="ch-label" style="padding:12px 14px 0">📥 In Transit Tersimpan (dari Excel, baris terpisah)</div>
+          <div style="font-size:10px;color:var(--t3);margin:2px 14px 10px">Setiap "Simpan" di atas menambah baris baru di sini — nama toko diambil apa adanya dari file Excel, tidak dicocokkan otomatis ke toko manapun. Pilih sendiri pasangannya di kalkulator di bawah.</div>
+          <table><thead><tr>
+            <th>Toko (dari Excel)</th><th>Tanggal</th><th>Item</th><th>Nilai</th><th></th>
+          </tr></thead><tbody id="ti-body"></tbody></table>
+          <div class="tfoot-row" id="ti-tfoot"></div>
+        </div></div>
+
+        <div class="panel-shell" style="margin-bottom:16px"><div class="panel-body" style="padding:14px 18px">
+          <div class="ch-label" style="margin-bottom:8px">🧮 Kalkulasi Sell Out Manual</div>
+          <div style="font-size:10px;color:var(--t3);margin-bottom:10px">Pilih data Stock Awal (toko + bulan), Stock Akhir (toko + bulan), dan In Transit — lalu simpan sebagai baris kalkulasi baru. In Transit bisa dipilih dari daftar tersimpan di atas, diambil langsung dari tanggal terpilih, atau diketik manual.</div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
+            <div>
+              <div style="font-size:9px;color:var(--t3);margin-bottom:4px">STOCK AWAL (toko · bulan · nilai)</div>
+              <select id="fc-awal" class="fi" style="width:260px" onchange="fcPreview()"><option value="">— Pilih —</option></select>
+            </div>
+            <div>
+              <div style="font-size:9px;color:var(--t3);margin-bottom:4px">STOCK AKHIR (toko · bulan · nilai)</div>
+              <select id="fc-akhir" class="fi" style="width:260px" onchange="fcPreview()"><option value="">— Pilih —</option></select>
+            </div>
+            <div>
+              <div style="font-size:9px;color:var(--t3);margin-bottom:4px">IN TRANSIT TERSIMPAN</div>
+              <select id="fc-transit-select" class="fi" style="width:220px" onchange="fcUseSavedTransit(this.value)"><option value="">— Pilih dari daftar —</option></select>
+            </div>
+            <div>
+              <div style="font-size:9px;color:var(--t3);margin-bottom:4px">ATAU IN TRANSIT MANUAL (Rp)</div>
+              <input type="text" inputmode="numeric" id="fc-transit" class="fi" style="width:130px" placeholder="0" oninput="_FC_TRANSIT_ITEMS={};document.getElementById('fc-transit-select').value='';fcPreview()">
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:16px;padding-top:10px;border-top:1px solid var(--border)">
+            <div><div style="font-size:9px;color:var(--t3)">Hasil Sell Out</div><div style="font-size:18px;font-weight:800;color:var(--green)" id="fc-preview-val">—</div></div>
+            <button class="exp-btn" onclick="fcSave()">➕ Simpan Kalkulasi</button>
+          </div>
+        </div></div>
+
+        <div class="panel-shell" style="margin-bottom:16px"><div class="panel-body">
+          <div class="ch-label" style="padding:12px 14px 0">📌 Hasil Kalkulasi Tersimpan</div>
+          <table><thead><tr>
+            <th>Toko</th><th>Stock Awal</th><th>In Transit</th><th>Stock Akhir</th><th>Sell Out</th><th></th>
+          </tr></thead><tbody id="fc-body"></tbody></table>
+          <div class="tfoot-row" id="fc-tfoot"></div>
+        </div></div>
+      </div>
+
+      <div id="formula-detail-wrap" style="display:none">
+        <div class="panel-shell" style="margin-bottom:16px"><div class="panel-body" style="padding:14px 18px">
+          <div class="ch-label" style="margin-bottom:8px">👤 Pilih Toko</div>
+          <select id="fd-store-select" class="fi" style="width:280px" onchange="renderFormulaDetail()"><option value="">— Pilih Toko —</option></select>
+          <div style="font-size:10px;color:var(--t3);margin-top:8px">Menampilkan mapping per item: Stock Awal + In Transit − Stock Akhir = Sell Out, berdasarkan In Transit yang diketik/diimport langsung di baris toko pada tab "Ringkasan per Toko".</div>
+        </div></div>
+        <div class="panel-shell"><div class="panel-body">
+          <table><thead id="table-head-formula-detail"><tr>
+            <th>Item</th><th>Stock Awal</th><th>In Transit</th><th>Stock Akhir</th><th>Sell Out (Qty)</th><th>Sell Out (Value)</th>
+          </tr></thead><tbody id="table-body-formula-detail"></tbody></table>
+          <div class="tfoot-row" id="tfoot-formula-detail"></div>
+        </div></div>
+      </div>
+    </div>
+
+    <!-- NED TOKO SECTION -->
+    <div id="sec-ned" style="display:none">
+      <div class="bento bento-4">
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(248,113,113,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 0% 0%,var(--red),transparent 70%)"></div><div class="kpi-label">Total Entri NED</div><div class="kpi-val" style="color:var(--red)" id="ds-ned-total">—</div><div class="kpi-sub">kunjungan cek NED</div></div></div>
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(245,158,11,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 50% 0%,var(--amber),transparent 70%)"></div><div class="kpi-label">Total Item NED</div><div class="kpi-val" style="color:var(--amber)" id="ds-ned-items">—</div><div class="kpi-sub">baris item tercatat</div></div></div>
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(248,113,113,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--red),transparent 70%)"></div><div class="kpi-label">Expired ≤ 30 Hari</div><div class="kpi-val" style="color:var(--red)" id="ds-ned-urgent">—</div><div class="kpi-sub">segera ditarik/diskon</div></div></div>
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(245,158,11,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--amber),transparent 70%)"></div><div class="kpi-label">Expired 31–90 Hari</div><div class="kpi-val" style="color:var(--amber)" id="ds-ned-soon">—</div><div class="kpi-sub">perlu dipantau</div></div></div>
+      </div>
+      <div class="sub-nav">
+        <div class="sub-tab on ned" id="stab-ned-log" onclick="switchSubTab('ned','log')">📋 Riwayat NED</div>
+        <div class="sub-tab ned" id="stab-ned-urgent" onclick="switchSubTab('ned','urgent')">⚠️ Daftar Mendekati Expired</div>
+      </div>
+      <div class="panel-shell"><div class="panel-body">
+        <table><thead id="table-head-ned"></thead><tbody id="table-body-ned"></tbody></table>
+        <div class="tfoot-row" id="tfoot-ned"></div>
+      </div></div>
+    </div>
+
+    <!-- REPORT HARIAN SPG SECTION -->
+    <div id="sec-spg" style="display:none">
+      <div class="bento bento-4">
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(245,158,11,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 0% 0%,var(--gold),transparent 70%)"></div><div class="kpi-label">Total Entri Harian</div><div class="kpi-val" style="color:var(--gold)" id="ds-spg-total">—</div><div class="kpi-sub">laporan SPG</div></div></div>
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(16,185,129,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 50% 0%,var(--green),transparent 70%)"></div><div class="kpi-label">Total Omzet</div><div class="kpi-val sm" style="color:var(--green)" id="ds-spg-omzet">—</div><div class="kpi-sub">akumulasi periode terfilter</div></div></div>
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(6,182,212,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--cyan),transparent 70%)"></div><div class="kpi-label">Avg Omzet / Entri</div><div class="kpi-val sm" style="color:var(--cyan)" id="ds-spg-avg">—</div><div class="kpi-sub">rata-rata per laporan</div></div></div>
+        <div class="kpi-shell"><div class="kpi-border" style="--gc:rgba(139,92,246,.9)"></div><div class="kpi-inner"><div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--violet),transparent 70%)"></div><div class="kpi-label">Toko Aktif</div><div class="kpi-val" style="color:var(--violet)" id="ds-spg-stores">—</div><div class="kpi-sub">toko berbeda terfilter</div></div></div>
+      </div>
+      <div class="sub-nav">
+        <div class="sub-tab on spg" id="stab-spg-log" onclick="switchSubTab('spg','log')">📋 Riwayat Laporan</div>
+        <div class="sub-tab spg" id="stab-spg-report" onclick="switchSubTab('spg','report')">🧑‍💼 SPG Report</div>
+        <div class="sub-tab spg" id="stab-spg-store" onclick="switchSubTab('spg','store')">🏪 Per Toko</div>
+        <div class="sub-tab spg" id="stab-spg-rank" onclick="switchSubTab('spg','rank')">🏆 Ranking Jualan</div>
+      </div>
+      <div id="spg-log-wrap">
+        <div class="panel-shell"><div class="panel-body">
+          <table><thead id="table-head-spg"></thead><tbody id="table-body-spg"></tbody></table>
+          <div class="tfoot-row" id="tfoot-spg"></div>
+        </div></div>
+      </div>
+      <div id="spg-report-wrap" style="display:none">
+        <div class="panel-shell"><div class="panel-body">
+          <input class="fi" id="spg-report-search" placeholder="Cari nama SPG…" style="width:220px;margin-bottom:12px" oninput="onSpgReportSearch(this.value)">
+          <div id="spg-report-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;max-height:180px;overflow-y:auto"></div>
+          <div id="spg-report-detail"></div>
+        </div></div>
+      </div>
+      <div id="spg-store-wrap" style="display:none">
+        <div class="panel-shell"><div class="panel-body">
+          <input class="fi" id="spg-store-search" placeholder="Cari nama toko…" style="width:220px;margin-bottom:12px" oninput="onSpgStoreSearch(this.value)">
+          <div id="spg-store-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;max-height:180px;overflow-y:auto"></div>
+          <div id="spg-store-detail"></div>
+        </div></div>
+      </div>
+      <div id="spg-rank-wrap" style="display:none">
+        <div id="spg-rank-body"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="dashboard.js?v=32"></script>
+</body>
+</html>

@@ -859,6 +859,10 @@ async function restList(coll,fields){
   out.sort((a,b)=>b.timestamp-a.timestamp);
   return out;
 }
+/* True when this HTML shell actually has the given tab's section — lets one shared
+   dashboard.js serve multiple thin dashboard shells (each with only its own tabs'
+   markup) without ever fetching a collection the current page can't show. */
+function has(id){return !!document.getElementById(id);}
 function loadAll(){
   if(!db){console.error('loadAll: db undefined');return;}
   const SRV={source:'server'};
@@ -867,7 +871,7 @@ function loadAll(){
      beli_logs) versus 0.6s for the masked request. That download is why the desktop
      dashboard sat empty for so long. Photos are fetched on demand on row expand.
      Falls back to the SDK if the REST call ever fails. */
-  restList('rka_logs',RKA_FIELDS).then(rows=>{
+  if(has('sec-rka'))restList('rka_logs',RKA_FIELDS).then(rows=>{
     RKA_ALL=rows;buildMonthOpts();render();
   }).catch(e=>{
     console.warn('rka_logs REST failed, falling back to SDK',e.message);
@@ -877,7 +881,7 @@ function loadAll(){
       buildMonthOpts();render();
     }).catch(err=>console.error('rka_logs get failed',err.code,err.message));
   });
-  restList('beli_logs',BELI_FIELDS).then(rows=>{
+  if(has('sec-beli'))restList('beli_logs',BELI_FIELDS).then(rows=>{
     BELI_ALL=rows;buildMonthOpts();render();
   }).catch(e=>{
     console.warn('beli_logs REST failed, falling back to SDK',e.message);
@@ -887,7 +891,7 @@ function loadAll(){
       buildMonthOpts();render();
     }).catch(err=>console.error('beli_logs get failed',err.code,err.message));
   });
-  db.collection('stock_logs').get(SRV)
+  if(has('sec-stock'))db.collection('stock_logs').get(SRV)
     .catch(()=>db.collection('stock_logs').get())
     .then(s=>{
     STOCK_ALL=[];s.forEach(d=>{const v=d.data();STOCK_ALL.push({...v,timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
@@ -895,14 +899,14 @@ function loadAll(){
     console.log('[stock_logs] loaded',STOCK_ALL.length,'docs');
     render();
   }).catch(e=>console.error('stock_logs FAILED',e.code,e.message));
-  db.collection('ned_logs').limit(2000).get(SRV)
+  if(has('sec-ned'))db.collection('ned_logs').limit(2000).get(SRV)
     .catch(()=>db.collection('ned_logs').get())
     .then(s=>{
     NED_ALL=[];s.forEach(d=>{const v=d.data();NED_ALL.push({...v,timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
     NED_ALL.sort((a,b)=>b.timestamp-a.timestamp);
     render();
   }).catch(e=>console.error('ned_logs FAILED',e.code,e.message));
-  db.collection('spg_daily_logs').limit(2000).get(SRV)
+  if(has('sec-spg'))db.collection('spg_daily_logs').limit(2000).get(SRV)
     .catch(()=>db.collection('spg_daily_logs').get())
     .then(s=>{
     SPG_ALL=[];s.forEach(d=>{const v=d.data();SPG_ALL.push({...v,timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
@@ -994,7 +998,10 @@ async function undoDistributor(kode){
   render();
 }
 function initDash(){
-  switchTab('rka');
+  // default to whichever tab this HTML shell actually has, in nav order — 'rka' is
+  // only correct for the main dashboard; the ops shell has no sec-rka at all
+  const firstTab=['rka','beli','pjmds','stock','formula','ned','spg'].find(t=>has('sec-'+t))||'rka';
+  switchTab(firstTab);
   document.getElementById('tb-date').textContent=new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   const dl=document.getElementById('item-beli-list');
   if(dl)Object.keys(ITEM_PRICE).sort().forEach(k=>{const o=document.createElement('option');o.value=k;dl.appendChild(o);});
@@ -1006,12 +1013,15 @@ function initDash(){
   if(ff)ff.addEventListener('change',e=>{if(e.target.files[0])handleFormulaImportFile(e.target.files[0]);e.target.value='';});
   const tf=document.getElementById('tx-import-input');
   if(tf)tf.addEventListener('change',e=>{if(e.target.files[0])handleTxImportFile(e.target.files[0]);e.target.value='';});
-  /* These four feed the Penjualan MDS tab. Measured payload: pjmds_data ~8.3MB JSON /
+  /* These four feed the Penjualan MDS tab, which only the main dashboard shell has —
+     has('sec-pjmds') is false on the ops-only dashboard-ops.html, so that shell skips
+     this entirely (it has no use for it). Measured payload: pjmds_data ~8.3MB JSON /
      26k row objects, kedai_db ~0.7MB / 10k store objects — together enough to blow
      iOS Safari's per-tab memory ceiling and get the tab killed (bounces the user back
-     to the PIN screen). Previously gated behind !IS_MOBILE; temporarily always-on
-     while trialing Penjualan MDS on phones — watch for reload-to-PIN symptoms. */
-  {
+     to the PIN screen). Previously also gated behind !IS_MOBILE; now trialing
+     Penjualan MDS on phones too — watch for reload-to-PIN symptoms on the mobile main
+     dashboard specifically (the ops shell was never part of that risk). */
+  if(has('sec-pjmds')){
     loadKedaiDb();
     loadDistributorReg();
     loadPjmdsData();
@@ -1025,20 +1035,20 @@ function initDash(){
      full documents (photos included) in the background, which is exactly the ~71MB cost
      the masked REST load above avoids. These two refresh on page reload; the small
      collections below keep their live listeners. */
-  db.collection('stock_logs').limit(2000).onSnapshot({includeMetadataChanges:true},s=>{
+  if(has('sec-stock'))db.collection('stock_logs').limit(2000).onSnapshot({includeMetadataChanges:true},s=>{
     if(s.metadata.fromCache)return;
     STOCK_ALL=[];s.forEach(d=>{const v=d.data();STOCK_ALL.push({...v,timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
     STOCK_ALL.sort((a,b)=>b.timestamp-a.timestamp);
     console.log('[stock_logs] SNAP loaded',STOCK_ALL.length,'docs');
     render();
   },e=>console.error('stock snap err',e));
-  db.collection('ned_logs').limit(2000).onSnapshot({includeMetadataChanges:true},s=>{
+  if(has('sec-ned'))db.collection('ned_logs').limit(2000).onSnapshot({includeMetadataChanges:true},s=>{
     if(s.metadata.fromCache)return;
     NED_ALL=[];s.forEach(d=>{const v=d.data();NED_ALL.push({...v,timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
     NED_ALL.sort((a,b)=>b.timestamp-a.timestamp);
     render();
   },e=>console.error('ned snap err',e));
-  db.collection('spg_daily_logs').limit(2000).onSnapshot({includeMetadataChanges:true},s=>{
+  if(has('sec-spg'))db.collection('spg_daily_logs').limit(2000).onSnapshot({includeMetadataChanges:true},s=>{
     if(s.metadata.fromCache)return;
     SPG_ALL=[];s.forEach(d=>{const v=d.data();SPG_ALL.push({...v,timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
     SPG_ALL.sort((a,b)=>b.timestamp-a.timestamp);
@@ -1046,8 +1056,14 @@ function initDash(){
   },e=>console.error('spg snap err',e));
 }
 function buildMonthOpts(){
-  const ms=new Set([...RKA_ALL,...BELI_ALL].map(r=>{const d=r.timestamp;return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;}));
+  // f-month-pills was replaced by the f-month-sel dropdown; this element no longer
+  // exists, so this function was a dead no-op that also threw and silently swallowed
+  // the render() call right after it in every caller. Kept as a no-op guard rather
+  // than deleting, since removing the (unused) MF pill-building logic below is out
+  // of scope for this fix.
   const container=document.getElementById('f-month-pills');
+  if(!container)return;
+  const ms=new Set([...RKA_ALL,...BELI_ALL].map(r=>{const d=r.timestamp;return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;}));
   container.innerHTML='';
   // "Semua" pill
   const all=document.createElement('div');
@@ -1294,21 +1310,24 @@ function render(){
   FI=(document.getElementById('f-item')?.value||'').trim().toLowerCase();
   if(FI)beliF=beliF.filter(r=>r.itemQty&&Object.keys(r.itemQty).some(k=>(Number(r.itemQty[k])||0)>0&&k.toLowerCase().includes(FI)));
 
-  // KPI
-  document.getElementById('ds-rka').textContent=rkaF.length||'—';
-  const totA=rkaF.reduce((s,r)=>s+(r.avail||0),0),totI=rkaF.reduce((s,r)=>s+(r.avail||0)+(r.unavail||0),0);
-  document.getElementById('ds-av').textContent=totI?Math.round(totA/totI*100)+'%':'—';
-  const totNS=beliF.reduce((s,r)=>s+(r.groupTotals&&r.groupTotals.NS||0),0);
-  const totHI=beliF.reduce((s,r)=>s+(r.groupTotals&&r.groupTotals.HILO||0),0);
-  const totHILOPLS=beliF.reduce((s,r)=>s+(r.groupTotals&&r.groupTotals.HILOPLS||0),0);
-  document.getElementById('ds-ns').textContent=totNS||'—';
-  document.getElementById('ds-hilo').textContent=(totHI+totHILOPLS)||'—';
-  const k=FI
-    ?beliF.reduce((s,r)=>{if(!r.itemQty)return s;return s+Object.entries(r.itemQty).reduce((ss,[nm,v])=>nm.toLowerCase().includes(FI)?ss+(Number(v)||0)*(ITEM_PRICE[nm]?.pcs||0):ss,0);},0)
-    :totNS*NS_PRICE+totHI*HILO_PRICE+totHILOPLS*HILOPLS_PRICE;
-  document.getElementById('ds-kalc').textContent=k?rp(k):'—';
-  const sub=document.getElementById('ds-kalc-sub');
-  if(sub)sub.textContent=FI?`Value item: ${document.getElementById('f-item').value}`:'NS×11.250 + HILO×16.000 + HILO SCHOOL PLS×31.500';
+  // KPI — this whole block only applies to sec-rka/sec-beli, which the ops-only
+  // dashboard shell doesn't have; guarded so render() never crashes there.
+  if(has('ds-rka')){
+    document.getElementById('ds-rka').textContent=rkaF.length||'—';
+    const totA=rkaF.reduce((s,r)=>s+(r.avail||0),0),totI=rkaF.reduce((s,r)=>s+(r.avail||0)+(r.unavail||0),0);
+    document.getElementById('ds-av').textContent=totI?Math.round(totA/totI*100)+'%':'—';
+    const totNS=beliF.reduce((s,r)=>s+(r.groupTotals&&r.groupTotals.NS||0),0);
+    const totHI=beliF.reduce((s,r)=>s+(r.groupTotals&&r.groupTotals.HILO||0),0);
+    const totHILOPLS=beliF.reduce((s,r)=>s+(r.groupTotals&&r.groupTotals.HILOPLS||0),0);
+    document.getElementById('ds-ns').textContent=totNS||'—';
+    document.getElementById('ds-hilo').textContent=(totHI+totHILOPLS)||'—';
+    const k=FI
+      ?beliF.reduce((s,r)=>{if(!r.itemQty)return s;return s+Object.entries(r.itemQty).reduce((ss,[nm,v])=>nm.toLowerCase().includes(FI)?ss+(Number(v)||0)*(ITEM_PRICE[nm]?.pcs||0):ss,0);},0)
+      :totNS*NS_PRICE+totHI*HILO_PRICE+totHILOPLS*HILOPLS_PRICE;
+    document.getElementById('ds-kalc').textContent=k?rp(k):'—';
+    const sub=document.getElementById('ds-kalc-sub');
+    if(sub)sub.textContent=FI?`Value item: ${document.getElementById('f-item').value}`:'NS×11.250 + HILO×16.000 + HILO SCHOOL PLS×31.500';
+  }
 
   // Charts/spotlight must never block the data tables below — if Chart.js is
   // slow/blocked or a canvas is missing, swallow it and keep rendering data.
