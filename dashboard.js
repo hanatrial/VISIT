@@ -129,7 +129,13 @@ function checkPin(){
    it exceeds Safari's per-tab memory ceiling, which reloads the page back
    to the PIN screen — watch for that if Penjualan MDS is opened on phone. */
 function stripMobileHeavy(){
-  ['sec-formula','ntab-formula'].forEach(id=>{
+  const ids=['sec-formula','ntab-formula'];
+  // Penjualan MDS data-loading is skipped on mobile (see initDash) since it's ~11MB
+  // and was the confirmed cause of slow phone loads — so its tab/nav is also removed
+  // here to match, UNLESS this is the restricted "MDS2026" PIN whose whole purpose is
+  // showing Penjualan MDS on any device, phone included.
+  if(!RESTRICT_TO_PJMDS)ids.push('sec-pjmds','ntab-pjmds');
+  ids.forEach(id=>{
     const el=document.getElementById(id);
     if(el)el.remove();
   });
@@ -1015,13 +1021,13 @@ function initDash(){
   if(tf)tf.addEventListener('change',e=>{if(e.target.files[0])handleTxImportFile(e.target.files[0]);e.target.value='';});
   /* These four feed the Penjualan MDS tab, which only the main dashboard shell has —
      has('sec-pjmds') is false on the ops-only dashboard-ops.html, so that shell skips
-     this entirely (it has no use for it). Measured payload: pjmds_data ~8.3MB JSON /
-     26k row objects, kedai_db ~0.7MB / 10k store objects — together enough to blow
-     iOS Safari's per-tab memory ceiling and get the tab killed (bounces the user back
-     to the PIN screen). Previously also gated behind !IS_MOBILE; now trialing
-     Penjualan MDS on phones too — watch for reload-to-PIN symptoms on the mobile main
-     dashboard specifically (the ops shell was never part of that risk). */
-  if(has('sec-pjmds')){
+     this entirely (it has no use for it). Measured payload: pjmds_data ~11MB JSON /
+     12k+ row objects (still growing), kedai_db ~0.7MB — a real, confirmed cause of
+     slow loads on mobile data, on top of the iOS memory-ceiling risk the earlier
+     comment warned about. The !IS_MOBILE gate here was briefly removed to trial
+     Penjualan MDS on phones; restored after the user reported the dashboard being
+     noticeably slower on phone than laptop. Penjualan MDS is desktop-only again. */
+  if(!IS_MOBILE&&has('sec-pjmds')){
     loadKedaiDb();
     loadDistributorReg();
     loadPjmdsData();
