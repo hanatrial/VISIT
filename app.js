@@ -24898,7 +24898,7 @@ function shareSpgWhatsApp(){
     const nsRasa=nsAll.filter(([name])=>!name.includes('TEA')&&!prioMatch(name));
     const hiloAll=entries.filter(([name])=>{ const g=spgGroupOf(name); return g==='HILO DRINK PLS'||g==='HILO SCHOOL PLS'; });
     const used=new Set([...nsTea,...nsRasa,...hiloAll].map(([name])=>name));
-    const lainEntries=entries.filter(([name])=>!used.has(name));
+    const lainEntries=entries.filter(([name])=>!used.has(name)&&!name.includes('PLS'));
     const sumQty=arr=>arr.reduce((s,[,{qty}])=>s+qty,0);
     const sumOmz=arr=>arr.reduce((s,[,{omzet}])=>s+omzet,0);
     if(nsAll.length){
