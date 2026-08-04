@@ -23399,7 +23399,7 @@ async function loadCustomStores(){
 
 /* SPG has its own isolated store list — not shared with RKA/Beli/NED/Stock */
 const SPG_STORES_BY_AREA = {
-  'Makassar': ['Satu Sama Landak','Satu Sama Perintis','Satu Sama Hertasning','Hengky Tranku','Top Mode Perintis','Grand Toserba Pengayoman','Ektong','Grand Toserba Hertasning','Satu Sama Karlink','Gelael','Grand Mall','Diamond','Indogrosir Makassar'],
+  'Makassar': ['Satu Sama Landak','Satu Sama Perintis','Satu Sama Hertasning','Hengky Tranku','Top Mode Perintis','Grand Toserba Pengayoman','Ektong','Grand Toserba Hertasning','Satu Sama Karlink','Gelael','Grand Mall','Diamond','Indogrosir Makassar','TEST INDOGROSIR'],
   'Gorontalo': ['Indogrosir Gorontalo'],
   'Kendari': ['Indogrosir Kendari'],
   'Manado': ['Indogrosir Manado']
