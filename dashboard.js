@@ -3331,9 +3331,10 @@ function computeScorecardRows(){
     const sekolahCount=d?d.kpi.total_sekolah:0;
     const singleSkuCount=d?d.single_sku_count:0;
     const varian5Count=d?d.noo_pengembangan.length:0;
+    const eaHiloMatchaCount=d?new Set(d.rawOrder.filter(r=>String(r.Brand).toUpperCase()==='HI LO'&&/matcha/i.test(r.NamaItem)).map(r=>r.KodeCustomer)).size:0;
     const omzet=d?d.kpi.total_penjualan:0;
     return{name,area:mdsAreaOf(name),trx,stores,beliVal,nota,notaFinal,
-      teaVolume,hiloVolume,callCount,eaCount,sekolahCount,singleSkuCount,varian5Count,
+      teaVolume,hiloVolume,callCount,eaCount,sekolahCount,singleSkuCount,varian5Count,eaHiloMatchaCount,
       omzet,selisih:omzet-notaFinal,matched:!!resolved};
   }).filter(r=>r.trx>0||r.omzet>0);
 }
@@ -3399,8 +3400,9 @@ function renderScorecard(){
       <td>${pctCell(r.sekolahCount,PJ_TARGET.sekolah,fmtNum)}</td>
       <td><div style="font-size:13px">${r.singleSkuCount}</div>${eaPct?(([col,bg])=>pctBadge(eaPct(r.singleSkuCount).toFixed(0)+'%',col,bg))(singleSkuColor(eaPct(r.singleSkuCount))):'<span style="color:var(--t3)">-</span>'}</td>
       <td>${pctCell(r.varian5Count,PJ_TARGET.varian5,fmtNum)}</td>
+      <td style="text-align:center;font-size:13px">${r.eaHiloMatchaCount||'—'}</td>
     </tr>`;
-  }).join(''):`<tr><td colspan="13"><div class="empty-state">Tidak ada data untuk periode/filter ini.${PJ_RAW.call.length?'':' Upload data Penjualan (Call & Order) untuk kolom Omzet.'}</div></td></tr>`;
+  }).join(''):`<tr><td colspan="14"><div class="empty-state">Tidak ada data untuk periode/filter ini.${PJ_RAW.call.length?'':' Upload data Penjualan (Call & Order) untuk kolom Omzet.'}</div></td></tr>`;
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
   set('sc-beli',tB?rp(tB):'—');
   set('sc-omzet',tO?rp(tO):'—');
