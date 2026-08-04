@@ -23398,6 +23398,7 @@ async function loadCustomStores(){
 }
 
 /* SPG has its own isolated store list — not shared with RKA/Beli/NED/Stock */
+const SPG_INDOGROSIR_ONLY_NAMES = ['Sarwendah - Indogrosir','Tiara - Indogrosir','Rosa - Indogrosir','Sri Rahayu Dongio'];
 const SPG_STORES_BY_AREA = {
   'Makassar': ['Satu Sama Landak','Satu Sama Perintis','Satu Sama Hertasning','Hengky Tranku','Top Mode Perintis','Grand Toserba Pengayoman','Ektong','Grand Toserba Hertasning','Satu Sama Karlink','Gelael','Grand Mall','Diamond','Indogrosir Makassar'],
   'Gorontalo': ['Indogrosir Gorontalo'],
@@ -24673,7 +24674,10 @@ function spgNext(step){
     SG.date=document.getElementById('spg-date-input').value;
     const ss=document.getElementById('spg-store-sel');
     ss.innerHTML='<option value="">— Pilih Toko —</option>';
-    (SPG_STORES_BY_AREA[SG.area]||[]).forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; ss.appendChild(o); });
+    const isIndogrosirSpg=SPG_INDOGROSIR_ONLY_NAMES.some(n=>_sameName(n,SG.nama));
+    let storeList=SPG_STORES_BY_AREA[SG.area]||[];
+    if(isIndogrosirSpg)storeList=storeList.filter(n=>/indogrosir/i.test(n));
+    storeList.forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; ss.appendChild(o); });
   } else if(step===1){
     if(!spgCheck(1)) return;
     const box=document.getElementById('spg-store-box');
