@@ -1300,11 +1300,12 @@ function switchSubTab(main,sub){
     ['log','urgent'].forEach(s=>{const el=document.getElementById('stab-ned-'+s);if(el)el.classList.toggle('on',s===sub);});
   }else if(main==='spg'){
     SUBTAB_SPG=sub;
-    ['log','report','store','rank'].forEach(s=>{const el=document.getElementById('stab-spg-'+s);if(el)el.classList.toggle('on',s===sub);});
+    ['log','report','store','rank','indogrosir'].forEach(s=>{const el=document.getElementById('stab-spg-'+s);if(el)el.classList.toggle('on',s===sub);});
     const lw=document.getElementById('spg-log-wrap');if(lw)lw.style.display=sub==='log'?'block':'none';
     const rw=document.getElementById('spg-report-wrap');if(rw)rw.style.display=sub==='report'?'block':'none';
     const stw=document.getElementById('spg-store-wrap');if(stw)stw.style.display=sub==='store'?'block':'none';
     const rkw=document.getElementById('spg-rank-wrap');if(rkw)rkw.style.display=sub==='rank'?'block':'none';
+    const igw=document.getElementById('spg-indogrosir-wrap');if(igw)igw.style.display=sub==='indogrosir'?'block':'none';
   }else{
     SUBTAB_BELI=sub;
     ['log','analisis'].forEach(s=>{const el=document.getElementById('stab-beli-'+s);if(el)el.classList.toggle('on',s===sub);});
@@ -1373,6 +1374,7 @@ function render(){
     if(SUBTAB_SPG==='log')renderSpgLog(spgF);
     else if(SUBTAB_SPG==='report')renderSpgReport(spgF);
     else if(SUBTAB_SPG==='store')renderSpgPerStore(spgF);
+    else if(SUBTAB_SPG==='indogrosir')renderSpgIndogrosir(spgF);
     else renderSpgRank(spgF);
   }
 }
@@ -2012,6 +2014,43 @@ function spgRankSection(rows,area,cfg){
     html+='</tbody></table>';
   }
   return html+'</div></div>';
+}
+function spgIndoNsAll(name){ return /^NS /i.test(name)&&/PLS/i.test(name); }
+function spgIndoHiloAll(name){ return /^HI LO (DRINK|SCHOOL)/i.test(name)&&/PLS/i.test(name); }
+function spgIndoPrioMatch(name,area){ return (area==='Manado'||area==='Gorontalo')?/AMERICAN SWEET ORANGE/i.test(name):/JERUK PERAS/i.test(name); }
+function renderSpgIndogrosir(spgF){
+  const th=document.getElementById('table-head-spg-indogrosir');
+  const tb=document.getElementById('table-body-spg-indogrosir');
+  const tf=document.getElementById('tfoot-spg-indogrosir');
+  if(!th)return;
+  th.innerHTML='<tr><th>Toko</th><th>Area</th><th>Laporan</th><th>All NS</th><th>NS Tea</th><th>NS Rasa-rasa</th><th>Hi Lo</th><th>Total Omzet</th></tr>';
+  const rows=spgF.filter(r=>/indogrosir/i.test(r.store||''));
+  const byStore={};
+  rows.forEach(r=>{
+    const key=r.store||'?';
+    if(!byStore[key])byStore[key]={store:r.store,area:r.area,laporan:0,nsAllRc:0,nsAllOmz:0,nsTeaRc:0,nsTeaOmz:0,nsRasaRc:0,nsRasaOmz:0,hiloRc:0,hiloOmz:0,total:0};
+    const g=byStore[key];
+    g.laporan++; g.total+=r.totalOmzet||0;
+    Object.entries(r.items||{}).forEach(([name,{qty,omzet}])=>{
+      if(spgIndoNsAll(name)){
+        g.nsAllRc+=qty; g.nsAllOmz+=omzet;
+        if(/TEA/i.test(name)){ g.nsTeaRc+=qty; g.nsTeaOmz+=omzet; }
+        else if(!spgIndoPrioMatch(name,r.area)){ g.nsRasaRc+=qty; g.nsRasaOmz+=omzet; }
+      } else if(spgIndoHiloAll(name)){ g.hiloRc+=qty; g.hiloOmz+=omzet; }
+    });
+  });
+  const list=Object.values(byStore).sort((a,b)=>b.total-a.total);
+  tb.innerHTML=list.length?list.map(g=>`<tr>
+    <td class="td-main">${g.store}</td>
+    <td class="td-dim">${g.area||'—'}</td>
+    <td><span class="tag b sm">${g.laporan}</span></td>
+    <td>${g.nsAllRc?g.nsAllRc+' rc<br><span style="color:var(--t3);font-size:11px">'+rp(g.nsAllOmz)+'</span>':'—'}</td>
+    <td>${g.nsTeaRc?g.nsTeaRc+' rc<br><span style="color:var(--t3);font-size:11px">'+rp(g.nsTeaOmz)+'</span>':'—'}</td>
+    <td>${g.nsRasaRc?g.nsRasaRc+' rc<br><span style="color:var(--t3);font-size:11px">'+rp(g.nsRasaOmz)+'</span>':'—'}</td>
+    <td>${g.hiloRc?g.hiloRc+' rc<br><span style="color:var(--t3);font-size:11px">'+rp(g.hiloOmz)+'</span>':'—'}</td>
+    <td class="td-main" style="color:var(--green)">${g.total?rp(g.total):'—'}</td>
+  </tr>`).join(''):'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:32px">Belum ada laporan dari toko Indogrosir untuk periode/filter ini.</td></tr>';
+  if(tf)tf.innerHTML=list.length?'<span style="color:var(--t3);font-size:11px">'+list.length+' toko Indogrosir · '+rows.length+' laporan</span>':'';
 }
 function renderSpgRank(spgF){
   const host=document.getElementById('spg-rank-body');
