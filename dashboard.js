@@ -3319,7 +3319,9 @@ function mdsAreaOf(name){
 }
 function computeScorecardRows(){
   const beliF=filtered(BELI_ALL);
-  return allMdsNames().map(name=>{
+  const fa=document.getElementById('f-area').value.toLowerCase();
+  const names=fa?allMdsNames().filter(n=>(mdsAreaOf(n)||'').toLowerCase().includes(fa)):allMdsNames();
+  return names.map(name=>{
     const beli=beliF.filter(r=>mdsMatch(r.mds,name));
     const trx=beli.length;
     const stores=new Set(beli.map(r=>r.store||'?')).size;
