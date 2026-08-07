@@ -2475,15 +2475,19 @@ function buildStockCombos(){
 }
 function populateFcSelects(){
   buildStockCombos();
-  const fill=(id,type)=>{
+  // Both dropdowns list every combo regardless of type (awal or akhir) — a user may
+  // legitimately want to compare two "Awal" entries (e.g. month-over-month) instead
+  // of always pairing an Awal with an Akhir, so the type is shown as a label prefix
+  // rather than used to filter the list.
+  const fill=(id)=>{
     const sel=document.getElementById(id);
     if(!sel)return;
     const cur=sel.value;
-    const opts=_FC_COMBOS.map((c,i)=>({c,i})).filter(({c})=>c.type===type);
-    sel.innerHTML='<option value="">— Pilih —</option>'+opts.map(({c,i})=>`<option value="${i}" ${String(i)===cur?'selected':''}>${c.store} · ${monthLabel(c.mk)} · ${rp(c.value)}</option>`).join('');
+    const opts=_FC_COMBOS.map((c,i)=>({c,i}));
+    sel.innerHTML='<option value="">— Pilih —</option>'+opts.map(({c,i})=>`<option value="${i}" ${String(i)===cur?'selected':''}>[${c.type==='awal'?'Awal':'Akhir'}] ${c.store} · ${monthLabel(c.mk)} · ${rp(c.value)}</option>`).join('');
   };
-  fill('fc-awal','awal');
-  fill('fc-akhir','akhir');
+  fill('fc-awal');
+  fill('fc-akhir');
   const tsel=document.getElementById('fc-transit-select');
   if(tsel){
     const cur=tsel.value;
