@@ -3347,6 +3347,42 @@ function toggleBeliDetail(tr, bid){
 }
 
 // ── EXPORT CSV ────────────────────────────────────────────────────────────────
+function openExportKosongModal(){
+  const areas=Object.keys(MDS_BY_AREA).sort();
+  const opts=areas.map(a=>`<option value="${a}">${a}</option>`).join('');
+  const body=`
+    <div style="padding:4px 0">
+      <div style="font-size:12px;color:var(--t2);margin-bottom:10px">Pilih area untuk export daftar item yang kosong (tidak ada) di kunjungan terakhir tiap toko.</div>
+      <select class="fi" id="export-kosong-area" style="width:100%;margin-bottom:14px"><option value="">— Pilih Area —</option>${opts}</select>
+      <button class="exp-btn" style="width:100%" onclick="exportKosongCsv()">⬇ Export CSV</button>
+    </div>`;
+  pjShowModal('Export Item Belum Masuk',body);
+}
+function exportKosongCsv(){
+  const area=document.getElementById('export-kosong-area')?.value;
+  if(!area){alert('Pilih area dulu.');return;}
+  const rows=RKA_ALL.filter(r=>(r.area||'').trim().toLowerCase()===area.toLowerCase());
+  const lastByStore={};
+  rows.forEach(r=>{
+    const s=r.store||'—';
+    if(!lastByStore[s]||r.timestamp>lastByStore[s].timestamp)lastByStore[s]=r;
+  });
+  const q=s=>`"${(s||'').toString().replace(/"/g,'""')}"`;
+  let csv='Nama Toko,Item Kosong,Tanggal Update Terakhir\n';
+  let n=0;
+  Object.values(lastByStore).forEach(r=>{
+    if(!r.items)return;
+    const tgl=r.timestamp.toLocaleDateString('id-ID',{day:'numeric',month:'short'});
+    Object.entries(r.items).forEach(([name,v])=>{
+      if(v===false){ csv+=[q(r.store),q(name),tgl].join(',')+'\n'; n++; }
+    });
+  });
+  if(!n){alert('Tidak ada item kosong ditemukan untuk area '+area+'.');return;}
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`Item_Belum_Masuk_${area}_${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(url);
+  document.getElementById('pjmds-modal').classList.add('hidden');
+}
 function exportCSV(){
   const rkaF=filtered(RKA_ALL),beliF=filtered(BELI_ALL),stockF=filtered(STOCK_ALL);
   const q=s=>`"${(s||'').toString().replace(/"/g,'""')}"`;
