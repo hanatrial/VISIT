@@ -2018,6 +2018,18 @@ function spgRankSection(rows,area,cfg){
 function spgIndoNsAll(name){ return /^NS /i.test(name)&&/PLS/i.test(name); }
 function spgIndoHiloAll(name){ return /^HI LO (DRINK|SCHOOL)/i.test(name)&&/PLS/i.test(name); }
 function spgIndoPrioMatch(name,area){ return (area==='Manado'||area==='Gorontalo')?/AMERICAN SWEET ORANGE/i.test(name):/JERUK PERAS/i.test(name); }
+let SPG_INDOGROSIR_SEL='';
+let SPG_INDOGROSIR_STORES={};
+function selectSpgIndogrosirStore(key){ SPG_INDOGROSIR_SEL=key; renderSpgIndogrosirDetail(); document.querySelectorAll('#table-body-spg-indogrosir tr').forEach(tr=>tr.classList.toggle('sel',tr.dataset.key===key)); }
+function spgIndoItemCat(name,area){
+  if(spgIndoNsAll(name)){
+    if(/TEA/i.test(name))return'NS Tea';
+    if(spgIndoPrioMatch(name,area))return'Item Prioritas';
+    return'NS Rasa-rasa';
+  }
+  if(spgIndoHiloAll(name))return'Hi Lo';
+  return null;
+}
 function renderSpgIndogrosir(spgF){
   const th=document.getElementById('table-head-spg-indogrosir');
   const tb=document.getElementById('table-body-spg-indogrosir');
@@ -2028,19 +2040,26 @@ function renderSpgIndogrosir(spgF){
   const byStore={};
   rows.forEach(r=>{
     const key=r.store||'?';
-    if(!byStore[key])byStore[key]={store:r.store,area:r.area,laporan:0,nsAllRc:0,nsAllOmz:0,nsTeaRc:0,nsTeaOmz:0,nsRasaRc:0,nsRasaOmz:0,hiloRc:0,hiloOmz:0,total:0};
+    if(!byStore[key])byStore[key]={store:r.store,area:r.area,laporan:0,nsAllRc:0,nsAllOmz:0,nsTeaRc:0,nsTeaOmz:0,nsRasaRc:0,nsRasaOmz:0,hiloRc:0,hiloOmz:0,total:0,items:{}};
     const g=byStore[key];
     g.laporan++; g.total+=r.totalOmzet||0;
     Object.entries(r.items||{}).forEach(([name,{qty,omzet}])=>{
-      if(spgIndoNsAll(name)){
-        g.nsAllRc+=qty; g.nsAllOmz+=omzet;
-        if(/TEA/i.test(name)){ g.nsTeaRc+=qty; g.nsTeaOmz+=omzet; }
-        else if(!spgIndoPrioMatch(name,r.area)){ g.nsRasaRc+=qty; g.nsRasaOmz+=omzet; }
-      } else if(spgIndoHiloAll(name)){ g.hiloRc+=qty; g.hiloOmz+=omzet; }
+      const cat=spgIndoItemCat(name,r.area);
+      if(!cat)return;
+      if(cat==='NS Tea'){ g.nsAllRc+=qty; g.nsAllOmz+=omzet; g.nsTeaRc+=qty; g.nsTeaOmz+=omzet; }
+      else if(cat==='Item Prioritas'){ g.nsAllRc+=qty; g.nsAllOmz+=omzet; }
+      else if(cat==='NS Rasa-rasa'){ g.nsAllRc+=qty; g.nsAllOmz+=omzet; g.nsRasaRc+=qty; g.nsRasaOmz+=omzet; }
+      else if(cat==='Hi Lo'){ g.hiloRc+=qty; g.hiloOmz+=omzet; }
+      if(!g.items[cat])g.items[cat]={};
+      if(!g.items[cat][name])g.items[cat][name]={qty:0,omzet:0};
+      g.items[cat][name].qty+=qty; g.items[cat][name].omzet+=omzet;
     });
   });
+  SPG_INDOGROSIR_STORES=byStore;
   const list=Object.values(byStore).sort((a,b)=>b.total-a.total);
-  tb.innerHTML=list.length?list.map(g=>`<tr>
+  if(SPG_INDOGROSIR_SEL&&!byStore[SPG_INDOGROSIR_SEL])SPG_INDOGROSIR_SEL='';
+  if(!SPG_INDOGROSIR_SEL&&list.length)SPG_INDOGROSIR_SEL=list[0].store;
+  tb.innerHTML=list.length?list.map(g=>`<tr class="clickrow ${g.store===SPG_INDOGROSIR_SEL?'sel':''}" data-key="${_escJs(g.store)}" onclick="selectSpgIndogrosirStore('${_escJs(g.store)}')">
     <td class="td-main">${g.store}</td>
     <td class="td-dim">${g.area||'—'}</td>
     <td><span class="tag b sm">${g.laporan}</span></td>
@@ -2050,7 +2069,28 @@ function renderSpgIndogrosir(spgF){
     <td>${g.hiloRc?g.hiloRc+' rc<br><span style="color:var(--t3);font-size:11px">'+rp(g.hiloOmz)+'</span>':'—'}</td>
     <td class="td-main" style="color:var(--green)">${g.total?rp(g.total):'—'}</td>
   </tr>`).join(''):'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:32px">Belum ada laporan dari toko Indogrosir untuk periode/filter ini.</td></tr>';
-  if(tf)tf.innerHTML=list.length?'<span style="color:var(--t3);font-size:11px">'+list.length+' toko Indogrosir · '+rows.length+' laporan</span>':'';
+  if(tf)tf.innerHTML=list.length?'<span style="color:var(--t3);font-size:11px">'+list.length+' toko Indogrosir · '+rows.length+' laporan · klik baris untuk rincian per item</span>':'';
+  renderSpgIndogrosirDetail();
+}
+function renderSpgIndogrosirDetail(){
+  const det=document.getElementById('spg-indogrosir-detail');
+  if(!det)return;
+  const g=SPG_INDOGROSIR_STORES[SPG_INDOGROSIR_SEL];
+  if(!g){ det.innerHTML=''; return; }
+  const cats=['Item Prioritas','NS Tea','NS Rasa-rasa','Hi Lo'];
+  let html=`<div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">Rincian Item — ${g.store}</div>`;
+  html+='<div class="bento" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px">';
+  cats.forEach(cat=>{
+    const items=Object.entries(g.items[cat]||{}).sort((a,b)=>b[1].omzet-a[1].omzet);
+    const subtotal=items.reduce((s,[,v])=>s+v.omzet,0);
+    html+='<div class="panel-shell"><div class="panel-body">';
+    html+=`<div style="font-size:12px;font-weight:700;color:var(--pink);margin-bottom:8px">${cat} <span style="color:var(--t3);font-weight:400">· ${subtotal?rp(subtotal):'—'}</span></div>`;
+    html+='<table><thead><tr><th>Item</th><th>Qty</th><th>Omzet</th></tr></thead><tbody>';
+    html+=items.length?items.map(([name,v])=>`<tr><td style="font-size:11px">${name}</td><td class="td-dim">${v.qty} rc</td><td style="font-weight:700;color:var(--green);font-size:11px">${rp(v.omzet)}</td></tr>`).join(''):'<tr><td colspan="3" style="text-align:center;color:var(--t3);padding:12px;font-size:11px">Tidak ada item</td></tr>';
+    html+='</tbody></table></div></div>';
+  });
+  html+='</div>';
+  det.innerHTML=html;
 }
 function renderSpgRank(spgF){
   const host=document.getElementById('spg-rank-body');
