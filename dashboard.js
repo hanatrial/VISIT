@@ -2020,7 +2020,29 @@ function spgIndoHiloAll(name){ return /^HI LO (DRINK|SCHOOL)/i.test(name)&&/PLS/
 function spgIndoPrioMatch(name,area){ return (area==='Manado'||area==='Gorontalo')?/AMERICAN SWEET ORANGE/i.test(name):/JERUK PERAS/i.test(name); }
 let SPG_INDOGROSIR_SEL='';
 let SPG_INDOGROSIR_STORES={};
-function selectSpgIndogrosirStore(key){ SPG_INDOGROSIR_SEL=key; renderSpgIndogrosirDetail(); document.querySelectorAll('#table-body-spg-indogrosir tr').forEach(tr=>tr.classList.toggle('sel',tr.dataset.key===key)); }
+function selectSpgIndogrosirStore(key){ SPG_INDOGROSIR_SEL=key; openSpgIndogrosirDateModal(key); }
+function openSpgIndogrosirDateModal(key){
+  const g=SPG_INDOGROSIR_STORES[key];
+  if(!g)return;
+  const dates=Object.keys(g.byDate).sort();
+  const maxOf=field=>dates.reduce((best,d)=>g.byDate[d][field]>(g.byDate[best]?g.byDate[best][field]:-1)?d:best,dates[0]);
+  const maxDates={nsAllOmz:maxOf('nsAllOmz'),nsTeaOmz:maxOf('nsTeaOmz'),nsRasaOmz:maxOf('nsRasaOmz'),hiloOmz:maxOf('hiloOmz')};
+  const fmt=d=>new Date(d+'T12:00:00').toLocaleDateString('id-ID',{day:'numeric',month:'short'});
+  const cell=(d,field,rcField)=>{
+    const v=g.byDate[d];
+    const isMax=maxDates[field]===d&&v[field]>0;
+    const style=isMax?'background:rgba(16,185,129,.15);border-radius:8px;padding:4px 8px;color:var(--green);font-weight:700':'';
+    return`<td><div style="${style}">${v[rcField]?v[rcField]+' rc<br><span style="font-size:11px;opacity:.8">'+rp(v[field])+'</span>':'—'}${isMax&&v[rcField]?' 🏆':''}</div></td>`;
+  };
+  let body='<table><thead><tr><th>Tanggal</th><th>All NS</th><th>NS Tea</th><th>NS Rasa-rasa</th><th>Hi Lo</th></tr></thead><tbody>';
+  body+=dates.map(d=>`<tr><td class="td-main">${fmt(d)}</td>${cell(d,'nsAllOmz','nsAllRc')}${cell(d,'nsTeaOmz','nsTeaRc')}${cell(d,'nsRasaOmz','nsRasaRc')}${cell(d,'hiloOmz','hiloRc')}</tr>`).join('');
+  body+='</tbody></table>';
+  body+='<div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center">';
+  body+='<span style="font-size:11px;color:var(--t3)">🏆 = tanggal tertinggi di kategori tsb</span>';
+  body+=`<button class="exp-btn" onclick="openSpgIndogrosirItemModal('${_escJs(key)}')">📦 Rincian per Item</button>`;
+  body+='</div>';
+  pjShowModal('📅 Detail per Tanggal — '+g.store,body);
+}
 function spgIndoItemCat(name,area){
   if(spgIndoNsAll(name)){
     if(/TEA/i.test(name))return'NS Tea';
@@ -2040,16 +2062,19 @@ function renderSpgIndogrosir(spgF){
   const byStore={};
   rows.forEach(r=>{
     const key=r.store||'?';
-    if(!byStore[key])byStore[key]={store:r.store,area:r.area,laporan:0,nsAllRc:0,nsAllOmz:0,nsTeaRc:0,nsTeaOmz:0,nsRasaRc:0,nsRasaOmz:0,hiloRc:0,hiloOmz:0,total:0,items:{}};
+    if(!byStore[key])byStore[key]={store:r.store,area:r.area,laporan:0,nsAllRc:0,nsAllOmz:0,nsTeaRc:0,nsTeaOmz:0,nsRasaRc:0,nsRasaOmz:0,hiloRc:0,hiloOmz:0,total:0,items:{},byDate:{}};
     const g=byStore[key];
     g.laporan++; g.total+=r.totalOmzet||0;
+    const dkey=r.tanggalJualan||r.timestamp.toISOString().slice(0,10);
+    if(!g.byDate[dkey])g.byDate[dkey]={nsAllRc:0,nsAllOmz:0,nsTeaRc:0,nsTeaOmz:0,nsRasaRc:0,nsRasaOmz:0,hiloRc:0,hiloOmz:0};
+    const gd=g.byDate[dkey];
     Object.entries(r.items||{}).forEach(([name,{qty,omzet}])=>{
       const cat=spgIndoItemCat(name,r.area);
       if(!cat)return;
-      if(cat==='NS Tea'){ g.nsAllRc+=qty; g.nsAllOmz+=omzet; g.nsTeaRc+=qty; g.nsTeaOmz+=omzet; }
-      else if(cat==='Item Prioritas'){ g.nsAllRc+=qty; g.nsAllOmz+=omzet; }
-      else if(cat==='NS Rasa-rasa'){ g.nsAllRc+=qty; g.nsAllOmz+=omzet; g.nsRasaRc+=qty; g.nsRasaOmz+=omzet; }
-      else if(cat==='Hi Lo'){ g.hiloRc+=qty; g.hiloOmz+=omzet; }
+      if(cat==='NS Tea'){ g.nsAllRc+=qty; g.nsAllOmz+=omzet; g.nsTeaRc+=qty; g.nsTeaOmz+=omzet; gd.nsAllRc+=qty; gd.nsAllOmz+=omzet; gd.nsTeaRc+=qty; gd.nsTeaOmz+=omzet; }
+      else if(cat==='Item Prioritas'){ g.nsAllRc+=qty; g.nsAllOmz+=omzet; gd.nsAllRc+=qty; gd.nsAllOmz+=omzet; }
+      else if(cat==='NS Rasa-rasa'){ g.nsAllRc+=qty; g.nsAllOmz+=omzet; g.nsRasaRc+=qty; g.nsRasaOmz+=omzet; gd.nsAllRc+=qty; gd.nsAllOmz+=omzet; gd.nsRasaRc+=qty; gd.nsRasaOmz+=omzet; }
+      else if(cat==='Hi Lo'){ g.hiloRc+=qty; g.hiloOmz+=omzet; gd.hiloRc+=qty; gd.hiloOmz+=omzet; }
       if(!g.items[cat])g.items[cat]={};
       if(!g.items[cat][name])g.items[cat][name]={qty:0,omzet:0};
       g.items[cat][name].qty+=qty; g.items[cat][name].omzet+=omzet;
@@ -2069,17 +2094,11 @@ function renderSpgIndogrosir(spgF){
     <td>${g.hiloRc?g.hiloRc+' rc<br><span style="color:var(--t3);font-size:11px">'+rp(g.hiloOmz)+'</span>':'—'}</td>
     <td class="td-main" style="color:var(--green)">${g.total?rp(g.total):'—'}</td>
   </tr>`).join(''):'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:32px">Belum ada laporan dari toko Indogrosir untuk periode/filter ini.</td></tr>';
-  if(tf)tf.innerHTML=list.length?'<span style="color:var(--t3);font-size:11px">'+list.length+' toko Indogrosir · '+rows.length+' laporan · klik baris untuk rincian per item</span>':'';
-  renderSpgIndogrosirDetail();
+  if(tf)tf.innerHTML=list.length?'<span style="color:var(--t3);font-size:11px">'+list.length+' toko Indogrosir · '+rows.length+' laporan · klik baris untuk detail per tanggal</span>':'';
 }
-function renderSpgIndogrosirDetail(){
-  const det=document.getElementById('spg-indogrosir-detail');
-  if(!det)return;
-  const g=SPG_INDOGROSIR_STORES[SPG_INDOGROSIR_SEL];
-  if(!g){ det.innerHTML=''; return; }
+function spgIndogrosirItemBreakdownHtml(g){
   const cats=['Item Prioritas','NS Tea','NS Rasa-rasa','Hi Lo'];
-  let html=`<div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">Rincian Item — ${g.store}</div>`;
-  html+='<div class="bento" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px">';
+  let html='<div class="bento" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px">';
   cats.forEach(cat=>{
     const items=Object.entries(g.items[cat]||{}).sort((a,b)=>b[1].omzet-a[1].omzet);
     const subtotal=items.reduce((s,[,v])=>s+v.omzet,0);
@@ -2090,7 +2109,12 @@ function renderSpgIndogrosirDetail(){
     html+='</tbody></table></div></div>';
   });
   html+='</div>';
-  det.innerHTML=html;
+  return html;
+}
+function openSpgIndogrosirItemModal(key){
+  const g=SPG_INDOGROSIR_STORES[key];
+  if(!g)return;
+  pjShowModal('📦 Rincian Item — '+g.store,spgIndogrosirItemBreakdownHtml(g));
 }
 function renderSpgRank(spgF){
   const host=document.getElementById('spg-rank-body');
