@@ -24763,7 +24763,20 @@ function spgGroupOf(name){
 }
 const SPG_GROUP_LABEL_OVERRIDE={'TS OILS':'TS Merah','TS BERAS':'TS Noodle'};
 function spgGroupLabel(g){ return SPG_GROUP_LABEL_OVERRIDE[g]||g; }
+function spgGroupItems(g){ const grp=STOCK_PRODUCTS.find(x=>x.group===g); return grp?grp.items:[]; }
+const SPG_INDOGROSIR_GROUPS=[
+  {label:'NS PLS', items: spgGroupItems('NS').filter(n=>/PLS/i.test(n)&&!/\bREF\b/i.test(n)&&!/BAG/i.test(n)&&!/\bFC\b/i.test(n))},
+  {label:'HI LO DRINK PLS', items: spgGroupItems('HILO DRINK PLS')},
+  {label:'HI LO SCHOOL PLS', items: spgGroupItems('HILO SCHOOL PLS')},
+  {label:'NS RTD', items:['NS RTD JAMBU BIJI 24TPKX200ML','NS RTD SQUEEZED ORANGE 24TPKX200ML','NS RTD JERUK MADU 24TPKX200ML']},
+  {label:'HI LO BOX', items:['HI LO ACTIVE CHOCOLATE 12DX250G','HI LO ACTIVE CHOCOLATE 12DX500G','HI LO GOLD CHOCOLATE 12DX250G','HI LO GOLD CHOCOLATE 12DX500G','HI LO GOLD ORIGINAL 12DX500G','HI LO GOLD VANILLA 12DX500G','HI LO SCHOOL CHOCOLATE 12DX250G','HI LO SCHOOL CHOCOLATE 12DX500G','HI LO SCHOOL CHOCOLATE 6DX750G','HI LO SCHOOL HONEY 12DX500G','HI LO TEEN CHOCOLATE 12DX500G','HI LO TEEN CHOCOLATE 6DX750G','HI LO TEEN VANILLA CARAMEL 12DX250G','HI LO TEEN VANILLA CARAMEL 6DX750G']},
+  {label:'TS SWT', items: spgGroupItems('TS SWT').filter(n=>['TS DIABETAMIL SWT PLS 10PX80SX1G','TS SWT CLASSIC IND 12PX125SX2.5G','TS SWT CLASSIC 12DX100SX2.5G','TS SWT CLASSIC 24DX50SX2.5G','TS SWT CLASSIC 24DX25SX2.5G','TS SWT DIABTX 12DX100SX1.8G','TS SWT DIABTX 24DX50SX1.8G','TS SWT DIABTX 12DX25SX1.8G','TS SWT DIABTX PLS 10PX80SX1.8G'].includes(n))},
+  {label:'TS MILK', items:['TS DIABETAMIL SWT 24DX50SX1G','TS LOW FAT MILK VANILLA 12DX180G']}
+];
+function spgIndogrosirItems(){ return SPG_INDOGROSIR_GROUPS.flatMap(g=>g.items); }
+function spgIndogrosirGroupOf(name){ const g=SPG_INDOGROSIR_GROUPS.find(g=>g.items.includes(name)); return g?g.label:''; }
 function spgOrderedItems(){
+  if(/indogrosir/i.test(SG.store||'')) return spgIndogrosirItems();
   const prio=new Set(SPG_PRIORITY_ITEMS);
   const rest=[];
   STOCK_PRODUCTS.forEach(group=>group.items.forEach(name=>{ if(!prio.has(name)) rest.push(name); }));
@@ -24773,9 +24786,18 @@ function renderSpgItems(){
   const list=document.getElementById('spg-item-list');
   list.innerHTML='';
   const order=spgOrderedItems();
+  const isIndogrosir=/indogrosir/i.test(SG.store||'');
   let lastGroup=null;
   order.forEach((name,fi)=>{
-    if(fi<SPG_PRIORITY_ITEMS.length){
+    if(isIndogrosir){
+      const g=spgIndogrosirGroupOf(name);
+      if(g!==lastGroup){
+        const hdr=document.createElement('div');
+        hdr.className='qty-group-hdr'; hdr.textContent=g;
+        list.appendChild(hdr);
+        lastGroup=g;
+      }
+    } else if(fi<SPG_PRIORITY_ITEMS.length){
       if(fi===0){
         const hdr=document.createElement('div');
         hdr.className='qty-group-hdr'; hdr.style.color='#F59E0B'; hdr.textContent='⭐ PRIORITAS';
