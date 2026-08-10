@@ -2117,13 +2117,11 @@ function openSpgIndogrosirItemModal(key){
   pjShowModal('📦 Rincian Item — '+g.store,spgIndogrosirItemBreakdownHtml(g));
 }
 /* Ranking Jualan groups by a "ranking area" rather than the raw r.area field:
-   - any store containing "indogrosir" goes into its own combined "Indogrosir"
-     bucket regardless of which area it's actually in, since those are tracked as
-     one group rather than split per-area like everyone else (same /indogrosir/i
-     detection used by renderSpgIndogrosir's own store filter, for consistency).
+   - stores containing "indogrosir" are excluded entirely — they have their own
+     dedicated 🏪 Indogrosir tab (renderSpgIndogrosir) and shouldn't also show up
+     here (same /indogrosir/i detection used by renderSpgIndogrosir's own filter).
    - Gorontalo is folded into Manado as a combined "Manado-Gorontalo" bucket. */
 function spgRankAreaOf(r){
-  if(/indogrosir/i.test(r.store||''))return'Indogrosir';
   const a=(r.area||'?').trim();
   if(a==='Gorontalo'||a==='Manado')return'Manado-Gorontalo';
   return a;
@@ -2131,21 +2129,22 @@ function spgRankAreaOf(r){
 function renderSpgRank(spgF){
   const host=document.getElementById('spg-rank-body');
   if(!host)return;
-  // Areas the user asked for first, then any other area that has data, Indogrosir last
-  const present=[...new Set(spgF.map(spgRankAreaOf))];
-  const rest=present.filter(a=>!SPG_RANK_AREAS.includes(a)&&a!=='Indogrosir').sort();
-  const areas=SPG_RANK_AREAS.concat(rest).concat(present.includes('Indogrosir')?['Indogrosir']:[]);
+  const spgFNoIndo=spgF.filter(r=>!/indogrosir/i.test(r.store||''));
+  // Areas the user asked for first, then any other area that has data
+  const present=[...new Set(spgFNoIndo.map(spgRankAreaOf))];
+  const rest=present.filter(a=>!SPG_RANK_AREAS.includes(a)).sort();
+  const areas=SPG_RANK_AREAS.concat(rest);
   const SPG_CFG={icon:'🏆',title:'SPG',unit:'SPG',entityHead:'Nama SPG',otherHead:'Toko',
     entityOf:r=>r.nama,otherOf:r=>r.store};
   const TOKO_CFG={icon:'🏪',title:'Toko',unit:'toko',entityHead:'Nama Toko',otherHead:'SPG',
     entityOf:r=>r.store,otherOf:r=>r.nama};
   let html='';
   areas.forEach(area=>{
-    const rows=spgF.filter(r=>spgRankAreaOf(r)===area);
+    const rows=spgFNoIndo.filter(r=>spgRankAreaOf(r)===area);
     html+=spgRankSection(rows,area,SPG_CFG);
   });
   areas.forEach(area=>{
-    const rows=spgF.filter(r=>spgRankAreaOf(r)===area);
+    const rows=spgFNoIndo.filter(r=>spgRankAreaOf(r)===area);
     html+=spgRankSection(rows,area,TOKO_CFG);
   });
   host.innerHTML=html;
