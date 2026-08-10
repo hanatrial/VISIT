@@ -2059,6 +2059,14 @@ function renderSpgIndogrosir(spgF){
   if(!th)return;
   th.innerHTML='<tr><th>Toko</th><th>Area</th><th>Laporan</th><th>All NS</th><th>NS Tea</th><th>NS Rasa-rasa</th><th>Hi Lo</th><th>Total Omzet</th></tr>';
   const rows=spgF.filter(r=>/indogrosir/i.test(r.store||''));
+  const rankHost=document.getElementById('spg-indogrosir-rank-body');
+  if(rankHost){
+    const SPG_CFG={icon:'🏆',title:'SPG',unit:'SPG',entityHead:'Nama SPG',otherHead:'Toko',
+      entityOf:r=>r.nama,otherOf:r=>r.store};
+    const TOKO_CFG={icon:'🏪',title:'Toko',unit:'toko',entityHead:'Nama Toko',otherHead:'SPG',
+      entityOf:r=>r.store,otherOf:r=>r.nama};
+    rankHost.innerHTML=spgRankSection(rows,'Indogrosir',SPG_CFG)+spgRankSection(rows,'Indogrosir',TOKO_CFG);
+  }
   const byStore={};
   rows.forEach(r=>{
     const key=r.store||'?';
