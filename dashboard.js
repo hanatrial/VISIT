@@ -20,7 +20,7 @@ function ensureXlsx(){
 }
 /* dashboard-ops.html (Stock Sell Out / SPG) has its own PIN, separate from the
    main Visit & Penjualan dashboard — detected via a nav tab unique to that shell. */
-const DASH_PIN=document.getElementById('ntab-stock')?'SPG2027':'NFI2026';
+const DASH_PIN=document.getElementById('ntab-stock')?'SPG2026':'NFI2026';
 const DASH_PIN_MDS_ONLY='MDS2026';
 const MDS_BY_AREA={
   'Bau Bau':['Rizal'],
