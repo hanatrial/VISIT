@@ -1,5 +1,5 @@
 // Route old getElementById('table-head/body') to correct suffixed IDs — cache-proof patch
-(function(){const _g=document.getElementById.bind(document);document.getElementById=function(id){const T=typeof TAB!=='undefined'?TAB:'rka';if(id==='table-head')return _g(T==='beli'?'table-head-beli':'table-head-rka')||_g(id);if(id==='table-body')return _g(T==='beli'?'table-body-beli':'table-body-rka')||_g(id);if(id==='tfoot')return _g(T==='beli'?'tfoot-beli':T==='stock'?'tfoot-stock':'tfoot-rka')||_g(id);return _g(id);};})();
+(function(){const _g=document.getElementById.bind(document);document.getElementById=function(id){let T='rka';try{T=TAB;}catch(e){}if(id==='table-head')return _g(T==='beli'?'table-head-beli':'table-head-rka')||_g(id);if(id==='table-body')return _g(T==='beli'?'table-body-beli':'table-body-rka')||_g(id);if(id==='tfoot')return _g(T==='beli'?'tfoot-beli':T==='stock'?'tfoot-stock':'tfoot-rka')||_g(id);return _g(id);};})();
 
 /* Lazy-load the spreadsheet library only when an import/export feature actually needs it,
    instead of eagerly parsing ~1MB on every page load (iOS Safari has a tight per-tab
