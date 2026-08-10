@@ -19,9 +19,14 @@ function ensureXlsx(){
   return _xlsxReadyPromise;
 }
 /* dashboard-ops.html (Stock Sell Out / SPG) has its own PIN, separate from the
-   main Visit & Penjualan dashboard — detected via a nav tab unique to that shell. */
-const DASH_PIN=document.getElementById('ntab-stock')?'SPG2026':'NFI2026';
+   main Visit & Penjualan dashboard — detected via a nav tab unique to that shell.
+   PIN_SCOPE also namespaces the sessionStorage unlock key below so logging into
+   one dashboard doesn't silently unlock the other (both share the same origin,
+   hanatrial.github.io, so sessionStorage would otherwise leak across them). */
+const IS_OPS_DASH=!!document.getElementById('ntab-stock');
+const DASH_PIN=IS_OPS_DASH?'SPG2026':'NFI2026';
 const DASH_PIN_MDS_ONLY='MDS2026';
+const PIN_SCOPE=IS_OPS_DASH?'ops':'main';
 const MDS_BY_AREA={
   'Bau Bau':['Rizal'],
   'Bone':['A. Arwandi Amrah','M. Murdiono Arma','Amal Akbar'],
@@ -114,8 +119,8 @@ function checkPin(){
   if(val===DASH_PIN||val===DASH_PIN_MDS_ONLY){
     RESTRICT_TO_PJMDS=(val===DASH_PIN_MDS_ONLY);
     try{
-      sessionStorage.setItem('mds_dash_pin_ok','1');
-      sessionStorage.setItem('mds_dash_pin_mode',RESTRICT_TO_PJMDS?'mds_only':'full');
+      sessionStorage.setItem('mds_dash_pin_ok_'+PIN_SCOPE,'1');
+      sessionStorage.setItem('mds_dash_pin_mode_'+PIN_SCOPE,RESTRICT_TO_PJMDS?'mds_only':'full');
     }catch(e){}
     enterDash();
   }else{
@@ -147,7 +152,7 @@ function stripMobileHeavy(){
    Defer to the next tick: enterDash() -> initDash() -> render() reads state
    vars (STOCK_ALL, NED_ALL, SPG_ALL, SUBTAB_*) that are declared later in this
    file, so running it inline here would hit their temporal-dead-zone. */
-let _pinOk=false;try{_pinOk=sessionStorage.getItem('mds_dash_pin_ok')==='1';RESTRICT_TO_PJMDS=sessionStorage.getItem('mds_dash_pin_mode')==='mds_only';}catch(e){}
+let _pinOk=false;try{_pinOk=sessionStorage.getItem('mds_dash_pin_ok_'+PIN_SCOPE)==='1';RESTRICT_TO_PJMDS=sessionStorage.getItem('mds_dash_pin_mode_'+PIN_SCOPE)==='mds_only';}catch(e){}
 if(_pinOk){setTimeout(enterDash,0);}
 else document.getElementById('pin-input').focus();
 
