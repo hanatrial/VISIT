@@ -23857,7 +23857,8 @@ function wowStoreInputChanged(){
   const pasWrap=document.getElementById('wow-store-pasangan-wrap');
   const pasInput=document.getElementById('wow-store-pasangan');
   if(entry&&entry.pair){
-    pasInput.value=entry.pair;
+    const other=_sameName(entry.name,val)?entry.pair:entry.name;
+    pasInput.value=other;
     pasWrap.classList.remove('hidden');
   } else {
     pasInput.value='';
@@ -23897,8 +23898,10 @@ function wowFillMds(){
 function wowFillStore(){
   const dl=document.getElementById('wow-store-datalist');
   if(dl.dataset.built==='1')return;
-  dl.innerHTML=WOW_TOKO_MASTER.map(t=>`<option value="${t.name.replace(/"/g,'&quot;')}">`).join('')
-    +WOW_CUSTOM_STORES.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">`).join('');
+  const names=new Set();
+  WOW_TOKO_MASTER.forEach(t=>{ names.add(t.name); if(t.pair)names.add(t.pair); });
+  WOW_CUSTOM_STORES.forEach(n=>names.add(n));
+  dl.innerHTML=[...names].map(n=>`<option value="${n.replace(/"/g,'&quot;')}">`).join('');
   dl.dataset.built='1';
 }
 function wowGoTo(step){
