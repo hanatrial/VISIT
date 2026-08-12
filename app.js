@@ -23931,7 +23931,7 @@ function wowCheck(step){
   } else if(step===3){
     const ITEMS=wowGetItems();
     const checked=Object.values(WOW.items).filter(v=>v!==null&&v!==undefined).length;
-    ok=(checked===ITEMS.length);
+    ok=true;
     document.getElementById('wow-cnt').textContent=`${checked} / ${ITEMS.length} diperiksa`;
   }
   document.getElementById('wow-nb').disabled=!ok;
@@ -23952,7 +23952,10 @@ function wowNext(){
     WOW.store=document.getElementById('wow-store-input').value.trim();
     WOW.storePasangan=document.getElementById('wow-store-pasangan').value.trim();
   }
-  if(WOW.step===3){ submitWow(); return; }
+  if(WOW.step===3){
+    wowGetItems().forEach((_,i)=>{ if(WOW.items[i]===undefined||WOW.items[i]===null) WOW.items[i]=false; });
+    submitWow(); return;
+  }
   wowGoTo(WOW.step+1);
   document.getElementById('wow-wrap').scrollTop=0;
 }
