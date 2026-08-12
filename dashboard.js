@@ -929,7 +929,7 @@ function loadAll(){
   if(has('sec-wow'))db.collection('wow_logs').limit(2000).get(SRV)
     .catch(()=>db.collection('wow_logs').get())
     .then(s=>{
-    WOW_ALL=[];s.forEach(d=>{const v=d.data();WOW_ALL.push({...v,timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
+    WOW_ALL=[];s.forEach(d=>{const v=d.data();WOW_ALL.push({...v,_docId:d.id,timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
     WOW_ALL.sort((a,b)=>b.timestamp-a.timestamp);
     render();
   }).catch(e=>console.error('wow_logs FAILED',e.code,e.message));
@@ -2905,7 +2905,7 @@ function renderWow(wowF){
     <th onclick="sortBy('store')">Toko${ar('store')}</th>
     <th>Toko Pasangan</th>
     <th onclick="sortBy('avail')">AV${ar('avail')}</th>
-    <th>AV NS</th><th>AV Hilo</th>
+    <th>AV NS</th><th>AV Hilo</th><th>Validasi PIC</th>
   </tr>`;
   tb.innerHTML=rows.length?rows.map(r=>{
     const ts=r.timestamp;
@@ -2915,6 +2915,8 @@ function renderWow(wowF){
     const hasItems=r.items&&Object.keys(r.items).length>0;
     const canExpand=hasPhoto||hasItems;
     const vid=r.id||'';
+    const pv=r.picValidated;
+    const vBtn=(val,label,cls)=>`<button class="tgl ${cls}${pv===val?' on':''}" onclick="event.stopPropagation();toggleWowValidasi('${r._docId}',${val})" style="width:26px;padding:3px 0">${label}</button>`;
     return`<tr class="${canExpand?'clickrow':''}" ${canExpand?`data-vid="${vid}" onclick="toggleWowDetail(this,'${vid}')"`:''}style="cursor:${canExpand?'pointer':'default'}">
       <td class="td-id">${r.id||'—'}</td>
       <td class="td-dim">${ts.toLocaleDateString('id-ID',{day:'numeric',month:'short'})} ${ts.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}</td>
@@ -2925,11 +2927,20 @@ function renderWow(wowF){
       <td><span class="tag g sm">${r.avail||0}</span></td>
       <td><span class="tag g sm">${bav.NS}</span></td>
       <td><span class="tag g sm">${bav.HILO}</span></td>
+      <td><div class="tgl-grp" onclick="event.stopPropagation()">${vBtn(true,'✓','avail')}${vBtn(false,'✗','notavail')}</div></td>
     </tr>`;
-  }).join(''):`<tr><td colspan="9"><div class="empty-state">Tidak ada data Validasi Display WOW.</div></td></tr>`;
+  }).join(''):`<tr><td colspan="10"><div class="empty-state">Tidak ada data Validasi Display WOW.</div></td></tr>`;
   const tf=document.getElementById('tfoot-wow');
   if(tf)tf.textContent=`${rows.length} kunjungan`;
   if(_expandedWowVid){const tr=document.querySelector(`tr[data-vid="${_expandedWowVid}"]`);if(tr)toggleWowDetail(tr,_expandedWowVid);}
+}
+function toggleWowValidasi(docId,val){
+  if(!docId)return;
+  const r=WOW_ALL.find(x=>x._docId===docId);
+  const next=r&&r.picValidated===val?null:val;
+  if(r)r.picValidated=next;
+  render();
+  db.collection('wow_logs').doc(docId).update({picValidated:next}).catch(e=>console.error('picValidated update failed',e.code,e.message));
 }
 function toggleWowDetail(tr,vid){
   const next=tr.nextElementSibling;
