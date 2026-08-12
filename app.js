@@ -23358,7 +23358,7 @@ function addNewStore(flow){
   const inputId=flow+'-store-new', selId=flow+'-store-sel', boxId=flow+'-store-box';
   let nw=document.getElementById(inputId).value.trim();
   if(!nw)return;
-  const area=flow==='rka'?R.area:flow==='beli'?B.area:flow==='ned'?ND.area:flow==='spg'?SG.area:SK.area;
+  const area=flow==='rka'?R.area:flow==='beli'?B.area:flow==='ned'?ND.area:flow==='spg'?SG.area:flow==='wow'?WOW.area:SK.area;
   if(!area){alert('Pilih area dulu sebelum tambah toko.');return;}
   nw=flow==='spg'?canonicalSpgStore(area,nw):canonicalStore(area,nw);
   const sel=document.getElementById(selId);
@@ -23375,6 +23375,7 @@ function addNewStore(flow){
   else if(flow==='beli')beliCheck(1);
   else if(flow==='ned')nedCheck(1);
   else if(flow==='spg')spgCheck(1);
+  else if(flow==='wow')wowCheck(1);
   else stockCheck(1);
 }
 function saveCustomStore(area,name){
@@ -23815,6 +23816,227 @@ function resetRka(){
   document.getElementById('rka-back-hdr').classList.remove('hidden');
   document.getElementById('rka-suc').classList.remove('show');
   rkaGoTo(0);
+}
+
+/* ═══════════════════════════════════════
+   VALIDASI DISPLAY WOW
+═══════════════════════════════════════ */
+const WOW = { step:0, area:'', mds:'', date:'', store:'', photo:null, photoUpload:null, uploadDone:false, items:{} };
+function openWow(){ showScreen('s-wow'); initWow(); }
+function wowGetItems(){
+  const ns=SPG_INDOGROSIR_GROUPS[0].items.map(n=>({name:n,section:'NS'}));
+  const hilo=SPG_INDOGROSIR_GROUPS[1].items.concat(SPG_INDOGROSIR_GROUPS[2].items).map(n=>({name:n,section:'HI LO'}));
+  const ts=spgGroupItems('TS SWT').filter(n=>/PLS/i.test(n)).map(n=>({name:n,section:'TS'}));
+  return ns.concat(hilo,ts);
+}
+function initWow(){
+  Object.assign(WOW,{step:0,area:'',mds:'',date:'',store:'',photo:null,photoUpload:null,uploadDone:false,items:{}});
+  const as=document.getElementById('wow-area-sel');
+  as.innerHTML='<option value="">— Pilih Area —</option>';
+  AREAS.forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; as.appendChild(o); });
+  document.getElementById('wow-mds-sel').innerHTML='<option value="">— Pilih Area dulu —</option>';
+  document.getElementById('wow-store-sel').innerHTML='<option value="">— Pilih Toko —</option>';
+  const dt=document.getElementById('wow-date-input');
+  dt.value=new Date().toISOString().slice(0,10);
+  wowGoTo(0);
+}
+function wowFillMds(){
+  const area=document.getElementById('wow-area-sel').value;
+  const ms=document.getElementById('wow-mds-sel');
+  ms.innerHTML='<option value="">— Pilih MDS —</option>';
+  (MDS_BY_AREA[area]||[]).forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; ms.appendChild(o); });
+  if(!area) ms.innerHTML='<option value="">— Pilih Area dulu —</option>';
+  wowCheck(0);
+}
+function wowFillStore(){
+  const area=WOW.area||document.getElementById('wow-area-sel').value;
+  const ss=document.getElementById('wow-store-sel');
+  ss.innerHTML='<option value="">— Pilih Toko —</option>';
+  (STORES_BY_AREA[area]||[]).forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; ss.appendChild(o); });
+}
+function wowGoTo(step){
+  WOW.step=step;
+  for(let i=0;i<4;i++){
+    const el=document.getElementById('ws'+i);
+    el.className='s-item'+(i<step?' done':i===step?' active':'');
+    el.querySelector('.s-dot').textContent=i<step?'✓':(i+1);
+  }
+  document.querySelectorAll('#s-wow .step-section').forEach((s,i)=>s.classList.toggle('active',i===step));
+  document.getElementById('wow-bb').style.display=step===0?'none':'';
+  document.getElementById('wow-nb').textContent=step===3?'Submit':'Lanjut';
+  if(step===1){ wowFillStore(); }
+  if(step===3){ renderWowItems(); document.getElementById('wow-store-chip').textContent=WOW.store; }
+  wowCheck(step);
+}
+function wowCheck(step){
+  let ok=false;
+  if(step===0){
+    const area=document.getElementById('wow-area-sel').value;
+    const sel=document.getElementById('wow-mds-sel').value;
+    const box=document.getElementById('wow-mds-box');
+    const nw=document.getElementById('wow-mds-new').value.trim();
+    const date=document.getElementById('wow-date-input').value;
+    ok=area!==''&&(sel!==''||(box.classList.contains('open')&&nw!==''))&&date!=='';
+  } else if(step===1){
+    const sel=document.getElementById('wow-store-sel').value;
+    const box=document.getElementById('wow-store-box');
+    const nw=document.getElementById('wow-store-new').value.trim();
+    ok=sel!==''||(box.classList.contains('open')&&nw!=='');
+  } else if(step===2){
+    ok=!!WOW.photo&&WOW.uploadDone;
+  } else if(step===3){
+    const ITEMS=wowGetItems();
+    const checked=Object.values(WOW.items).filter(v=>v!==null&&v!==undefined).length;
+    ok=(checked===ITEMS.length);
+    document.getElementById('wow-cnt').textContent=`${checked} / ${ITEMS.length} diperiksa`;
+  }
+  document.getElementById('wow-nb').disabled=!ok;
+}
+function wowNext(){
+  if(WOW.step===0){
+    WOW.area=document.getElementById('wow-area-sel').value;
+    WOW.date=document.getElementById('wow-date-input').value;
+    const sel=document.getElementById('wow-mds-sel').value;
+    const nw=canonicalMds(WOW.area,document.getElementById('wow-mds-new').value);
+    WOW.mds=sel||nw;
+    if(nw&&!sel){
+      if(!MDS_BY_AREA[WOW.area]) MDS_BY_AREA[WOW.area]=[];
+      if(!MDS_BY_AREA[WOW.area].some(m=>_sameName(m,nw))) MDS_BY_AREA[WOW.area].push(nw);
+    }
+  }
+  if(WOW.step===1){
+    const sel=document.getElementById('wow-store-sel').value;
+    const box=document.getElementById('wow-store-box');
+    const nw=canonicalStore(WOW.area,document.getElementById('wow-store-new').value);
+    if(box.classList.contains('open')&&nw){
+      WOW.store=nw;
+      if(!STORES_BY_AREA[WOW.area].some(s=>_sameName(s,nw))){ saveCustomStore(WOW.area,nw); const o=document.createElement('option'); o.value=nw; o.textContent=nw; document.getElementById('wow-store-sel').appendChild(o); }
+    } else { WOW.store=sel; }
+  }
+  if(WOW.step===3){ submitWow(); return; }
+  wowGoTo(WOW.step+1);
+  document.getElementById('wow-wrap').scrollTop=0;
+}
+function wowBack(){
+  if(WOW.step>0){ wowGoTo(WOW.step-1); document.getElementById('wow-wrap').scrollTop=0; }
+}
+function renderWowItems(){
+  const list=document.getElementById('wow-items');
+  list.innerHTML='';
+  const ITEMS=wowGetItems();
+  let lastSection=null;
+  ITEMS.forEach((it,i)=>{
+    if(it.section!==lastSection){
+      const hdr=document.createElement('div');
+      hdr.className='qty-group-hdr'; hdr.textContent=it.section;
+      list.appendChild(hdr);
+      lastSection=it.section;
+    }
+    const st=WOW.items[i];
+    const row=document.createElement('div');
+    row.className='item-row'+(st!==undefined&&st!==null?' ok':'');
+    row.id='wrow'+i;
+    row.innerHTML=`
+      <div class="item-name">${it.name}</div>
+      <div class="tgl-grp">
+        <button class="tgl avail${st===true?' on':''}" onclick="setWowItem(${i},true)">Ada</button>
+        <button class="tgl notavail${st===false?' on':''}" onclick="setWowItem(${i},false)">Tdk</button>
+      </div>`;
+    list.appendChild(row);
+  });
+  wowCheck(3);
+}
+function setWowItem(i,v){
+  WOW.items[i]=v;
+  const row=document.getElementById('wrow'+i);
+  row.classList.add('ok');
+  row.querySelectorAll('.tgl')[0].classList.toggle('on',v===true);
+  row.querySelectorAll('.tgl')[1].classList.toggle('on',v===false);
+  wowCheck(3);
+}
+function handleWowPhoto(){
+  const file=document.getElementById('wow-cam0').files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const src=e.target.result;
+    WOW.photo=src;
+    document.getElementById('wow-pview0').src=src;
+    document.getElementById('wow-pzone0').classList.add('shot');
+    const now=new Date();
+    document.getElementById('wow-dt-txt').textContent=
+      now.toLocaleDateString('id-ID')+' · '+now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('wow-dt').classList.remove('hidden');
+    WOW.uploadDone=false;
+    wowCheck(2);
+    const _st=document.getElementById('wow-upstatus0');
+    if(_st)_st.textContent='⬆ Kompres...';
+    WOW.photoUpload=compressAndUpload(src)
+      .then(b64=>{if(_st)_st.textContent='✅ Siap';WOW.uploadDone=true;wowCheck(2);return b64;})
+      .catch(e=>{if(_st)_st.textContent='⚠️ Gagal';WOW.uploadDone=true;wowCheck(2);throw e;});
+  };
+  reader.readAsDataURL(file);
+}
+async function submitWow(){
+  const avail=Object.values(WOW.items).filter(v=>v===true).length;
+  const unavail=Object.values(WOW.items).filter(v=>v===false).length;
+  const id='WOW-'+String(Math.floor(Math.random()*9000)+1000);
+  const ds=new Date(WOW.date+'T12:00:00').toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+
+  document.getElementById('wow-sid').textContent='ID: #'+id;
+  document.getElementById('wow-savail').textContent=avail;
+  document.getElementById('wow-sunavail').textContent=unavail;
+  document.getElementById('wow-sm-area').textContent=WOW.area;
+  document.getElementById('wow-sm-mds').textContent=WOW.mds;
+  document.getElementById('wow-sm-store').textContent=WOW.store;
+  document.getElementById('wow-sm-date').textContent=ds;
+
+  let photoB64=null;
+  try{ if(WOW.photoUpload) photoB64=await WOW.photoUpload; }catch(e){console.warn('compress failed',e);}
+
+  document.getElementById('wow-sm-status').textContent='⏳ Menyimpan...';
+  document.getElementById('wow-sm-foto').textContent=photoB64?'⏳ foto...':'—';
+  document.getElementById('wow-stepper').classList.add('hidden');
+  document.getElementById('wow-wrap').classList.add('hidden');
+  document.getElementById('wow-botbar').classList.add('hidden');
+  document.getElementById('wow-back-hdr').classList.add('hidden');
+  document.getElementById('wow-suc').classList.add('show');
+
+  try{
+    if(typeof db==='undefined') throw new Error('db not initialized');
+    const _tout=new Promise((_,r)=>setTimeout(()=>r(new Error('Tersimpan offline — akan sinkron otomatis saat sinyal bagus')),30000));
+    const _ITEMS=wowGetItems();
+    const _namedItems={};Object.entries(WOW.items).forEach(([i,v])=>{const it=_ITEMS[+i];if(it)_namedItems[it.name]=v;});
+    await withFirestoreRetry(()=>Promise.race([db.collection('wow_logs').add({id,area:WOW.area,mds:WOW.mds,store:WOW.store,tanggalVisit:WOW.date,timestamp:firebase.firestore.FieldValue.serverTimestamp(),avail,unavail,items:_namedItems,...(photoB64?{photoData:photoB64}:{})}),_tout]));
+    document.getElementById('wow-sm-status').textContent='✅ Tersimpan ke server';
+    document.getElementById('wow-sm-foto').textContent=photoB64?'✅ 1 foto':'—';
+  }catch(e){
+    console.warn('Firestore wow failed',e);
+    const offline=String(e.message).includes('offline');
+    const msg=isFirestoreTerminated(e)?'Gagal tersambung ke server — data ini TIDAK tersimpan, mohon input ulang.':e.message;
+    document.getElementById('wow-sm-status').textContent=(offline?'⏳ ':'❌ ')+msg;
+    document.getElementById('wow-sm-foto').textContent='—';
+  }
+}
+function resetWow(){
+  Object.assign(WOW,{step:0,area:'',mds:'',date:'',store:'',photo:null,photoUpload:null,uploadDone:false,items:{}});
+  document.getElementById('wow-pzone0').classList.remove('shot');
+  document.getElementById('wow-pview0').src='';
+  document.getElementById('wow-cam0').value='';
+  document.getElementById('wow-dt').classList.add('hidden');
+  document.getElementById('wow-area-sel').value='';
+  document.getElementById('wow-mds-sel').value='';
+  document.getElementById('wow-mds-new').value='';
+  document.getElementById('wow-store-sel').value='';
+  document.getElementById('wow-store-new').value='';
+  document.getElementById('wow-mds-box').classList.remove('open');
+  document.getElementById('wow-store-box').classList.remove('open');
+  document.getElementById('wow-stepper').classList.remove('hidden');
+  document.getElementById('wow-wrap').classList.remove('hidden');
+  document.getElementById('wow-botbar').classList.remove('hidden');
+  document.getElementById('wow-back-hdr').classList.remove('hidden');
+  document.getElementById('wow-suc').classList.remove('show');
+  wowGoTo(0);
 }
 
 /* ═══════════════════════════════════════

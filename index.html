@@ -95,6 +95,17 @@
       </div>
     </div>
 
+    <div class="mod-card-shell">
+      <div class="mod-card" onclick="openWow()">
+        <div class="mod-icon" style="background:rgba(6,182,212,.12);color:#06B6D4">🪧</div>
+        <div class="mod-text">
+          <div class="mod-title">Validasi Display WOW</div>
+          <div class="mod-desc">Foto hanger + cek availability item PLS</div>
+        </div>
+        <div class="mod-arr">›</div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -822,10 +833,137 @@
   </div>
 </div><!-- s-spg -->
 
+<!-- ══════════════════ VALIDASI DISPLAY WOW ══════════════════ -->
+<div id="s-wow" class="screen">
+  <div class="mod-header">
+    <div class="mod-header-row">
+      <button class="back-btn" id="wow-back-hdr" onclick="goHome()">←</button>
+      <span class="mod-screen-name">Validasi Display WOW</span>
+    </div>
+    <div class="mod-screen-sub">Hanger &amp; Availability Item PLS</div>
+  </div>
+
+  <div class="stepper" id="wow-stepper">
+    <div class="s-item active" id="ws0"><div class="s-dot">1</div><div class="s-lbl">Info</div></div>
+    <div class="s-item"        id="ws1"><div class="s-dot">2</div><div class="s-lbl">Toko</div></div>
+    <div class="s-item"        id="ws2"><div class="s-dot">3</div><div class="s-lbl">Foto</div></div>
+    <div class="s-item"        id="ws3"><div class="s-dot">4</div><div class="s-lbl">Items</div></div>
+  </div>
+
+  <div class="step-wrap" id="wow-wrap">
+    <div class="step-pad">
+
+      <!-- Step 0: Area / MDS / Tanggal -->
+      <div class="step-section active" id="wow-s0">
+        <div class="s-title">Info Kunjungan</div>
+        <div class="s-sub">Area, MDS, dan tanggal visit</div>
+        <div class="field">
+          <label class="f-label">Nama Area</label>
+          <select class="f-input sel" id="wow-area-sel" onchange="wowFillMds()">
+            <option value="">— Pilih Area —</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="f-label">Nama MDS</label>
+          <select class="f-input sel" id="wow-mds-sel" onchange="wowCheck(0)">
+            <option value="">— Pilih Area dulu —</option>
+          </select>
+        </div>
+        <div class="add-trigger" onclick="toggleBox('wow-mds-box')"><span>+</span> Tambah MDS baru</div>
+        <div class="add-box" id="wow-mds-box">
+          <div class="field" style="margin-bottom:0">
+            <label class="f-label">Nama MDS Baru</label>
+            <input type="text" class="f-input" id="wow-mds-new" placeholder="Ketik nama…" oninput="wowCheck(0)">
+          </div>
+        </div>
+        <div class="field">
+          <label class="f-label">Tanggal Visit</label>
+          <input type="date" class="f-input" id="wow-date-input" oninput="wowCheck(0)">
+        </div>
+      </div>
+
+      <!-- Step 1: Store -->
+      <div class="step-section" id="wow-s1">
+        <div class="s-title">Pilih Toko</div>
+        <div class="s-sub">Toko mana yang dikunjungi hari ini?</div>
+        <div class="field">
+          <label class="f-label">Nama Toko</label>
+          <select class="f-input sel" id="wow-store-sel" onchange="wowCheck(1)">
+            <option value="">— Pilih Toko —</option>
+          </select>
+        </div>
+        <div class="add-trigger" onclick="toggleBox('wow-store-box')"><span>+</span> Tambah toko baru</div>
+        <div class="add-box" id="wow-store-box">
+          <div class="field" style="margin-bottom:8px">
+            <label class="f-label">Nama Toko Baru</label>
+            <input type="text" class="f-input" id="wow-store-new" placeholder="Ketik nama toko…" oninput="wowCheck(1)">
+          </div>
+          <button class="save-store-btn" onclick="addNewStore('wow')">✓ Simpan Toko</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Photo -->
+      <div class="step-section" id="wow-s2">
+        <div class="s-title">Foto Pajangan Hanger</div>
+        <div class="s-sub">Ambil foto pajangan hanger di toko</div>
+        <div class="photo-zone" id="wow-pzone0" onclick="trigCam('wow-cam0')">
+          <div class="ph-placeholder">
+            <div class="ph-icon">📷</div>
+            <div class="ph-lbl">Ambil Foto</div>
+            <div class="ph-sub">Tap untuk buka kamera</div>
+          </div>
+          <img class="ph-preview" id="wow-pview0" alt="">
+          <div class="ph-upstatus" id="wow-upstatus0">⬆ Uploading...</div>
+          <div class="ph-retake">↺ Ganti Foto</div>
+        </div>
+        <input type="file" id="wow-cam0" accept="image/*" capture="environment" onchange="handleWowPhoto()">
+        <div class="dt-pill hidden" id="wow-dt">📅 <span id="wow-dt-txt"></span></div>
+      </div>
+
+      <!-- Step 3: Items -->
+      <div class="step-section" id="wow-s3">
+        <div class="items-bar">
+          <div class="store-chip" id="wow-store-chip">—</div>
+          <div class="items-count" id="wow-cnt">0 / 0 diperiksa</div>
+        </div>
+        <div id="wow-items"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="bot-bar" id="wow-botbar">
+    <button class="btn btn-s" id="wow-bb" onclick="wowBack()" style="display:none">←</button>
+    <button class="btn btn-p" id="wow-nb" onclick="wowNext()" disabled>Lanjut</button>
+  </div>
+
+  <!-- Success -->
+  <div class="success-wrap" id="wow-suc">
+    <div class="suc-ring">✅</div>
+    <div class="suc-title">Validasi Display Tercatat!</div>
+    <div class="suc-id" id="wow-sid"></div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-num g" id="wow-savail">0</div><div class="stat-lbl">Tersedia</div></div>
+      <div class="stat-card"><div class="stat-num r" id="wow-sunavail">0</div><div class="stat-lbl">Tidak Tersedia</div></div>
+    </div>
+    <div class="summ-card">
+      <div class="summ-row"><span class="summ-k">Area</span><span class="summ-v" id="wow-sm-area"></span></div>
+      <div class="summ-row"><span class="summ-k">MDS</span><span class="summ-v" id="wow-sm-mds"></span></div>
+      <div class="summ-row"><span class="summ-k">Toko</span><span class="summ-v" id="wow-sm-store"></span></div>
+      <div class="summ-row"><span class="summ-k">Tanggal</span><span class="summ-v" id="wow-sm-date"></span></div>
+      <div class="summ-row"><span class="summ-k">Status</span><span class="summ-v" id="wow-sm-status" style="font-size:11px">⏳ Menyimpan...</span></div>
+      <div class="summ-row"><span class="summ-k">Foto</span><span class="summ-v" id="wow-sm-foto" style="font-size:11px">—</span></div>
+    </div>
+    <div class="suc-actions">
+      <button class="btn btn-p" style="flex:1" onclick="resetWow()">Kunjungan Baru</button>
+    </div>
+  </div>
+</div><!-- s-wow -->
+
 
 </div><!-- #app -->
 
-<script src="app.js?v=17"></script>
+<script src="app.js?v=18"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
