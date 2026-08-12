@@ -2904,16 +2904,13 @@ function renderWow(wowF){
     <th onclick="sortBy('area')">Area${ar('area')}</th>
     <th onclick="sortBy('store')">Toko${ar('store')}</th>
     <th>Toko Pasangan</th>
-    <th onclick="sortBy('avail')">Ada${ar('avail')}</th>
-    <th onclick="sortBy('unavail')">Tdk${ar('unavail')}</th>
-    <th>AV%</th><th>NS AV</th><th>HILO AV</th><th>TS AV</th>
+    <th onclick="sortBy('avail')">AV${ar('avail')}</th>
+    <th>AV NS</th><th>AV Hilo</th>
   </tr>`;
   tb.innerHTML=rows.length?rows.map(r=>{
-    const pct=r.avail+r.unavail>0?Math.round(r.avail/(r.avail+r.unavail)*100):0;
     const ts=r.timestamp;
-    const bav={NS:{a:0,t:0},HILO:{a:0,t:0},TS:{a:0,t:0}};
-    if(r.items)Object.entries(r.items).forEach(([n,v])=>{const b=brandOf(n);if(bav[b]){bav[b].t++;if(v)bav[b].a++;}});
-    function bTag(b){const d=bav[b];if(!d||!d.t)return'<span class="tag b sm">—</span>';const p=Math.round(d.a/d.t*100);return avTag(p,' sm');}
+    const bav={NS:0,HILO:0};
+    if(r.items)Object.entries(r.items).forEach(([n,v])=>{if(!v)return;const b=brandOf(n);if(bav[b]!==undefined)bav[b]++;});
     const hasPhoto=!!r.photoData;
     const hasItems=r.items&&Object.keys(r.items).length>0;
     const canExpand=hasPhoto||hasItems;
@@ -2926,11 +2923,10 @@ function renderWow(wowF){
       <td class="td-mid">${r.store||'—'}${hasPhoto?' <span style="font-size:9px;color:var(--accent)">📷</span>':canExpand?' <span style="font-size:9px;color:var(--t3)">▾</span>':''}</td>
       <td class="td-dim">${r.storePasangan||'—'}</td>
       <td><span class="tag g sm">${r.avail||0}</span></td>
-      <td><span class="tag r sm">${r.unavail||0}</span></td>
-      <td>${avTag(pct,' sm')}</td>
-      <td>${bTag('NS')}</td><td>${bTag('HILO')}</td><td>${bTag('TS')}</td>
+      <td><span class="tag g sm">${bav.NS}</span></td>
+      <td><span class="tag g sm">${bav.HILO}</span></td>
     </tr>`;
-  }).join(''):`<tr><td colspan="12"><div class="empty-state">Tidak ada data Validasi Display WOW.</div></td></tr>`;
+  }).join(''):`<tr><td colspan="9"><div class="empty-state">Tidak ada data Validasi Display WOW.</div></td></tr>`;
   const tf=document.getElementById('tfoot-wow');
   if(tf)tf.textContent=`${rows.length} kunjungan`;
   if(_expandedWowVid){const tr=document.querySelector(`tr[data-vid="${_expandedWowVid}"]`);if(tr)toggleWowDetail(tr,_expandedWowVid);}
