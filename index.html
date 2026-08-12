@@ -885,20 +885,23 @@
       <!-- Step 1: Store -->
       <div class="step-section" id="wow-s1">
         <div class="s-title">Pilih Toko</div>
-        <div class="s-sub">Toko mana yang dikunjungi hari ini?</div>
+        <div class="s-sub">Ketik nama toko — kalau tokonya punya nama pasangan (khusus Makassar &amp; Gorontalo), otomatis terisi</div>
         <div class="field">
           <label class="f-label">Nama Toko</label>
-          <select class="f-input sel" id="wow-store-sel" onchange="wowCheck(1)">
-            <option value="">— Pilih Toko —</option>
-          </select>
+          <input type="text" class="f-input" id="wow-store-input" list="wow-store-datalist" placeholder="Ketik / cari nama toko…" oninput="wowStoreInputChanged()">
+          <datalist id="wow-store-datalist"></datalist>
         </div>
-        <div class="add-trigger" onclick="toggleBox('wow-store-box')"><span>+</span> Tambah toko baru</div>
+        <div class="field hidden" id="wow-store-pasangan-wrap">
+          <label class="f-label">Nama Toko (Pasangan)</label>
+          <input type="text" class="f-input" id="wow-store-pasangan" readonly>
+        </div>
+        <div class="add-trigger" onclick="toggleBox('wow-store-box')"><span>+</span> Toko tidak ada di daftar?</div>
         <div class="add-box" id="wow-store-box">
           <div class="field" style="margin-bottom:8px">
             <label class="f-label">Nama Toko Baru</label>
             <input type="text" class="f-input" id="wow-store-new" placeholder="Ketik nama toko…" oninput="wowCheck(1)">
           </div>
-          <button class="save-store-btn" onclick="addNewStore('wow')">✓ Simpan Toko</button>
+          <button class="save-store-btn" onclick="addNewWowStore()">✓ Simpan Toko</button>
         </div>
       </div>
 
@@ -950,6 +953,7 @@
       <div class="summ-row"><span class="summ-k">Area</span><span class="summ-v" id="wow-sm-area"></span></div>
       <div class="summ-row"><span class="summ-k">MDS</span><span class="summ-v" id="wow-sm-mds"></span></div>
       <div class="summ-row"><span class="summ-k">Toko</span><span class="summ-v" id="wow-sm-store"></span></div>
+      <div class="summ-row hidden" id="wow-sm-pasangan-row"><span class="summ-k">Toko Pasangan</span><span class="summ-v" id="wow-sm-pasangan"></span></div>
       <div class="summ-row"><span class="summ-k">Tanggal</span><span class="summ-v" id="wow-sm-date"></span></div>
       <div class="summ-row"><span class="summ-k">Status</span><span class="summ-v" id="wow-sm-status" style="font-size:11px">⏳ Menyimpan...</span></div>
       <div class="summ-row"><span class="summ-k">Foto</span><span class="summ-v" id="wow-sm-foto" style="font-size:11px">—</span></div>
@@ -963,7 +967,8 @@
 
 </div><!-- #app -->
 
-<script src="app.js?v=18"></script>
+<script src="wow_toko_master.js?v=1"></script>
+<script src="app.js?v=19"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>

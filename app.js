@@ -23358,7 +23358,7 @@ function addNewStore(flow){
   const inputId=flow+'-store-new', selId=flow+'-store-sel', boxId=flow+'-store-box';
   let nw=document.getElementById(inputId).value.trim();
   if(!nw)return;
-  const area=flow==='rka'?R.area:flow==='beli'?B.area:flow==='ned'?ND.area:flow==='spg'?SG.area:flow==='wow'?WOW.area:SK.area;
+  const area=flow==='rka'?R.area:flow==='beli'?B.area:flow==='ned'?ND.area:flow==='spg'?SG.area:SK.area;
   if(!area){alert('Pilih area dulu sebelum tambah toko.');return;}
   nw=flow==='spg'?canonicalSpgStore(area,nw):canonicalStore(area,nw);
   const sel=document.getElementById(selId);
@@ -23375,7 +23375,6 @@ function addNewStore(flow){
   else if(flow==='beli')beliCheck(1);
   else if(flow==='ned')nedCheck(1);
   else if(flow==='spg')spgCheck(1);
-  else if(flow==='wow')wowCheck(1);
   else stockCheck(1);
 }
 function saveCustomStore(area,name){
@@ -23821,8 +23820,52 @@ function resetRka(){
 /* ═══════════════════════════════════════
    VALIDASI DISPLAY WOW
 ═══════════════════════════════════════ */
-const WOW = { step:0, area:'', mds:'', date:'', store:'', photo:null, photoUpload:null, uploadDone:false, items:{} };
-function openWow(){ showScreen('s-wow'); initWow(); }
+const WOW = { step:0, area:'', mds:'', date:'', store:'', storePasangan:'', photo:null, photoUpload:null, uploadDone:false, items:{} };
+let WOW_CUSTOM_STORES=[];
+(function(){try{WOW_CUSTOM_STORES=JSON.parse(localStorage.getItem('mds_wow_custom_stores')||'[]');}catch(e){}})();
+async function loadWowCustomStores(){
+  try{
+    if(typeof db==='undefined')return;
+    const doc=await db.collection('app_data').doc('wow_stores').get();
+    if(!doc.exists)return;
+    const list=doc.data().names||[];
+    list.forEach(n=>{if(!WOW_CUSTOM_STORES.some(s=>_sameName(s,n)))WOW_CUSTOM_STORES.push(n);});
+  }catch(e){console.warn('loadWowCustomStores failed',e);}
+}
+function wowFindTokoEntry(name){
+  const n=String(name).trim();
+  return WOW_TOKO_MASTER.find(t=>_sameName(t.name,n)||(t.pair&&_sameName(t.pair,n)));
+}
+function addNewWowStore(){
+  const nw=document.getElementById('wow-store-new').value.trim();
+  if(!nw)return;
+  if(!WOW_CUSTOM_STORES.some(s=>_sameName(s,nw))){
+    WOW_CUSTOM_STORES.push(nw);
+    try{localStorage.setItem('mds_wow_custom_stores',JSON.stringify(WOW_CUSTOM_STORES));}catch(e){}
+    try{
+      if(typeof db!=='undefined')db.collection('app_data').doc('wow_stores').set({names:firebase.firestore.FieldValue.arrayUnion(nw)},{merge:true}).catch(e=>console.warn('wow store save failed',e));
+    }catch(e){}
+  }
+  document.getElementById('wow-store-input').value=nw;
+  document.getElementById('wow-store-new').value='';
+  document.getElementById('wow-store-box').classList.remove('open');
+  wowStoreInputChanged();
+}
+function wowStoreInputChanged(){
+  const val=document.getElementById('wow-store-input').value.trim();
+  const entry=wowFindTokoEntry(val);
+  const pasWrap=document.getElementById('wow-store-pasangan-wrap');
+  const pasInput=document.getElementById('wow-store-pasangan');
+  if(entry&&entry.pair){
+    pasInput.value=entry.pair;
+    pasWrap.classList.remove('hidden');
+  } else {
+    pasInput.value='';
+    pasWrap.classList.add('hidden');
+  }
+  wowCheck(1);
+}
+function openWow(){ showScreen('s-wow'); loadWowCustomStores().then(()=>{ document.getElementById('wow-store-datalist').dataset.built=''; wowFillStore(); }); initWow(); }
 function wowGetItems(){
   const ns=SPG_INDOGROSIR_GROUPS[0].items.map(n=>({name:n,section:'NS'}));
   const hilo=SPG_INDOGROSIR_GROUPS[1].items.concat(SPG_INDOGROSIR_GROUPS[2].items).map(n=>({name:n,section:'HI LO'}));
@@ -23830,12 +23873,15 @@ function wowGetItems(){
   return ns.concat(hilo,ts);
 }
 function initWow(){
-  Object.assign(WOW,{step:0,area:'',mds:'',date:'',store:'',photo:null,photoUpload:null,uploadDone:false,items:{}});
+  Object.assign(WOW,{step:0,area:'',mds:'',date:'',store:'',storePasangan:'',photo:null,photoUpload:null,uploadDone:false,items:{}});
   const as=document.getElementById('wow-area-sel');
   as.innerHTML='<option value="">— Pilih Area —</option>';
   AREAS.forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; as.appendChild(o); });
   document.getElementById('wow-mds-sel').innerHTML='<option value="">— Pilih Area dulu —</option>';
-  document.getElementById('wow-store-sel').innerHTML='<option value="">— Pilih Toko —</option>';
+  document.getElementById('wow-store-input').value='';
+  document.getElementById('wow-store-pasangan').value='';
+  document.getElementById('wow-store-pasangan-wrap').classList.add('hidden');
+  wowFillStore();
   const dt=document.getElementById('wow-date-input');
   dt.value=new Date().toISOString().slice(0,10);
   wowGoTo(0);
@@ -23849,10 +23895,11 @@ function wowFillMds(){
   wowCheck(0);
 }
 function wowFillStore(){
-  const area=WOW.area||document.getElementById('wow-area-sel').value;
-  const ss=document.getElementById('wow-store-sel');
-  ss.innerHTML='<option value="">— Pilih Toko —</option>';
-  (STORES_BY_AREA[area]||[]).forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; ss.appendChild(o); });
+  const dl=document.getElementById('wow-store-datalist');
+  if(dl.dataset.built==='1')return;
+  dl.innerHTML=WOW_TOKO_MASTER.map(t=>`<option value="${t.name.replace(/"/g,'&quot;')}">`).join('')
+    +WOW_CUSTOM_STORES.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">`).join('');
+  dl.dataset.built='1';
 }
 function wowGoTo(step){
   WOW.step=step;
@@ -23864,7 +23911,6 @@ function wowGoTo(step){
   document.querySelectorAll('#s-wow .step-section').forEach((s,i)=>s.classList.toggle('active',i===step));
   document.getElementById('wow-bb').style.display=step===0?'none':'';
   document.getElementById('wow-nb').textContent=step===3?'Submit':'Lanjut';
-  if(step===1){ wowFillStore(); }
   if(step===3){ renderWowItems(); document.getElementById('wow-store-chip').textContent=WOW.store; }
   wowCheck(step);
 }
@@ -23878,10 +23924,8 @@ function wowCheck(step){
     const date=document.getElementById('wow-date-input').value;
     ok=area!==''&&(sel!==''||(box.classList.contains('open')&&nw!==''))&&date!=='';
   } else if(step===1){
-    const sel=document.getElementById('wow-store-sel').value;
-    const box=document.getElementById('wow-store-box');
-    const nw=document.getElementById('wow-store-new').value.trim();
-    ok=sel!==''||(box.classList.contains('open')&&nw!=='');
+    const val=document.getElementById('wow-store-input').value.trim();
+    ok=val!=='';
   } else if(step===2){
     ok=!!WOW.photo&&WOW.uploadDone;
   } else if(step===3){
@@ -23905,13 +23949,8 @@ function wowNext(){
     }
   }
   if(WOW.step===1){
-    const sel=document.getElementById('wow-store-sel').value;
-    const box=document.getElementById('wow-store-box');
-    const nw=canonicalStore(WOW.area,document.getElementById('wow-store-new').value);
-    if(box.classList.contains('open')&&nw){
-      WOW.store=nw;
-      if(!STORES_BY_AREA[WOW.area].some(s=>_sameName(s,nw))){ saveCustomStore(WOW.area,nw); const o=document.createElement('option'); o.value=nw; o.textContent=nw; document.getElementById('wow-store-sel').appendChild(o); }
-    } else { WOW.store=sel; }
+    WOW.store=document.getElementById('wow-store-input').value.trim();
+    WOW.storePasangan=document.getElementById('wow-store-pasangan').value.trim();
   }
   if(WOW.step===3){ submitWow(); return; }
   wowGoTo(WOW.step+1);
@@ -23990,6 +24029,9 @@ async function submitWow(){
   document.getElementById('wow-sm-mds').textContent=WOW.mds;
   document.getElementById('wow-sm-store').textContent=WOW.store;
   document.getElementById('wow-sm-date').textContent=ds;
+  const pasRow=document.getElementById('wow-sm-pasangan-row');
+  if(WOW.storePasangan){ pasRow.classList.remove('hidden'); document.getElementById('wow-sm-pasangan').textContent=WOW.storePasangan; }
+  else pasRow.classList.add('hidden');
 
   let photoB64=null;
   try{ if(WOW.photoUpload) photoB64=await WOW.photoUpload; }catch(e){console.warn('compress failed',e);}
@@ -24007,7 +24049,7 @@ async function submitWow(){
     const _tout=new Promise((_,r)=>setTimeout(()=>r(new Error('Tersimpan offline — akan sinkron otomatis saat sinyal bagus')),30000));
     const _ITEMS=wowGetItems();
     const _namedItems={};Object.entries(WOW.items).forEach(([i,v])=>{const it=_ITEMS[+i];if(it)_namedItems[it.name]=v;});
-    await withFirestoreRetry(()=>Promise.race([db.collection('wow_logs').add({id,area:WOW.area,mds:WOW.mds,store:WOW.store,tanggalVisit:WOW.date,timestamp:firebase.firestore.FieldValue.serverTimestamp(),avail,unavail,items:_namedItems,...(photoB64?{photoData:photoB64}:{})}),_tout]));
+    await withFirestoreRetry(()=>Promise.race([db.collection('wow_logs').add({id,area:WOW.area,mds:WOW.mds,store:WOW.store,...(WOW.storePasangan?{storePasangan:WOW.storePasangan}:{}),tanggalVisit:WOW.date,timestamp:firebase.firestore.FieldValue.serverTimestamp(),avail,unavail,items:_namedItems,...(photoB64?{photoData:photoB64}:{})}),_tout]));
     document.getElementById('wow-sm-status').textContent='✅ Tersimpan ke server';
     document.getElementById('wow-sm-foto').textContent=photoB64?'✅ 1 foto':'—';
   }catch(e){
@@ -24019,7 +24061,7 @@ async function submitWow(){
   }
 }
 function resetWow(){
-  Object.assign(WOW,{step:0,area:'',mds:'',date:'',store:'',photo:null,photoUpload:null,uploadDone:false,items:{}});
+  Object.assign(WOW,{step:0,area:'',mds:'',date:'',store:'',storePasangan:'',photo:null,photoUpload:null,uploadDone:false,items:{}});
   document.getElementById('wow-pzone0').classList.remove('shot');
   document.getElementById('wow-pview0').src='';
   document.getElementById('wow-cam0').value='';
@@ -24027,7 +24069,9 @@ function resetWow(){
   document.getElementById('wow-area-sel').value='';
   document.getElementById('wow-mds-sel').value='';
   document.getElementById('wow-mds-new').value='';
-  document.getElementById('wow-store-sel').value='';
+  document.getElementById('wow-store-input').value='';
+  document.getElementById('wow-store-pasangan').value='';
+  document.getElementById('wow-store-pasangan-wrap').classList.add('hidden');
   document.getElementById('wow-store-new').value='';
   document.getElementById('wow-mds-box').classList.remove('open');
   document.getElementById('wow-store-box').classList.remove('open');
