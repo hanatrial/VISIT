@@ -2916,7 +2916,13 @@ function renderWow(wowF){
     const canExpand=hasPhoto||hasItems;
     const vid=r.id||'';
     const pv=r.picValidated;
-    const vBtn=(val,label,cls)=>`<button class="tgl ${cls}${pv===val?' on':''}" onclick="event.stopPropagation();toggleWowValidasi('${r._docId}',${val})" style="width:26px;padding:3px 0">${label}</button>`;
+    const vBtn=(val,label)=>{
+      const on=pv===val;
+      const bg=on?(val?'var(--green)':'var(--red)'):'transparent';
+      const fg=on?'#fff':'var(--t3)';
+      const bd=on?(val?'var(--green)':'var(--red)'):'var(--border)';
+      return`<button onclick="event.stopPropagation();toggleWowValidasi('${r._docId}',${val})" style="width:26px;height:22px;padding:0;border-radius:6px;border:1px solid ${bd};background:${bg};color:${fg};font-weight:700;cursor:pointer">${label}</button>`;
+    };
     return`<tr class="${canExpand?'clickrow':''}" ${canExpand?`data-vid="${vid}" onclick="toggleWowDetail(this,'${vid}')"`:''}style="cursor:${canExpand?'pointer':'default'}">
       <td class="td-id">${r.id||'—'}</td>
       <td class="td-dim">${ts.toLocaleDateString('id-ID',{day:'numeric',month:'short'})} ${ts.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}</td>
@@ -2927,7 +2933,7 @@ function renderWow(wowF){
       <td><span class="tag g sm">${r.avail||0}</span></td>
       <td><span class="tag g sm">${bav.NS}</span></td>
       <td><span class="tag g sm">${bav.HILO}</span></td>
-      <td><div class="tgl-grp" onclick="event.stopPropagation()">${vBtn(true,'✓','avail')}${vBtn(false,'✗','notavail')}</div></td>
+      <td><div style="display:flex;gap:4px" onclick="event.stopPropagation()">${vBtn(true,'✓')}${vBtn(false,'✗')}</div></td>
     </tr>`;
   }).join(''):`<tr><td colspan="10"><div class="empty-state">Tidak ada data Validasi Display WOW.</div></td></tr>`;
   const tf=document.getElementById('tfoot-wow');
