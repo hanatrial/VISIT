@@ -926,6 +926,13 @@ function loadAll(){
     SPG_ALL.sort((a,b)=>b.timestamp-a.timestamp);
     render();
   }).catch(e=>console.error('spg_daily_logs FAILED',e.code,e.message));
+  if(has('sec-wow'))db.collection('wow_logs').limit(2000).get(SRV)
+    .catch(()=>db.collection('wow_logs').get())
+    .then(s=>{
+    WOW_ALL=[];s.forEach(d=>{const v=d.data();WOW_ALL.push({...v,timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
+    WOW_ALL.sort((a,b)=>b.timestamp-a.timestamp);
+    render();
+  }).catch(e=>console.error('wow_logs FAILED',e.code,e.message));
 }
 function loadKedaiDb(){
   if(!dbSulawesi)return;
@@ -1268,10 +1275,10 @@ function buildSpotlight(rkaF,beliF){
 // ── RENDER ────────────────────────────────────────────────────────────────────
 let STOCK_ALL=[], SUBTAB_STOCK='log';
 let SUBTAB_RKA='log', SUBTAB_BELI='log', SUBTAB_FORMULA='summary', SUBTAB_PJMDS='mds', SUBTAB_NED='log', SUBTAB_SPG='log';
-let NED_ALL=[], SPG_ALL=[];
+let NED_ALL=[], SPG_ALL=[], WOW_ALL=[];
 function switchTab(t){
   TAB=t;
-  ['rka','beli','stock','pjmds','formula','ned','spg'].forEach(x=>{
+  ['rka','beli','stock','pjmds','formula','ned','spg','wow'].forEach(x=>{
     const el=document.getElementById('ntab-'+x);
     if(el){el.classList.toggle('on',x===t);el.classList.toggle(x,true);}
   });
@@ -1282,6 +1289,7 @@ function switchTab(t){
   const sf=document.getElementById('sec-formula');if(sf)sf.style.display=t==='formula'?'block':'none';
   const sn=document.getElementById('sec-ned');if(sn)sn.style.display=t==='ned'?'block':'none';
   const sg=document.getElementById('sec-spg');if(sg)sg.style.display=t==='spg'?'block':'none';
+  const sw=document.getElementById('sec-wow');if(sw)sw.style.display=t==='wow'?'block':'none';
   render();
 }
 function switchSubTab(main,sub){
@@ -1358,6 +1366,8 @@ function render(){
   const nbNed=document.getElementById('nb-ned');if(nbNed)nbNed.textContent=nedF.length||'—';
   const spgF=filteredSpg();
   const nbSpg=document.getElementById('nb-spg');if(nbSpg)nbSpg.textContent=spgF.length||'—';
+  const wowF=filtered(WOW_ALL);
+  const nbWow=document.getElementById('nb-wow');if(nbWow)nbWow.textContent=wowF.length||'—';
   if(TAB==='rka'){
     if(SUBTAB_RKA==='log')renderRKA(rkaF);
     else renderStore(rkaF);
@@ -1383,6 +1393,8 @@ function render(){
     else if(SUBTAB_SPG==='store')renderSpgPerStore(spgF);
     else if(SUBTAB_SPG==='indogrosir')renderSpgIndogrosir(spgF);
     else renderSpgRank(spgF);
+  }else if(TAB==='wow'){
+    renderWow(wowF);
   }
 }
 
@@ -2871,6 +2883,94 @@ function renderStore(rkaF){
     </tr>`;
   }).join(''):`<tr><td colspan="9"><div class="empty-state">Tidak ada data toko.</div></td></tr>`;
   document.getElementById('tfoot').textContent=`${rows.length} toko`;
+}
+
+// ── TAB: DISPLAY WOW ─────────────────────────────────────────────────────────
+let _expandedWowVid=null;
+function renderWow(wowF){
+  const rows=doSort(wowF);
+  const totVisit=wowF.length;
+  const avgAv=wowF.length?Math.round(wowF.reduce((s,r)=>s+((r.avail+r.unavail)>0?r.avail/(r.avail+r.unavail)*100:0),0)/wowF.length):0;
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  set('ds-wow-total',totVisit||'—');
+  set('ds-wow-av',totVisit?avgAv+'%':'—');
+  const th=document.getElementById('table-head-wow');
+  const tb=document.getElementById('table-body-wow');
+  if(!th)return;
+  th.innerHTML=`<tr>
+    <th onclick="sortBy('id')">ID${ar('id')}</th>
+    <th onclick="sortBy('timestamp')">Waktu${ar('timestamp')}</th>
+    <th onclick="sortBy('mds')">MDS${ar('mds')}</th>
+    <th onclick="sortBy('area')">Area${ar('area')}</th>
+    <th onclick="sortBy('store')">Toko${ar('store')}</th>
+    <th>Toko Pasangan</th>
+    <th onclick="sortBy('avail')">Ada${ar('avail')}</th>
+    <th onclick="sortBy('unavail')">Tdk${ar('unavail')}</th>
+    <th>AV%</th><th>NS AV</th><th>HILO AV</th><th>TS AV</th>
+  </tr>`;
+  tb.innerHTML=rows.length?rows.map(r=>{
+    const pct=r.avail+r.unavail>0?Math.round(r.avail/(r.avail+r.unavail)*100):0;
+    const ts=r.timestamp;
+    const bav={NS:{a:0,t:0},HILO:{a:0,t:0},TS:{a:0,t:0}};
+    if(r.items)Object.entries(r.items).forEach(([n,v])=>{const b=brandOf(n);if(bav[b]){bav[b].t++;if(v)bav[b].a++;}});
+    function bTag(b){const d=bav[b];if(!d||!d.t)return'<span class="tag b sm">—</span>';const p=Math.round(d.a/d.t*100);return avTag(p,' sm');}
+    const hasPhoto=!!r.photoData;
+    const hasItems=r.items&&Object.keys(r.items).length>0;
+    const canExpand=hasPhoto||hasItems;
+    const vid=r.id||'';
+    return`<tr class="${canExpand?'clickrow':''}" ${canExpand?`data-vid="${vid}" onclick="toggleWowDetail(this,'${vid}')"`:''}style="cursor:${canExpand?'pointer':'default'}">
+      <td class="td-id">${r.id||'—'}</td>
+      <td class="td-dim">${ts.toLocaleDateString('id-ID',{day:'numeric',month:'short'})} ${ts.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}</td>
+      <td class="td-main">${r.mds||'—'}</td>
+      <td class="td-dim">${r.area||'—'}</td>
+      <td class="td-mid">${r.store||'—'}${hasPhoto?' <span style="font-size:9px;color:var(--accent)">📷</span>':canExpand?' <span style="font-size:9px;color:var(--t3)">▾</span>':''}</td>
+      <td class="td-dim">${r.storePasangan||'—'}</td>
+      <td><span class="tag g sm">${r.avail||0}</span></td>
+      <td><span class="tag r sm">${r.unavail||0}</span></td>
+      <td>${avTag(pct,' sm')}</td>
+      <td>${bTag('NS')}</td><td>${bTag('HILO')}</td><td>${bTag('TS')}</td>
+    </tr>`;
+  }).join(''):`<tr><td colspan="12"><div class="empty-state">Tidak ada data Validasi Display WOW.</div></td></tr>`;
+  const tf=document.getElementById('tfoot-wow');
+  if(tf)tf.textContent=`${rows.length} kunjungan`;
+  if(_expandedWowVid){const tr=document.querySelector(`tr[data-vid="${_expandedWowVid}"]`);if(tr)toggleWowDetail(tr,_expandedWowVid);}
+}
+function toggleWowDetail(tr,vid){
+  const next=tr.nextElementSibling;
+  if(next&&next.classList.contains('item-detail-row')){
+    next.style.display=next.style.display==='none'?'':'none';
+    const sp=tr.querySelector('span[style*="▾"]')||tr.querySelector('span[style*="▴"]');
+    if(sp)sp.textContent=next.style.display===''?'▴':'▾';
+    _expandedWowVid=next.style.display===''?vid:null;
+    return;
+  }
+  _expandedWowVid=vid;
+  const r=WOW_ALL.find(x=>x.id===vid)||{};
+  const items=r.items||{};
+  const groups={NS:[],HILO:[],TS:[],O:[]};
+  Object.entries(items).sort(([a],[b])=>a.localeCompare(b)).forEach(([n,ada])=>{
+    const b=brandOf(n); (groups[b]||groups.O).push({n,ada});
+  });
+  let html=`<td colspan="99" style="padding:6px 16px 12px;background:${ov(1)};border-top:none">`;
+  if(r.photoData){
+    html+=`<div style="margin-bottom:10px;max-width:160px"><div style="font-size:8px;color:var(--t3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.08em">Foto Hanger</div><img src="${r.photoData}" style="width:100%;border-radius:8px;border:1px solid var(--border);object-fit:cover;aspect-ratio:4/3;cursor:zoom-in" onclick="this.style.maxWidth=this.style.maxWidth?'':'none';this.style.width=this.style.width==='auto'?'100%':'auto'"></div>`;
+  }
+  ['NS','HILO','TS'].forEach(brand=>{
+    const list=groups[brand]; if(!list.length)return;
+    html+=`<div style="margin-bottom:7px"><div style="font-size:8px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin-bottom:4px">${brand}</div><div style="display:flex;flex-wrap:wrap;gap:3px">`;
+    list.forEach(({n,ada})=>{
+      const short=n.replace(/^(NS|HI LO|HILO|TS)\s+/i,'').replace(/\s+PLS.*$/i,'').trim();
+      html+=`<span style="font-size:9px;padding:2px 7px;border-radius:5px;background:${ada?'rgba(16,214,106,.12)':'rgba(239,68,68,.1)'};color:${ada?'var(--accent)':'var(--red)'};font-weight:600">${ada?'✓':'✗'} ${short}</span>`;
+    });
+    html+='</div></div>';
+  });
+  html+='</td>';
+  const det=document.createElement('tr');
+  det.className='item-detail-row';
+  det.innerHTML=html;
+  tr.parentNode.insertBefore(det,tr.nextSibling);
+  const caret=tr.querySelector('span[style*="▾"]');
+  if(caret)caret.textContent='▴';
 }
 
 // ── TAB: Beli Barang ────────────────────────────────────────────────────────

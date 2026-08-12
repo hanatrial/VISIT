@@ -45,6 +45,7 @@
     <div class="nav-tab on rka" id="ntab-rka" onclick="switchTab('rka')">📋 Visit RKA <span class="nav-badge" id="nb-rka">—</span></div>
     <div class="nav-tab beli" id="ntab-beli" onclick="switchTab('beli')">🛒 Beli Barang <span class="nav-badge" id="nb-beli">—</span></div>
     <div class="nav-tab pjmds" id="ntab-pjmds" onclick="switchTab('pjmds')">💰 Penjualan MDS <span class="nav-badge" id="nb-pjmds">—</span></div>
+    <div class="nav-tab wow" id="ntab-wow" onclick="switchTab('wow')">🪧 Display WOW <span class="nav-badge" id="nb-wow">—</span></div>
   </div>
   <div class="main">
     <div class="filter-shell"><div class="filter-inner">
@@ -296,6 +297,34 @@
           <div class="tfoot-row" id="sc-tfoot"></div>
         </div></div>
       </div>
+    </div>
+
+    <!-- DISPLAY WOW SECTION -->
+    <div id="sec-wow" style="display:none">
+      <div class="bento bento-2">
+        <div class="kpi-shell">
+          <div class="kpi-border" style="--gc:rgba(6,182,212,.9)"></div>
+          <div class="kpi-inner">
+            <div class="kpi-glow" style="background:radial-gradient(circle at 0% 0%,var(--cyan),transparent 70%)"></div>
+            <div class="kpi-label">Total Visit WOW</div>
+            <div class="kpi-val" style="color:var(--cyan)" id="ds-wow-total">—</div>
+            <div class="kpi-sub">kunjungan validasi display</div>
+          </div>
+        </div>
+        <div class="kpi-shell">
+          <div class="kpi-border" style="--gc:rgba(16,185,129,.9)"></div>
+          <div class="kpi-inner">
+            <div class="kpi-glow" style="background:radial-gradient(circle at 100% 0%,var(--green),transparent 70%)"></div>
+            <div class="kpi-label">Avg AV%</div>
+            <div class="kpi-val" style="color:var(--green)" id="ds-wow-av">—</div>
+            <div class="kpi-sub">product availability item PLS</div>
+          </div>
+        </div>
+      </div>
+      <div class="panel-shell"><div class="panel-body">
+        <table><thead id="table-head-wow"></thead><tbody id="table-body-wow"></tbody></table>
+        <div class="tfoot-row" id="tfoot-wow"></div>
+      </div></div>
     </div>
 
   </div>
