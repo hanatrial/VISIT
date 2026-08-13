@@ -31,7 +31,7 @@ async function withFirestoreRetry(writeFn){
 /* ─────────── DATA ─────────── */
 const MDS_BY_AREA = {
   'Bau Bau':        ['Rizal'],
-  'Bone':           ['A. Arwandi Amrah','M. Murdiono Arma','Amal Akbar'],
+  'Bone':           ['A. Arwandi Amrah','M. Murdiono Arma','Amal Akbar','Ilham','Andi Reski'],
   'Gorontalo':      ['Aditya Hulopi','Mohammad Rahman Marwan','Abd. Rahman Lahay','Satrio Yusuf'],
   'Kendari':        ['Laode Asrad Ilhamid','Abdul Rahman (Rangga)','Dwi Haryanto','Rosa Sasmita'],
   'Luwuk':          ['Kadek Adi Merta Sastrawan'],

@@ -29,7 +29,7 @@ const DASH_PIN_MDS_ONLY='MDS2026';
 const PIN_SCOPE=IS_OPS_DASH?'ops':'main';
 const MDS_BY_AREA={
   'Bau Bau':['Rizal'],
-  'Bone':['A. Arwandi Amrah','M. Murdiono Arma','Amal Akbar'],
+  'Bone':['A. Arwandi Amrah','M. Murdiono Arma','Amal Akbar','Ilham','Andi Reski'],
   'Gorontalo':['Aditya Hulopi','Mohammad Rahman Marwan','Abd. Rahman Lahay','Satrio Yusuf'],
   'Kendari':['Laode Asrad Ilhamid','Abdul Rahman (Rangga)','Dwi Haryanto','Rosa Sasmita'],
   'Luwuk':['Kadek Adi Merta Sastrawan'],
