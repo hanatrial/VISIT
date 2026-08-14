@@ -677,6 +677,23 @@ function pjCustomerVisits(kode,c,o){
     return{tanggal:r.Tanggal,klasifikasi:r.Klasifikasi,omzet:(r.OmzetNS||0)+(r.OmzetHILO||0),items:items.map(it=>({nama:it.NamaItem,qty:it.Qty,value:pjOrderValue(it)}))};
   }).sort((a,b)=>new Date(b.tanggal)-new Date(a.tanggal));
 }
+/* Full-size photo viewer — click any report photo to see it uncropped instead of
+   the inline thumbnail (which is clipped to a fixed aspect-ratio box). */
+function openPhotoLightbox(src){
+  let ov=document.getElementById('photo-lightbox');
+  if(!ov){
+    ov=document.createElement('div');
+    ov.id='photo-lightbox';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:20px';
+    ov.onclick=()=>ov.remove();
+    document.body.appendChild(ov);
+  }
+  ov.innerHTML='';
+  const img=document.createElement('img');
+  img.src=src;
+  img.style.cssText='max-width:95vw;max-height:95vh;object-fit:contain;border-radius:8px';
+  ov.appendChild(img);
+}
 function pjShowModal(title,bodyHtml){
   const t=document.getElementById('pjmds-modal-title'),b=document.getElementById('pjmds-modal-body'),m=document.getElementById('pjmds-modal');
   if(!t||!b||!m)return;
@@ -3408,7 +3425,7 @@ function toggleRkaDetail(tr, vid){
         // base64 stripped at ingest — placeholder, filled in by hydrateRkaPhotos()
         body=`<div data-ph="${idx}" style="width:100%;aspect-ratio:4/3;border-radius:8px;border:1px solid var(--border);background:${ov(3)};display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--t3)">Memuat…</div>`;
       }else if(typeof url==='string'&&url.startsWith('data:')){
-        body=`<img src="${url}" style="width:100%;border-radius:8px;border:1px solid var(--border);object-fit:cover;aspect-ratio:4/3;cursor:zoom-in" onclick="this.style.maxWidth=this.style.maxWidth?'':'none';this.style.width=this.style.width==='auto'?'100%':'auto'">`;
+        body=`<img src="${url}" style="width:100%;border-radius:8px;border:1px solid var(--border);object-fit:cover;aspect-ratio:4/3;cursor:zoom-in" onclick="openPhotoLightbox(this.src)">`;
       }else{
         body=`<a href="${url}" target="_blank"><img src="${url}" style="width:100%;border-radius:8px;border:1px solid var(--border);object-fit:cover;aspect-ratio:4/3" loading="lazy"></a>`;
       }
@@ -3447,7 +3464,7 @@ async function hydratePhotos(detRow,coll,docId){
       const img=document.createElement('img');
       img.src=url;
       img.style.cssText='width:100%;border-radius:8px;border:1px solid var(--border);object-fit:cover;aspect-ratio:4/3;cursor:zoom-in';
-      img.onclick=function(){this.style.maxWidth=this.style.maxWidth?'':'none';this.style.width=this.style.width==='auto'?'100%':'auto';};
+      img.onclick=function(){openPhotoLightbox(this.src);};
       el.replaceWith(img);
     }else{
       // no photo in that slot — drop the label+placeholder wrapper entirely
@@ -3478,7 +3495,7 @@ function toggleBeliDetail(tr, bid){
       // base64 stripped at ingest — placeholder, filled in by hydratePhotos()
       imgHtml=`<div data-ph="0" style="width:220px;max-width:100%;aspect-ratio:4/3;border-radius:8px;border:1px solid var(--border);background:${ov(3)};display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--t3)">Memuat…</div>`;
     }else if(photo.startsWith('data:')){
-      imgHtml=`<img src="${photo}" style="max-width:220px;width:100%;border-radius:8px;border:1px solid var(--border);object-fit:contain;cursor:zoom-in" onclick="this.style.maxWidth=this.style.maxWidth?'':'none';this.style.width=this.style.width==='auto'?'100%':'auto'">`;
+      imgHtml=`<img src="${photo}" style="max-width:220px;width:100%;border-radius:8px;border:1px solid var(--border);object-fit:contain;cursor:zoom-in" onclick="openPhotoLightbox(this.src)">`;
     }else{
       imgHtml=`<a href="${photo}" target="_blank"><img src="${photo}" style="max-width:220px;width:100%;border-radius:8px;border:1px solid var(--border);object-fit:contain" loading="lazy"></a>`;
     }
