@@ -25047,7 +25047,17 @@ const SPG_INDOGROSIR_GROUPS=[
 ];
 function spgIndogrosirItems(){ return SPG_INDOGROSIR_GROUPS.flatMap(g=>g.items); }
 function spgIndogrosirGroupOf(name){ const g=SPG_INDOGROSIR_GROUPS.find(g=>g.items.includes(name)); return g?g.label:''; }
+const SPG_SINAR_PLASTIK_GROUPS=[
+  {label:'NS PLS', items: spgGroupItems('NS').filter(n=>/PLS/i.test(n)&&!/\bREF\b/i.test(n)&&!/BAG/i.test(n)&&!/\bFC\b/i.test(n))},
+  {label:'NS Bag', items:['NS JERUK PERAS REF 12BAGX500G','NS PREMIUM JUS MANGGA REF PLS 12BAGX420G','NS LYCHEE TEA REF PLS 12BAGX400G']},
+  {label:'HI LO DRINK PLS', items: spgGroupItems('HILO DRINK PLS')},
+  {label:'HI LO SCHOOL PLS', items: spgGroupItems('HILO SCHOOL PLS')},
+  {label:'TS SWT PLS', items: spgGroupItems('TS SWT').filter(n=>/PLS/i.test(n))}
+];
+function spgSinarPlastikItems(){ return SPG_SINAR_PLASTIK_GROUPS.flatMap(g=>g.items); }
+function spgSinarPlastikGroupOf(name){ const g=SPG_SINAR_PLASTIK_GROUPS.find(g=>g.items.includes(name)); return g?g.label:''; }
 function spgOrderedItems(){
+  if(/^sinar plastik 3$/i.test((SG.store||'').trim())) return spgSinarPlastikItems();
   if(/indogrosir/i.test(SG.store||'')) return spgIndogrosirItems();
   const prio=new Set(SPG_PRIORITY_ITEMS);
   const rest=[];
@@ -25058,10 +25068,19 @@ function renderSpgItems(){
   const list=document.getElementById('spg-item-list');
   list.innerHTML='';
   const order=spgOrderedItems();
-  const isIndogrosir=/indogrosir/i.test(SG.store||'');
+  const isSinarPlastik=/^sinar plastik 3$/i.test((SG.store||'').trim());
+  const isIndogrosir=!isSinarPlastik&&/indogrosir/i.test(SG.store||'');
   let lastGroup=null;
   order.forEach((name,fi)=>{
-    if(isIndogrosir){
+    if(isSinarPlastik){
+      const g=spgSinarPlastikGroupOf(name);
+      if(g!==lastGroup){
+        const hdr=document.createElement('div');
+        hdr.className='qty-group-hdr'; hdr.textContent=g;
+        list.appendChild(hdr);
+        lastGroup=g;
+      }
+    } else if(isIndogrosir){
       const g=spgIndogrosirGroupOf(name);
       if(g!==lastGroup){
         const hdr=document.createElement('div');
@@ -25181,12 +25200,59 @@ function spgItemLine(name,qty,omzet){
 }
 function shareSpgWhatsApp(){
   const tgl=spgDateLabel(SG.date);
-  const isIndogrosir=/indogrosir/i.test(SG.store);
+  const isSinarPlastik=/^sinar plastik 3$/i.test((SG.store||'').trim());
+  const isIndogrosir=!isSinarPlastik&&/indogrosir/i.test(SG.store);
   let text='*REPORT HARIAN SPG*\n';
   text+='📅 '+tgl+'\n';
   text+='👤 '+SG.nama+'\n';
   text+='🏪 '+SG.store+' ('+SG.area+')\n';
   text+='─────────────────\n';
+  if(isSinarPlastik){
+    const prioMatch=name=>name.includes('JERUK PERAS')&&!name.includes('BAG');
+    const nsBagNames=new Set(['NS JERUK PERAS REF 12BAGX500G','NS PREMIUM JUS MANGGA REF PLS 12BAGX420G','NS LYCHEE TEA REF PLS 12BAGX400G']);
+    const entries=Object.entries(SG.items);
+    const nsAll=entries.filter(([name])=>(spgGroupOf(name)==='NS'&&name.includes('PLS')&&!nsBagNames.has(name))||nsBagNames.has(name));
+    const nsTea=nsAll.filter(([name])=>name.includes('TEA')&&!nsBagNames.has(name));
+    const nsBag=nsAll.filter(([name])=>nsBagNames.has(name));
+    const nsRasa=nsAll.filter(([name])=>!nsBagNames.has(name)&&!name.includes('TEA')&&!prioMatch(name));
+    const hiloAll=entries.filter(([name])=>{ const g=spgGroupOf(name); return g==='HILO DRINK PLS'||g==='HILO SCHOOL PLS'; });
+    const used=new Set([...nsTea,...nsRasa,...nsBag,...hiloAll].map(([name])=>name));
+    const lainEntries=entries.filter(([name])=>!used.has(name));
+    const sumQty=arr=>arr.reduce((s,[,{qty}])=>s+qty,0);
+    const sumOmz=arr=>arr.reduce((s,[,{omzet}])=>s+omzet,0);
+    if(nsAll.length){
+      text+='🍊 *ALL NS*\n   '+sumQty(nsAll)+' rc = Rp '+sumOmz(nsAll).toLocaleString('id-ID')+'\n';
+      text+='─────────────────\n';
+    }
+    if(nsTea.length){
+      text+='🍵 *NS TEA*\n   '+sumQty(nsTea)+' rc = Rp '+sumOmz(nsTea).toLocaleString('id-ID')+'\n';
+      nsTea.forEach(([name,{qty,omzet}])=>{ text+=spgItemLine(name,qty,omzet); });
+      text+='─────────────────\n';
+    }
+    if(nsRasa.length){
+      text+='🍹 *NS RASA-RASA*\n   '+sumQty(nsRasa)+' rc = Rp '+sumOmz(nsRasa).toLocaleString('id-ID')+'\n';
+      nsRasa.forEach(([name,{qty,omzet}])=>{ text+=spgItemLine(name,qty,omzet); });
+      text+='─────────────────\n';
+    }
+    if(nsBag.length){
+      text+='📦 *NS BAG*\n   '+sumQty(nsBag)+' rc = Rp '+sumOmz(nsBag).toLocaleString('id-ID')+'\n';
+      nsBag.forEach(([name,{qty,omzet}])=>{ text+=spgItemLine(name,qty,omzet); });
+      text+='─────────────────\n';
+    }
+    if(hiloAll.length){
+      text+='🥛 *HI LO*\n   '+sumQty(hiloAll)+' rc = Rp '+sumOmz(hiloAll).toLocaleString('id-ID')+'\n';
+      hiloAll.forEach(([name,{qty,omzet}])=>{ text+=spgItemLine(name,qty,omzet); });
+      text+='─────────────────\n';
+    }
+    if(lainEntries.length){
+      text+='*ITEM LAINNYA*\n';
+      lainEntries.forEach(([name,{qty,omzet}])=>{ text+=spgItemLine(name,qty,omzet); });
+      text+='─────────────────\n';
+    }
+    text+='*TOTAL OMZET: Rp '+SG.total.toLocaleString('id-ID')+'*';
+    location.href='https://wa.me/?text='+encodeURIComponent(text);
+    return;
+  }
   if(isIndogrosir){
     const isAso=SG.area==='Manado'||SG.area==='Gorontalo';
     const prioMatch=name=>isAso?name.includes('AMERICAN SWEET ORANGE'):name.includes('JERUK PERAS');
