@@ -1869,7 +1869,7 @@ function renderSpgReport(spgF){
     return;
   }
   listEl.innerHTML=shown.length?shown.map(x=>{
-    return`<div class="pill ${x.key===SPG_REPORT_SEL?'on':''}" onclick="selectSpgReportName('${_escJs(x.key)}')">${x.n} <span style="opacity:.7">(${x.cnt}) · ${rp(x.omzet)}</span></div>`;
+    return`<div class="name-row ${x.key===SPG_REPORT_SEL?'on':''}" onclick="selectSpgReportName('${_escJs(x.key)}')"><span class="nr-name">${x.n}</span><span class="nr-meta">${x.cnt} · ${rp(x.omzet)}</span></div>`;
   }).join(''):'<div class="empty-state" style="padding:8px 0">Tidak ada nama yang cocok.</div>';
   const rows=spgF.filter(r=>_spgKey(r.nama||'?')===SPG_REPORT_SEL).sort((a,b)=>a.timestamp-b.timestamp);
   const totalOmzet=rows.reduce((s,r)=>s+(r.totalOmzet||0),0);
@@ -1945,7 +1945,7 @@ function renderSpgPerStore(spgF){
   listEl.innerHTML=shownKeys.length?shownKeys.map(k=>{
     const g=byKey[k];
     const omzet=g.rows.reduce((s,r)=>s+(r.totalOmzet||0),0);
-    return`<div class="pill ${k===SPG_STORE_SEL?'on':''}" onclick="selectSpgStoreName('${_escJs(k)}')">${g.label} <span style="opacity:.7">(${g.rows.length}) · ${rp(omzet)}</span></div>`;
+    return`<div class="name-row ${k===SPG_STORE_SEL?'on':''}" onclick="selectSpgStoreName('${_escJs(k)}')"><span class="nr-name">${g.label}</span><span class="nr-meta">${g.rows.length} · ${rp(omzet)}</span></div>`;
   }).join(''):'<div class="empty-state" style="padding:8px 0">Tidak ada toko yang cocok.</div>';
   const g=byKey[SPG_STORE_SEL];
   const rows=[...g.rows].sort((a,b)=>a.timestamp-b.timestamp);
