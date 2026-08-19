@@ -180,11 +180,13 @@
           <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
             <div>
               <div style="font-size:9px;color:var(--t3);margin-bottom:4px">STOCK AWAL (toko · bulan · nilai)</div>
-              <select id="fc-awal" class="fi" style="width:260px" onchange="fcPreview()"><option value="">— Pilih —</option></select>
+              <input type="text" id="fc-awal" class="fi" style="width:260px" list="fc-awal-opts" autocomplete="off" placeholder="Ketik untuk cari toko…" oninput="fcPreview()">
+              <datalist id="fc-awal-opts"></datalist>
             </div>
             <div>
               <div style="font-size:9px;color:var(--t3);margin-bottom:4px">STOCK AKHIR (toko · bulan · nilai)</div>
-              <select id="fc-akhir" class="fi" style="width:260px" onchange="fcPreview()"><option value="">— Pilih —</option></select>
+              <input type="text" id="fc-akhir" class="fi" style="width:260px" list="fc-akhir-opts" autocomplete="off" placeholder="Ketik untuk cari toko…" oninput="fcPreview()">
+              <datalist id="fc-akhir-opts"></datalist>
             </div>
             <div>
               <div style="font-size:9px;color:var(--t3);margin-bottom:4px">IN TRANSIT TERSIMPAN</div>
@@ -302,6 +304,6 @@
   </div></div>
 </div>
 
-<script src="dashboard.js?v=52"></script>
+<script src="dashboard.js?v=53"></script>
 </body>
 </html>

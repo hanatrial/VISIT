@@ -2632,18 +2632,23 @@ function buildStockCombos(){
   });
   _FC_COMBOS=Object.values(map).sort((a,b)=>a.store.localeCompare(b.store)||a.mk.localeCompare(b.mk));
 }
+function fcComboLabel(c){return `[${c.type==='awal'?'Awal':'Akhir'}] ${c.store} · ${monthLabel(c.mk)} · ${rp(c.value)}`;}
+let _FC_LABEL_TO_IDX={};
 function populateFcSelects(){
   buildStockCombos();
-  // Both dropdowns list every combo regardless of type (awal or akhir) — a user may
+  // Both fields list every combo regardless of type (awal or akhir) — a user may
   // legitimately want to compare two "Awal" entries (e.g. month-over-month) instead
   // of always pairing an Awal with an Akhir, so the type is shown as a label prefix
-  // rather than used to filter the list.
+  // rather than used to filter the list. They're searchable text inputs backed by a
+  // <datalist> (instead of plain <select>) so a long store list can be typed/filtered
+  // instead of scrolled through.
   const fill=(id)=>{
-    const sel=document.getElementById(id);
-    if(!sel)return;
-    const cur=sel.value;
-    const opts=_FC_COMBOS.map((c,i)=>({c,i}));
-    sel.innerHTML='<option value="">— Pilih —</option>'+opts.map(({c,i})=>`<option value="${i}" ${String(i)===cur?'selected':''}>[${c.type==='awal'?'Awal':'Akhir'}] ${c.store} · ${monthLabel(c.mk)} · ${rp(c.value)}</option>`).join('');
+    const inp=document.getElementById(id),dl=document.getElementById(id+'-opts');
+    if(!inp||!dl)return;
+    const map={};
+    _FC_COMBOS.forEach((c,i)=>{map[fcComboLabel(c)]=i;});
+    _FC_LABEL_TO_IDX[id]=map;
+    dl.innerHTML=_FC_COMBOS.map(c=>`<option value="${fcComboLabel(c)}">`).join('');
   };
   fill('fc-awal');
   fill('fc-akhir');
@@ -2683,7 +2688,12 @@ function renderInTransitImports(){
   const tf=document.getElementById('ti-tfoot');
   if(tf)tf.textContent=IN_TRANSIT_IMPORTS.length?`${IN_TRANSIT_IMPORTS.length} baris · Total ${rp(total)}`:'';
 }
-function fcGet(id){const v=document.getElementById(id)?.value;return v===''?null:_FC_COMBOS[+v];}
+function fcGet(id){
+  const v=document.getElementById(id)?.value;
+  if(!v)return null;
+  const idx=_FC_LABEL_TO_IDX[id]?.[v];
+  return idx===undefined?null:_FC_COMBOS[idx];
+}
 function fcPreview(){
   const awal=fcGet('fc-awal'),akhir=fcGet('fc-akhir');
   const transit=parseNum(document.getElementById('fc-transit')?.value||'');
