@@ -2047,7 +2047,24 @@ function spgRankSection(rows,area,cfg){
         <td class="td-dim">${prioPct}%</td>
       </tr>`;
     });
-    html+='</tbody></table>';
+    // Totals row across every store/SPG in this section — same columns as the body,
+    // Hari Jualan/Avg/% left blank since summing those isn't meaningful.
+    const grpTotals={};
+    SPG_RANK_COLS.forEach(c=>{grpTotals[c.group]=list.reduce((s,e)=>s+(e.grp[c.group]||0),0);});
+    const prioSum=list.reduce((s,e)=>s+e.prio,0);
+    const prioPctTotal=areaTotal?Math.round(prioSum/areaTotal*100):0;
+    html+='</tbody>';
+    html+=`<tfoot><tr style="border-top:2px solid var(--border2);font-weight:800">
+      <td colspan="2">Total</td>
+      <td class="td-mid">—</td>
+      <td class="td-dim">${new Set(list.flatMap(e=>[...e.others])).size}</td>
+      <td style="color:var(--green)">${rp(areaTotal)}</td>
+      <td class="td-mid">—</td>
+      ${SPG_RANK_COLS.map(c=>{const v=grpTotals[c.group]||0;return `<td style="color:${v?'var(--cyan)':'var(--t3)'}">${v?rp(v):'—'}</td>`;}).join('')}
+      <td style="color:var(--violet)">${prioSum?rp(prioSum):'—'}</td>
+      <td class="td-dim">${prioPctTotal}%</td>
+    </tr></tfoot>`;
+    html+='</table>';
   }
   return html+'</div></div>';
 }
