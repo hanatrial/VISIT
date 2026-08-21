@@ -3605,6 +3605,24 @@ function exportCSV(){
       const detail=r.itemQty?Object.entries(r.itemQty).map(([n,v])=>`${n}:${v}`).join('; '):'';
       return[r.id,ts.toLocaleString('id-ID'),r.mds,r.area,q(r.store),nsR,hiR,r.totalRenceng||0,k,r.nominal||0,k-(r.nominal||0),q(detail)].join(',');
     }).join('\n');fn='Beli';
+  }else if(TAB==='spg'){
+    // Per-tanggal, per-SPG, per-item Prioritas breakdown: qty & omzet per toko —
+    // one row per (laporan × item prioritas terjual), so it can be pivoted in Excel.
+    const prioGroupOf={};
+    SPG_PRIO_GROUPS.forEach(g=>g.items.forEach(i=>{prioGroupOf[i]=g.label;}));
+    csv='Tanggal,Nama SPG,Area,Toko,Grup Item Prioritas,Item,Qty (rncg),Omzet\n';
+    const lines=[];
+    filteredSpg().forEach(r=>{
+      const tgl=r.tanggalJualan||(r.timestamp?r.timestamp.toISOString().slice(0,10):'');
+      if(!r.items)return;
+      Object.entries(r.items).forEach(([name,v])=>{
+        if(!prioGroupOf[name])return;
+        const qty=(v&&v.qty)||0,omzet=(v&&v.omzet)||0;
+        if(!qty&&!omzet)return;
+        lines.push([tgl,q(r.nama),q(r.area),q(r.store),q(prioGroupOf[name]),q(name),qty,omzet].join(','));
+      });
+    });
+    csv+=lines.join('\n');fn='SPG_Item_Prioritas';
   }else if(TAB==='stock'){
     csv='ID,Waktu,Nama,Status,Area,Toko,Tipe,Total Nilai,Detail Item\n';
     csv+=stockF.map(r=>{
