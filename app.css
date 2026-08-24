@@ -496,5 +496,6 @@ input[type="file"]{display:none;}
 
 .dash-btn{position:absolute;top:18px;right:16px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;}
 .dash-btn.ops{right:58px;}
+.dash-btn.kdi{right:100px;}
 .qty-row.beli-priority .qty-name{color:#C47B0A;font-weight:700;}
 .qty-row.beli-priority{border-left:3px solid #E09A2A;padding-left:9px;}
