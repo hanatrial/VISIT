@@ -24705,18 +24705,39 @@ const KENDARI_STORES = [
   "Tk. Damai 2 ( CV.SUMBER BERKAT ABADI )",
   "CV. Alaska Jaya Abadi"
 ];
-const KD = { nama:'', store:'', jenis:'', date:'', arrivalDate:'', items:{}, sourcePoId:'', sourceItems:{} };
+const KD = { nama:'', store:'', distributor:'', jenis:'', date:'', arrivalDate:'', items:{}, sourcePoId:'', sourceItems:{} };
 let kendariStep = 0;
+
+/* Matakar Kendari excludes HILO DRINK PLS, HILO SCHOOL PLS, and NS items whose name contains
+   "PLS" (but NS "FC" items stay with Matakar). Borwita Citra Prima Kendari gets exactly that
+   excluded set instead — the two distributors' item lists are a strict partition. */
+function kendariItemIsBorwita(group, name){
+  if(group==='HILO DRINK PLS' || group==='HILO SCHOOL PLS') return true;
+  if(group==='NS' && name.includes('PLS') && !name.includes('FC')) return true;
+  return false;
+}
+function kendariItemAllowed(group, name, distributor){
+  const isBorwitaItem = kendariItemIsBorwita(group, name);
+  return distributor==='Borwita Citra Prima Kendari' ? isBorwitaItem : !isBorwitaItem;
+}
+function kendariVisibleProducts(){
+  if(!KD.distributor) return STOCK_PRODUCTS;
+  return STOCK_PRODUCTS
+    .map(g=>({group:g.group, items:g.items.filter(nm=>kendariItemAllowed(g.group, nm, KD.distributor))}))
+    .filter(g=>g.items.length>0);
+}
 
 function openKendari(){ showScreen('s-kendari'); initKendari(); }
 
 function initKendari(){
   kendariStep=0;
-  KD.nama=''; KD.store=''; KD.jenis=''; KD.date=''; KD.arrivalDate=''; KD.items={}; KD.sourcePoId=''; KD.sourceItems={};
+  KD.nama=''; KD.store=''; KD.distributor=''; KD.jenis=''; KD.date=''; KD.arrivalDate=''; KD.items={}; KD.sourcePoId=''; KD.sourceItems={};
   document.getElementById('kendari-nama-input').value='';
   const ss=document.getElementById('kendari-store-sel');
   ss.innerHTML='<option value="">— Pilih Toko —</option>';
   KENDARI_STORES.forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; ss.appendChild(o); });
+  document.getElementById('kendari-r-matakar').checked=false;
+  document.getElementById('kendari-r-borwita').checked=false;
   document.getElementById('kendari-r-order').checked=false;
   document.getElementById('kendari-r-barang').checked=false;
   document.getElementById('kendari-date-input').value='';
@@ -24737,6 +24758,13 @@ function kendariStoreChange(){
   kendariCheck(0);
 }
 
+function kendariDistributorChange(){
+  document.getElementById('kendari-po-sel').innerHTML='<option value="">— Pilih Toko dulu —</option>';
+  document.getElementById('kendari-po-hint').textContent='';
+  if(document.getElementById('kendari-r-barang').checked) kendariLoadPoOptions();
+  kendariCheck(0);
+}
+
 function kendariJenisChange(){
   const isBarang=document.getElementById('kendari-r-barang').checked;
   document.getElementById('kendari-order-date-wrap').style.display=isBarang?'none':'block';
@@ -24748,15 +24776,17 @@ function kendariJenisChange(){
 async function kendariLoadPoOptions(){
   const sel=document.getElementById('kendari-po-sel');
   const store=document.getElementById('kendari-store-sel').value;
-  if(!store){ sel.innerHTML='<option value="">— Pilih Toko dulu —</option>'; return; }
+  const distributor=(document.getElementById('kendari-r-matakar').checked && 'Matakar Kendari')
+    || (document.getElementById('kendari-r-borwita').checked && 'Borwita Citra Prima Kendari') || '';
+  if(!store || !distributor){ sel.innerHTML='<option value="">— Pilih Toko & Distributor dulu —</option>'; return; }
   sel.innerHTML='<option value="">Memuat…</option>';
   if(typeof db==='undefined'){ sel.innerHTML='<option value="">DB tidak tersedia</option>'; return; }
   try{
-    const snap=await db.collection('kendari_po_logs').where('store','==',store).where('jenis','==','order').get();
+    const snap=await db.collection('kendari_po_logs').where('store','==',store).where('jenis','==','order').where('distributor','==',distributor).get();
     const docs=snap.docs.map(d=>({...d.data(),_docId:d.id})).sort((a,b)=>(b.tanggalPo||'').localeCompare(a.tanggalPo||''));
     sel.innerHTML='<option value="">— Pilih Tanggal PO —</option>';
     docs.forEach(d=>{ const o=document.createElement('option'); o.value=d._docId; o.textContent=d.tanggalPo+' · '+(d.id||d._docId); sel.appendChild(o); });
-    if(!docs.length) sel.innerHTML='<option value="">Belum ada PO untuk toko ini</option>';
+    if(!docs.length) sel.innerHTML='<option value="">Belum ada PO untuk toko & distributor ini</option>';
   }catch(e){
     console.error('kendariLoadPoOptions failed',e);
     sel.innerHTML='<option value="">Gagal memuat PO</option>';
@@ -24783,15 +24813,16 @@ function kendariCheck(step){
   if(step===0){
     const nama=document.getElementById('kendari-nama-input').value.trim();
     const store=document.getElementById('kendari-store-sel').value;
+    const hasDistributor=document.getElementById('kendari-r-matakar').checked || document.getElementById('kendari-r-borwita').checked;
     const isOrder=document.getElementById('kendari-r-order').checked;
     const isBarang=document.getElementById('kendari-r-barang').checked;
     if(isOrder){
       const date=document.getElementById('kendari-date-input').value;
-      ok=!!(nama&&store&&date);
+      ok=!!(nama&&store&&hasDistributor&&date);
     } else if(isBarang){
       const arrivalDate=document.getElementById('kendari-arrival-date-input').value;
       const poSel=document.getElementById('kendari-po-sel').value;
-      ok=!!(nama&&store&&arrivalDate&&poSel);
+      ok=!!(nama&&store&&hasDistributor&&arrivalDate&&poSel);
     }
     document.getElementById('kendari-next-0').disabled=!ok;
   }
@@ -24803,6 +24834,7 @@ function kendariNext(step){
     if(!kendariCheck(0)) return;
     KD.nama=document.getElementById('kendari-nama-input').value.trim();
     KD.store=document.getElementById('kendari-store-sel').value;
+    KD.distributor=document.getElementById('kendari-r-matakar').checked?'Matakar Kendari':'Borwita Citra Prima Kendari';
     KD.jenis=document.getElementById('kendari-r-order').checked?'order':'barang';
     if(KD.jenis==='order'){
       KD.date=document.getElementById('kendari-date-input').value;
@@ -24835,7 +24867,7 @@ function renderKendariItems(){
   const list=document.getElementById('kendari-item-list');
   list.innerHTML='';
   let fi=0;
-  STOCK_PRODUCTS.forEach(group=>{
+  kendariVisibleProducts().forEach(group=>{
     const hdr=document.createElement('div');
     hdr.className='qty-group-hdr'; hdr.textContent=group.group;
     list.appendChild(hdr);
@@ -24931,7 +24963,7 @@ function kendariCalcTotal(){
     return matched;
   }
   let total=0,fi=0;
-  STOCK_PRODUCTS.forEach(group=>{
+  kendariVisibleProducts().forEach(group=>{
     group.items.forEach(name=>{
       const ip=ITEM_PRICE[name]||{};
       const krt=parseInt(document.getElementById('kd-krt-'+fi)?.value)||0;
@@ -24947,6 +24979,7 @@ function kendariCalcTotal(){
 function kendariGoReview(){
   document.getElementById('kendari-rev-nama').textContent=KD.nama;
   document.getElementById('kendari-rev-store').textContent=KD.store;
+  document.getElementById('kendari-rev-distributor').textContent=KD.distributor;
   document.getElementById('kendari-rev-jenis').textContent=KD.jenis==='order'?'Order PO':'Barang Datang';
   const tbody=document.getElementById('kendari-review-body');
   tbody.innerHTML='';
@@ -24959,7 +24992,7 @@ function kendariGoReview(){
 
     KD.items={};
     let fi=0;
-    STOCK_PRODUCTS.forEach(group=>{
+    kendariVisibleProducts().forEach(group=>{
       group.items.forEach(name=>{
         const ip=ITEM_PRICE[name]||{};
         const krt=parseInt(document.getElementById('kd-krt-'+fi)?.value)||0;
@@ -25028,7 +25061,7 @@ function submitKendari(){
     Object.entries(KD.items).forEach(([name,v])=>{ itemsFlat[name]={krt:v.krt,rncg:v.rncg}; });
     if(typeof db!=='undefined'){
       withFirestoreRetry(()=>db.collection('kendari_po_logs').add({
-        id, jenis:'order', nama:KD.nama, store:KD.store, tanggalPo:KD.date,
+        id, jenis:'order', nama:KD.nama, store:KD.store, distributor:KD.distributor, tanggalPo:KD.date,
         timestamp:firebase.firestore.FieldValue.serverTimestamp(),
         items:itemsFlat,
         totalNilai:grandTotal
@@ -25049,7 +25082,7 @@ function submitKendari(){
     document.getElementById('kendari-success-total').textContent='Sesuai: '+matched+' / '+totalItems+' item';
     if(typeof db!=='undefined'){
       withFirestoreRetry(()=>db.collection('kendari_po_logs').add({
-        id, jenis:'barang', nama:KD.nama, store:KD.store, tanggalBarangDatang:KD.arrivalDate,
+        id, jenis:'barang', nama:KD.nama, store:KD.store, distributor:KD.distributor, tanggalBarangDatang:KD.arrivalDate,
         poRef:KD.sourcePoId,
         timestamp:firebase.firestore.FieldValue.serverTimestamp(),
         items:KD.items,

@@ -609,6 +609,17 @@
           </select>
         </div>
         <div class="field">
+          <label class="f-label">Distributor</label>
+          <div style="display:flex;gap:10px;margin-top:4px">
+            <label style="flex:1;display:flex;align-items:center;gap:8px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;cursor:pointer">
+              <input type="radio" name="kendari-distributor" value="Matakar Kendari" id="kendari-r-matakar" onchange="kendariDistributorChange()" style="accent-color:var(--accent)"> Matakar Kendari
+            </label>
+            <label style="flex:1;display:flex;align-items:center;gap:8px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;cursor:pointer">
+              <input type="radio" name="kendari-distributor" value="Borwita Citra Prima Kendari" id="kendari-r-borwita" onchange="kendariDistributorChange()" style="accent-color:var(--accent)"> Borwita Citra Prima Kendari
+            </label>
+          </div>
+        </div>
+        <div class="field">
           <label class="f-label">Barang</label>
           <div style="display:flex;gap:10px;margin-top:4px">
             <label style="flex:1;display:flex;align-items:center;gap:8px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;cursor:pointer">
@@ -670,6 +681,7 @@
         <div style="background:rgba(22,163,74,.07);border:1px solid rgba(22,163,74,.18);border-radius:14px;padding:14px 16px;margin-bottom:14px;font-size:12px">
           <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="color:var(--t2)">Nama SPG</span><span id="kendari-rev-nama" style="font-weight:700"></span></div>
           <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="color:var(--t2)">Toko</span><span id="kendari-rev-store" style="font-weight:700"></span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="color:var(--t2)">Distributor</span><span id="kendari-rev-distributor" style="font-weight:700"></span></div>
           <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="color:var(--t2)">Jenis</span><span id="kendari-rev-jenis" style="font-weight:700"></span></div>
           <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)" id="kendari-rev-date-lbl">Tanggal PO</span><span id="kendari-rev-date" style="font-weight:700"></span></div>
         </div>
@@ -1115,7 +1127,7 @@
 </div><!-- #app -->
 
 <script src="wow_toko_master.js?v=1"></script>
-<script src="app.js?v=26"></script>
+<script src="app.js?v=27"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
