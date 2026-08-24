@@ -24705,22 +24705,77 @@ const KENDARI_STORES = [
   "Tk. Damai 2 ( CV.SUMBER BERKAT ABADI )",
   "CV. Alaska Jaya Abadi"
 ];
-const KD = { nama:'', store:'', date:'', items:{} };
+const KD = { nama:'', store:'', jenis:'', date:'', arrivalDate:'', items:{}, sourcePoId:'', sourceItems:{} };
 let kendariStep = 0;
 
 function openKendari(){ showScreen('s-kendari'); initKendari(); }
 
 function initKendari(){
   kendariStep=0;
-  KD.nama=''; KD.store=''; KD.date=''; KD.items={};
+  KD.nama=''; KD.store=''; KD.jenis=''; KD.date=''; KD.arrivalDate=''; KD.items={}; KD.sourcePoId=''; KD.sourceItems={};
   document.getElementById('kendari-nama-input').value='';
   const ss=document.getElementById('kendari-store-sel');
   ss.innerHTML='<option value="">— Pilih Toko —</option>';
   KENDARI_STORES.forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; ss.appendChild(o); });
+  document.getElementById('kendari-r-order').checked=false;
+  document.getElementById('kendari-r-barang').checked=false;
   document.getElementById('kendari-date-input').value='';
+  document.getElementById('kendari-arrival-date-input').value='';
+  document.getElementById('kendari-po-sel').innerHTML='<option value="">— Pilih Toko dulu —</option>';
+  document.getElementById('kendari-po-hint').textContent='';
+  document.getElementById('kendari-order-date-wrap').style.display='none';
+  document.getElementById('kendari-barang-wrap').style.display='none';
   document.getElementById('kendari-next-0').disabled=true;
   kendariUpdateStepper();
   document.querySelectorAll('#s-kendari .step-section').forEach((s,i)=>s.classList.toggle('active',i===0));
+}
+
+function kendariStoreChange(){
+  document.getElementById('kendari-po-sel').innerHTML='<option value="">— Pilih Toko dulu —</option>';
+  document.getElementById('kendari-po-hint').textContent='';
+  if(document.getElementById('kendari-r-barang').checked) kendariLoadPoOptions();
+  kendariCheck(0);
+}
+
+function kendariJenisChange(){
+  const isBarang=document.getElementById('kendari-r-barang').checked;
+  document.getElementById('kendari-order-date-wrap').style.display=isBarang?'none':'block';
+  document.getElementById('kendari-barang-wrap').style.display=isBarang?'block':'none';
+  if(isBarang) kendariLoadPoOptions();
+  kendariCheck(0);
+}
+
+async function kendariLoadPoOptions(){
+  const sel=document.getElementById('kendari-po-sel');
+  const store=document.getElementById('kendari-store-sel').value;
+  if(!store){ sel.innerHTML='<option value="">— Pilih Toko dulu —</option>'; return; }
+  sel.innerHTML='<option value="">Memuat…</option>';
+  if(typeof db==='undefined'){ sel.innerHTML='<option value="">DB tidak tersedia</option>'; return; }
+  try{
+    const snap=await db.collection('kendari_po_logs').where('store','==',store).where('jenis','==','order').get();
+    const docs=snap.docs.map(d=>({...d.data(),_docId:d.id})).sort((a,b)=>(b.tanggalPo||'').localeCompare(a.tanggalPo||''));
+    sel.innerHTML='<option value="">— Pilih Tanggal PO —</option>';
+    docs.forEach(d=>{ const o=document.createElement('option'); o.value=d._docId; o.textContent=d.tanggalPo+' · '+(d.id||d._docId); sel.appendChild(o); });
+    if(!docs.length) sel.innerHTML='<option value="">Belum ada PO untuk toko ini</option>';
+  }catch(e){
+    console.error('kendariLoadPoOptions failed',e);
+    sel.innerHTML='<option value="">Gagal memuat PO</option>';
+  }
+}
+
+function kendariPoSelChange(){
+  const sel=document.getElementById('kendari-po-sel');
+  const hint=document.getElementById('kendari-po-hint');
+  if(!sel.value){ hint.textContent=''; kendariCheck(0); return; }
+  db.collection('kendari_po_logs').doc(sel.value).get().then(doc=>{
+    if(!doc.exists){ hint.textContent='PO tidak ditemukan'; return; }
+    const d=doc.data();
+    const items=d.items||{};
+    const itemCount=Object.keys(items).length;
+    hint.textContent='Fulfillment terakhir: '+itemCount+' item · Total Rp '+(d.totalNilai||0).toLocaleString('id-ID');
+    KD._pendingSourceDoc=d;
+  }).catch(e=>{ console.error(e); hint.textContent='Gagal memuat PO'; });
+  kendariCheck(0);
 }
 
 function kendariCheck(step){
@@ -24728,8 +24783,16 @@ function kendariCheck(step){
   if(step===0){
     const nama=document.getElementById('kendari-nama-input').value.trim();
     const store=document.getElementById('kendari-store-sel').value;
-    const date=document.getElementById('kendari-date-input').value;
-    ok=!!(nama&&store&&date);
+    const isOrder=document.getElementById('kendari-r-order').checked;
+    const isBarang=document.getElementById('kendari-r-barang').checked;
+    if(isOrder){
+      const date=document.getElementById('kendari-date-input').value;
+      ok=!!(nama&&store&&date);
+    } else if(isBarang){
+      const arrivalDate=document.getElementById('kendari-arrival-date-input').value;
+      const poSel=document.getElementById('kendari-po-sel').value;
+      ok=!!(nama&&store&&arrivalDate&&poSel);
+    }
     document.getElementById('kendari-next-0').disabled=!ok;
   }
   return ok;
@@ -24740,8 +24803,16 @@ function kendariNext(step){
     if(!kendariCheck(0)) return;
     KD.nama=document.getElementById('kendari-nama-input').value.trim();
     KD.store=document.getElementById('kendari-store-sel').value;
-    KD.date=document.getElementById('kendari-date-input').value;
-    renderKendariItems();
+    KD.jenis=document.getElementById('kendari-r-order').checked?'order':'barang';
+    if(KD.jenis==='order'){
+      KD.date=document.getElementById('kendari-date-input').value;
+      renderKendariItems();
+    } else {
+      KD.arrivalDate=document.getElementById('kendari-arrival-date-input').value;
+      KD.sourcePoId=document.getElementById('kendari-po-sel').value;
+      KD.sourceItems=(KD._pendingSourceDoc&&KD._pendingSourceDoc.items)||{};
+      renderKendariCrosscheck();
+    }
   }
   kendariStep=step+1;
   kendariUpdateStepper();
@@ -24757,6 +24828,10 @@ function kendariPrev(step){
 }
 
 function renderKendariItems(){
+  document.getElementById('kendari-item-title').textContent='Item PO';
+  document.getElementById('kendari-item-sub').textContent='Isi jumlah karton dan renceng per item';
+  document.getElementById('kendari-item-hdr').innerHTML='<span>ITEM</span><span style="text-align:center;width:72px">KARTON</span><span style="text-align:center;width:72px">RENCENG</span>';
+  document.getElementById('kendari-total-lbl').textContent='Total Nilai PO';
   const list=document.getElementById('kendari-item-list');
   list.innerHTML='';
   let fi=0;
@@ -24795,6 +24870,46 @@ function renderKendariItems(){
   kendariCalcTotal();
 }
 
+function renderKendariCrosscheck(){
+  document.getElementById('kendari-item-title').textContent='Cross-check Barang Datang';
+  document.getElementById('kendari-item-sub').textContent='Isi jumlah yang benar-benar diterima per item (default = jumlah order)';
+  document.getElementById('kendari-item-hdr').innerHTML='<span>ITEM (ORDER)</span><span style="text-align:center;width:72px">KRT DITERIMA</span><span style="text-align:center;width:72px">RNCG DITERIMA</span>';
+  document.getElementById('kendari-total-lbl').textContent='Item Sesuai / Total Item';
+  const list=document.getElementById('kendari-item-list');
+  list.innerHTML='';
+  const entries=Object.entries(KD.sourceItems);
+  if(!entries.length){
+    list.innerHTML='<div class="step-hint">PO ini tidak memiliki item.</div>';
+    document.getElementById('kendari-total-rp').textContent='0 / 0';
+    return;
+  }
+  entries.forEach(([name,ord],i)=>{
+    const row=document.createElement('div');
+    row.className='qty-row';
+    row.innerHTML=
+      '<div class="qty-name" style="flex:1;min-width:0">'+
+        '<div style="font-size:10px;font-weight:600;line-height:1.3">'+name+'</div>'+
+        '<div style="font-size:9px;color:var(--t3)">Order: '+(ord.krt||0)+' krt · '+(ord.rncg||0)+' rncg</div>'+
+      '</div>'+
+      '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-width:72px">'+
+        '<div class="qty-ctrl" style="width:100%">'+
+          '<button class="qty-btn" onclick="adjKD('+i+',\'krt\',-1)" style="width:20px;font-size:12px">−</button>'+
+          '<input type="number" class="qty-val" id="kd-krt-'+i+'" value="'+(ord.krt||0)+'" min="0" style="width:28px;font-size:11px" oninput="kendariCalcTotal()" onfocus="if(this.value==\'0\')this.value=\'\'" onblur="if(this.value===\'\')this.value=\'0\'">'+
+          '<button class="qty-btn" onclick="adjKD('+i+',\'krt\',1)" style="width:20px;font-size:12px">+</button>'+
+        '</div>'+
+      '</div>'+
+      '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-width:72px">'+
+        '<div class="qty-ctrl" style="width:100%">'+
+          '<button class="qty-btn" onclick="adjKD('+i+',\'rncg\',-1)" style="width:20px;font-size:12px">−</button>'+
+          '<input type="number" class="qty-val" id="kd-rncg-'+i+'" value="'+(ord.rncg||0)+'" min="0" style="width:28px;font-size:11px" oninput="kendariCalcTotal()" onfocus="if(this.value==\'0\')this.value=\'\'" onblur="if(this.value===\'\')this.value=\'0\'">'+
+          '<button class="qty-btn" onclick="adjKD('+i+',\'rncg\',1)" style="width:20px;font-size:12px">+</button>'+
+        '</div>'+
+      '</div>';
+    list.appendChild(row);
+  });
+  kendariCalcTotal();
+}
+
 function adjKD(i,field,d){
   const id='kd-'+field+'-'+i;
   const el=document.getElementById(id); if(!el) return;
@@ -24803,6 +24918,18 @@ function adjKD(i,field,d){
 }
 
 function kendariCalcTotal(){
+  if(KD.jenis==='barang'){
+    let matched=0,fi=0;
+    const entries=Object.entries(KD.sourceItems);
+    entries.forEach(([name,ord])=>{
+      const krt=parseInt(document.getElementById('kd-krt-'+fi)?.value)||0;
+      const rncg=parseInt(document.getElementById('kd-rncg-'+fi)?.value)||0;
+      if(krt===(ord.krt||0)&&rncg===(ord.rncg||0)) matched++;
+      fi++;
+    });
+    document.getElementById('kendari-total-rp').textContent=matched+' / '+entries.length;
+    return matched;
+  }
   let total=0,fi=0;
   STOCK_PRODUCTS.forEach(group=>{
     group.items.forEach(name=>{
@@ -24818,38 +24945,73 @@ function kendariCalcTotal(){
 }
 
 function kendariGoReview(){
-  KD.items={};
-  let fi=0;
-  STOCK_PRODUCTS.forEach(group=>{
-    group.items.forEach(name=>{
-      const ip=ITEM_PRICE[name]||{};
-      const krt=parseInt(document.getElementById('kd-krt-'+fi)?.value)||0;
-      const rncg=parseInt(document.getElementById('kd-rncg-'+fi)?.value)||0;
-      if(krt||rncg) KD.items[name]={krt,rncg,priceCtn:ip.ctn||0,pricePcs:ip.pcs||0,nilai:krt*(ip.ctn||0)+rncg*(ip.pcs||0)};
-      fi++;
-    });
-  });
   document.getElementById('kendari-rev-nama').textContent=KD.nama;
   document.getElementById('kendari-rev-store').textContent=KD.store;
-  document.getElementById('kendari-rev-date').textContent=KD.date;
+  document.getElementById('kendari-rev-jenis').textContent=KD.jenis==='order'?'Order PO':'Barang Datang';
   const tbody=document.getElementById('kendari-review-body');
   tbody.innerHTML='';
-  let grandTotal=0;
-  const entries=Object.entries(KD.items);
-  if(!entries.length){
-    tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--t3);padding:14px;font-size:11px">Tidak ada item yang diisi</td></tr>';
+
+  if(KD.jenis==='order'){
+    document.getElementById('kendari-rev-date-lbl').textContent='Tanggal PO';
+    document.getElementById('kendari-rev-date').textContent=KD.date;
+    document.getElementById('kendari-review-thead').innerHTML='<tr style="background:rgba(22,163,74,.08)"><th style="text-align:left;padding:7px 8px;border-bottom:1px solid var(--border)">Item</th><th style="text-align:center;padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap">Krt</th><th style="text-align:center;padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap">Rncg</th><th style="text-align:right;padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap">Nilai</th></tr>';
+    document.getElementById('kendari-review-tfoot').innerHTML='<tr style="font-weight:800;background:rgba(22,163,74,.07)"><td colspan="3" style="padding:8px;font-size:11px">TOTAL NILAI</td><td id="kendari-rev-total" style="padding:8px;text-align:right;font-size:11px;color:var(--ok)"></td></tr>';
+
+    KD.items={};
+    let fi=0;
+    STOCK_PRODUCTS.forEach(group=>{
+      group.items.forEach(name=>{
+        const ip=ITEM_PRICE[name]||{};
+        const krt=parseInt(document.getElementById('kd-krt-'+fi)?.value)||0;
+        const rncg=parseInt(document.getElementById('kd-rncg-'+fi)?.value)||0;
+        if(krt||rncg) KD.items[name]={krt,rncg,priceCtn:ip.ctn||0,pricePcs:ip.pcs||0,nilai:krt*(ip.ctn||0)+rncg*(ip.pcs||0)};
+        fi++;
+      });
+    });
+    let grandTotal=0;
+    const entries=Object.entries(KD.items);
+    if(!entries.length){
+      tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--t3);padding:14px;font-size:11px">Tidak ada item yang diisi</td></tr>';
+    } else {
+      entries.forEach(([name,{krt,rncg,nilai}])=>{
+        grandTotal+=nilai;
+        const tr=document.createElement('tr');
+        tr.innerHTML='<td style="font-size:10px;padding:5px 8px;border-bottom:1px solid var(--border)">'+name+'</td>'+
+          '<td style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--border);font-weight:700">'+krt+'</td>'+
+          '<td style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--border);font-weight:700">'+rncg+'</td>'+
+          '<td style="text-align:right;padding:5px 8px;border-bottom:1px solid var(--border);font-size:10px">'+(nilai?'Rp '+nilai.toLocaleString('id-ID'):'-')+'</td>';
+        tbody.appendChild(tr);
+      });
+    }
+    document.getElementById('kendari-rev-total').textContent='Rp '+grandTotal.toLocaleString('id-ID');
   } else {
-    entries.forEach(([name,{krt,rncg,nilai}])=>{
-      grandTotal+=nilai;
+    document.getElementById('kendari-rev-date-lbl').textContent='Tanggal Barang Datang';
+    document.getElementById('kendari-rev-date').textContent=KD.arrivalDate;
+    document.getElementById('kendari-review-thead').innerHTML='<tr style="background:rgba(22,163,74,.08)"><th style="text-align:left;padding:7px 8px;border-bottom:1px solid var(--border)">Item</th><th style="text-align:center;padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap">Order</th><th style="text-align:center;padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap">Diterima</th><th style="text-align:center;padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap">Status</th></tr>';
+    document.getElementById('kendari-review-tfoot').innerHTML='<tr style="font-weight:800;background:rgba(22,163,74,.07)"><td colspan="3" style="padding:8px;font-size:11px">ITEM SESUAI</td><td id="kendari-rev-total" style="padding:8px;text-align:right;font-size:11px;color:var(--ok)"></td></tr>';
+
+    KD.items={};
+    let fi=0,matched=0;
+    Object.entries(KD.sourceItems).forEach(([name,ord])=>{
+      const krt=parseInt(document.getElementById('kd-krt-'+fi)?.value)||0;
+      const rncg=parseInt(document.getElementById('kd-rncg-'+fi)?.value)||0;
+      const ok=(krt===(ord.krt||0)&&rncg===(ord.rncg||0));
+      if(ok) matched++;
+      KD.items[name]={orderedKrt:ord.krt||0,orderedRncg:ord.rncg||0,diterimaKrt:krt,diterimaRncg:rncg,sesuai:ok};
       const tr=document.createElement('tr');
       tr.innerHTML='<td style="font-size:10px;padding:5px 8px;border-bottom:1px solid var(--border)">'+name+'</td>'+
-        '<td style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--border);font-weight:700">'+krt+'</td>'+
-        '<td style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--border);font-weight:700">'+rncg+'</td>'+
-        '<td style="text-align:right;padding:5px 8px;border-bottom:1px solid var(--border);font-size:10px">'+(nilai?'Rp '+nilai.toLocaleString('id-ID'):'-')+'</td>';
+        '<td style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--border)">'+(ord.krt||0)+'/'+(ord.rncg||0)+'</td>'+
+        '<td style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--border);font-weight:700">'+krt+'/'+rncg+'</td>'+
+        '<td style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--border)">'+(ok?'✅':'⚠️')+'</td>';
       tbody.appendChild(tr);
+      fi++;
     });
+    if(!Object.keys(KD.sourceItems).length){
+      tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--t3);padding:14px;font-size:11px">PO sumber tidak memiliki item</td></tr>';
+    }
+    document.getElementById('kendari-rev-total').textContent=matched+' / '+Object.keys(KD.sourceItems).length;
   }
-  document.getElementById('kendari-rev-total').textContent='Rp '+grandTotal.toLocaleString('id-ID');
+
   kendariStep=2;
   kendariUpdateStepper();
   document.querySelectorAll('#s-kendari .step-section').forEach((s,i)=>s.classList.toggle('active',i===kendariStep));
@@ -24857,26 +25019,50 @@ function kendariGoReview(){
 }
 
 function submitKendari(){
-  const id='KDPO-'+String(Math.floor(Math.random()*9000)+1000);
-  let grandTotal=Object.values(KD.items).reduce((s,v)=>s+v.nilai,0);
-  document.getElementById('kendari-success-store').textContent=KD.store+' · '+KD.date;
-  document.getElementById('kendari-success-total').textContent='Nilai: Rp '+grandTotal.toLocaleString('id-ID');
-  const itemsFlat={};
-  Object.entries(KD.items).forEach(([name,v])=>{ itemsFlat[name]={krt:v.krt,rncg:v.rncg}; });
-  if(typeof db!=='undefined'){
-    withFirestoreRetry(()=>db.collection('kendari_po_logs').add({
-      id, nama:KD.nama, store:KD.store, tanggalPo:KD.date,
-      timestamp:firebase.firestore.FieldValue.serverTimestamp(),
-      items:itemsFlat,
-      totalNilai:grandTotal
-    })).then(()=>{
-      console.log('kendari_po_logs write OK', id);
-    }).catch(e=>{
-      console.error('kendari_po_logs FAILED',e);
-      alert('Gagal menyimpan, silakan input ulang. ('+(e.code||'')+' — '+e.message+')');
-    });
+  if(KD.jenis==='order'){
+    const id='KDPO-'+String(Math.floor(Math.random()*9000)+1000);
+    let grandTotal=Object.values(KD.items).reduce((s,v)=>s+v.nilai,0);
+    document.getElementById('kendari-success-store').textContent=KD.store+' · '+KD.date;
+    document.getElementById('kendari-success-total').textContent='Nilai: Rp '+grandTotal.toLocaleString('id-ID');
+    const itemsFlat={};
+    Object.entries(KD.items).forEach(([name,v])=>{ itemsFlat[name]={krt:v.krt,rncg:v.rncg}; });
+    if(typeof db!=='undefined'){
+      withFirestoreRetry(()=>db.collection('kendari_po_logs').add({
+        id, jenis:'order', nama:KD.nama, store:KD.store, tanggalPo:KD.date,
+        timestamp:firebase.firestore.FieldValue.serverTimestamp(),
+        items:itemsFlat,
+        totalNilai:grandTotal
+      })).then(()=>{
+        console.log('kendari_po_logs write OK', id);
+      }).catch(e=>{
+        console.error('kendari_po_logs FAILED',e);
+        alert('Gagal menyimpan, silakan input ulang. ('+(e.code||'')+' — '+e.message+')');
+      });
+    } else {
+      alert('DB not initialized — Firebase failed to load');
+    }
   } else {
-    alert('DB not initialized — Firebase failed to load');
+    const id='KDBD-'+String(Math.floor(Math.random()*9000)+1000);
+    const matched=Object.values(KD.items).filter(v=>v.sesuai).length;
+    const totalItems=Object.keys(KD.items).length;
+    document.getElementById('kendari-success-store').textContent=KD.store+' · '+KD.arrivalDate;
+    document.getElementById('kendari-success-total').textContent='Sesuai: '+matched+' / '+totalItems+' item';
+    if(typeof db!=='undefined'){
+      withFirestoreRetry(()=>db.collection('kendari_po_logs').add({
+        id, jenis:'barang', nama:KD.nama, store:KD.store, tanggalBarangDatang:KD.arrivalDate,
+        poRef:KD.sourcePoId,
+        timestamp:firebase.firestore.FieldValue.serverTimestamp(),
+        items:KD.items,
+        matched, totalItems
+      })).then(()=>{
+        console.log('kendari_po_logs (barang) write OK', id);
+      }).catch(e=>{
+        console.error('kendari_po_logs (barang) FAILED',e);
+        alert('Gagal menyimpan, silakan input ulang. ('+(e.code||'')+' — '+e.message+')');
+      });
+    } else {
+      alert('DB not initialized — Firebase failed to load');
+    }
   }
   kendariStep=3;
   kendariUpdateStepper();
