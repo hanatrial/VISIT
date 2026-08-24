@@ -24695,6 +24695,206 @@ function stockUpdateStepper(){
 }
 
 
+/* ─────────── KENDARI ─────────── */
+const KENDARI_STORES = [
+  "Marina Swalayan ( CV. Marina Sukses Abadi )",
+  "PT. MATAHARI PUTRA PRIMA TBK. ( The Park Kendari )",
+  "Tk. Sanya ( Tn.Jonny Mulyanto )",
+  "PT. Top Mandiri Perkasa",
+  "Tk. Damai ( CV. SUMBER BERKAT ABADI )",
+  "Tk. Damai 2 ( CV.SUMBER BERKAT ABADI )",
+  "CV. Alaska Jaya Abadi"
+];
+const KD = { nama:'', store:'', date:'', items:{} };
+let kendariStep = 0;
+
+function openKendari(){ showScreen('s-kendari'); initKendari(); }
+
+function initKendari(){
+  kendariStep=0;
+  KD.nama=''; KD.store=''; KD.date=''; KD.items={};
+  document.getElementById('kendari-nama-input').value='';
+  const ss=document.getElementById('kendari-store-sel');
+  ss.innerHTML='<option value="">— Pilih Toko —</option>';
+  KENDARI_STORES.forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; ss.appendChild(o); });
+  document.getElementById('kendari-date-input').value='';
+  document.getElementById('kendari-next-0').disabled=true;
+  kendariUpdateStepper();
+  document.querySelectorAll('#s-kendari .step-section').forEach((s,i)=>s.classList.toggle('active',i===0));
+}
+
+function kendariCheck(step){
+  let ok=false;
+  if(step===0){
+    const nama=document.getElementById('kendari-nama-input').value.trim();
+    const store=document.getElementById('kendari-store-sel').value;
+    const date=document.getElementById('kendari-date-input').value;
+    ok=!!(nama&&store&&date);
+    document.getElementById('kendari-next-0').disabled=!ok;
+  }
+  return ok;
+}
+
+function kendariNext(step){
+  if(step===0){
+    if(!kendariCheck(0)) return;
+    KD.nama=document.getElementById('kendari-nama-input').value.trim();
+    KD.store=document.getElementById('kendari-store-sel').value;
+    KD.date=document.getElementById('kendari-date-input').value;
+    renderKendariItems();
+  }
+  kendariStep=step+1;
+  kendariUpdateStepper();
+  document.querySelectorAll('#s-kendari .step-section').forEach((s,i)=>s.classList.toggle('active',i===kendariStep));
+  document.getElementById('kendari-wrap').scrollTop=0;
+}
+
+function kendariPrev(step){
+  kendariStep=step-1;
+  kendariUpdateStepper();
+  document.querySelectorAll('#s-kendari .step-section').forEach((s,i)=>s.classList.toggle('active',i===kendariStep));
+  document.getElementById('kendari-wrap').scrollTop=0;
+}
+
+function renderKendariItems(){
+  const list=document.getElementById('kendari-item-list');
+  list.innerHTML='';
+  let fi=0;
+  STOCK_PRODUCTS.forEach(group=>{
+    const hdr=document.createElement('div');
+    hdr.className='qty-group-hdr'; hdr.textContent=group.group;
+    list.appendChild(hdr);
+    group.items.forEach(name=>{
+      const i=fi;
+      const row=document.createElement('div');
+      row.className='qty-row';
+      row.innerHTML=
+        '<div class="qty-name" style="flex:1;min-width:0">'+
+          '<div style="font-size:10px;font-weight:600;line-height:1.3">'+name+'</div>'+
+        '</div>'+
+        '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-width:72px">'+
+          '<div style="font-size:8px;color:var(--t3);margin-bottom:1px">Karton</div>'+
+          '<div class="qty-ctrl" style="width:100%">'+
+            '<button class="qty-btn" onclick="adjKD('+i+',\'krt\',-1)" style="width:20px;font-size:12px">−</button>'+
+            '<input type="number" class="qty-val" id="kd-krt-'+i+'" value="0" min="0" style="width:28px;font-size:11px" oninput="kendariCalcTotal()" onfocus="if(this.value==\'0\')this.value=\'\'" onblur="if(this.value===\'\')this.value=\'0\'">'+
+            '<button class="qty-btn" onclick="adjKD('+i+',\'krt\',1)" style="width:20px;font-size:12px">+</button>'+
+          '</div>'+
+        '</div>'+
+        '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-width:72px">'+
+          '<div style="font-size:8px;color:var(--t3);margin-bottom:1px">Pcs/Rncg</div>'+
+          '<div class="qty-ctrl" style="width:100%">'+
+            '<button class="qty-btn" onclick="adjKD('+i+',\'rncg\',-1)" style="width:20px;font-size:12px">−</button>'+
+            '<input type="number" class="qty-val" id="kd-rncg-'+i+'" value="0" min="0" style="width:28px;font-size:11px" oninput="kendariCalcTotal()" onfocus="if(this.value==\'0\')this.value=\'\'" onblur="if(this.value===\'\')this.value=\'0\'">'+
+            '<button class="qty-btn" onclick="adjKD('+i+',\'rncg\',1)" style="width:20px;font-size:12px">+</button>'+
+          '</div>'+
+        '</div>';
+      list.appendChild(row);
+      fi++;
+    });
+  });
+  kendariCalcTotal();
+}
+
+function adjKD(i,field,d){
+  const id='kd-'+field+'-'+i;
+  const el=document.getElementById(id); if(!el) return;
+  el.value=Math.max(0,(parseInt(el.value)||0)+d);
+  kendariCalcTotal();
+}
+
+function kendariCalcTotal(){
+  let total=0,fi=0;
+  STOCK_PRODUCTS.forEach(group=>{
+    group.items.forEach(name=>{
+      const ip=ITEM_PRICE[name]||{};
+      const krt=parseInt(document.getElementById('kd-krt-'+fi)?.value)||0;
+      const rncg=parseInt(document.getElementById('kd-rncg-'+fi)?.value)||0;
+      total+=krt*(ip.ctn||0)+rncg*(ip.pcs||0);
+      fi++;
+    });
+  });
+  document.getElementById('kendari-total-rp').textContent='Rp '+total.toLocaleString('id-ID');
+  return total;
+}
+
+function kendariGoReview(){
+  KD.items={};
+  let fi=0;
+  STOCK_PRODUCTS.forEach(group=>{
+    group.items.forEach(name=>{
+      const ip=ITEM_PRICE[name]||{};
+      const krt=parseInt(document.getElementById('kd-krt-'+fi)?.value)||0;
+      const rncg=parseInt(document.getElementById('kd-rncg-'+fi)?.value)||0;
+      if(krt||rncg) KD.items[name]={krt,rncg,priceCtn:ip.ctn||0,pricePcs:ip.pcs||0,nilai:krt*(ip.ctn||0)+rncg*(ip.pcs||0)};
+      fi++;
+    });
+  });
+  document.getElementById('kendari-rev-nama').textContent=KD.nama;
+  document.getElementById('kendari-rev-store').textContent=KD.store;
+  document.getElementById('kendari-rev-date').textContent=KD.date;
+  const tbody=document.getElementById('kendari-review-body');
+  tbody.innerHTML='';
+  let grandTotal=0;
+  const entries=Object.entries(KD.items);
+  if(!entries.length){
+    tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--t3);padding:14px;font-size:11px">Tidak ada item yang diisi</td></tr>';
+  } else {
+    entries.forEach(([name,{krt,rncg,nilai}])=>{
+      grandTotal+=nilai;
+      const tr=document.createElement('tr');
+      tr.innerHTML='<td style="font-size:10px;padding:5px 8px;border-bottom:1px solid var(--border)">'+name+'</td>'+
+        '<td style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--border);font-weight:700">'+krt+'</td>'+
+        '<td style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--border);font-weight:700">'+rncg+'</td>'+
+        '<td style="text-align:right;padding:5px 8px;border-bottom:1px solid var(--border);font-size:10px">'+(nilai?'Rp '+nilai.toLocaleString('id-ID'):'-')+'</td>';
+      tbody.appendChild(tr);
+    });
+  }
+  document.getElementById('kendari-rev-total').textContent='Rp '+grandTotal.toLocaleString('id-ID');
+  kendariStep=2;
+  kendariUpdateStepper();
+  document.querySelectorAll('#s-kendari .step-section').forEach((s,i)=>s.classList.toggle('active',i===kendariStep));
+  document.getElementById('kendari-wrap').scrollTop=0;
+}
+
+function submitKendari(){
+  const id='KDPO-'+String(Math.floor(Math.random()*9000)+1000);
+  let grandTotal=Object.values(KD.items).reduce((s,v)=>s+v.nilai,0);
+  document.getElementById('kendari-success-store').textContent=KD.store+' · '+KD.date;
+  document.getElementById('kendari-success-total').textContent='Nilai: Rp '+grandTotal.toLocaleString('id-ID');
+  const itemsFlat={};
+  Object.entries(KD.items).forEach(([name,v])=>{ itemsFlat[name]={krt:v.krt,rncg:v.rncg}; });
+  if(typeof db!=='undefined'){
+    withFirestoreRetry(()=>db.collection('kendari_po_logs').add({
+      id, nama:KD.nama, store:KD.store, tanggalPo:KD.date,
+      timestamp:firebase.firestore.FieldValue.serverTimestamp(),
+      items:itemsFlat,
+      totalNilai:grandTotal
+    })).then(()=>{
+      console.log('kendari_po_logs write OK', id);
+    }).catch(e=>{
+      console.error('kendari_po_logs FAILED',e);
+      alert('Gagal menyimpan, silakan input ulang. ('+(e.code||'')+' — '+e.message+')');
+    });
+  } else {
+    alert('DB not initialized — Firebase failed to load');
+  }
+  kendariStep=3;
+  kendariUpdateStepper();
+  document.querySelectorAll('#s-kendari .step-section').forEach((s,i)=>s.classList.toggle('active',i===kendariStep));
+  document.getElementById('kendari-wrap').scrollTop=0;
+}
+
+function resetKendari(){ initKendari(); document.getElementById('kendari-wrap').scrollTop=0; }
+
+function kendariUpdateStepper(){
+  ['ks0','ks1','ks2'].forEach((id,i)=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.className='s-item'+(i<kendariStep?' done':i===kendariStep?' active':'');
+    el.querySelector('.s-dot').textContent=i<kendariStep?'✓':(i+1);
+  });
+}
+
+
 /* ─────────── NED TOKO ─────────── */
 const ND = { area:'', status:'', nama:'', store:'', items:{} };
 let nedStep = 0;

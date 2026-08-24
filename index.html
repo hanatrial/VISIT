@@ -106,6 +106,17 @@
       </div>
     </div>
 
+    <div class="mod-card-shell">
+      <div class="mod-card" onclick="openKendari()">
+        <div class="mod-icon" style="background:rgba(22,163,74,.12);color:#16A34A">🗺️</div>
+        <div class="mod-text">
+          <div class="mod-title">KENDARI</div>
+          <div class="mod-desc">Nama SPG, toko &amp; item PO</div>
+        </div>
+        <div class="mod-arr">›</div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -564,6 +575,114 @@
   </div><!-- step-wrap -->
 </div><!-- s-stock -->
 
+<!-- ══════════════════ KENDARI ══════════════════ -->
+<div id="s-kendari" class="screen">
+  <div class="mod-header">
+    <div class="mod-header-row">
+      <button class="back-btn" onclick="goHome()">←</button>
+      <span class="mod-screen-name">KENDARI</span>
+    </div>
+    <div class="mod-screen-sub">Purchase Order Toko Kendari</div>
+  </div>
+
+  <div class="stepper" id="kendari-stepper">
+    <div class="s-item active" id="ks0"><div class="s-dot">1</div><div class="s-lbl">Info</div></div>
+    <div class="s-item"        id="ks1"><div class="s-dot">2</div><div class="s-lbl">Item</div></div>
+    <div class="s-item"        id="ks2"><div class="s-dot">3</div><div class="s-lbl">Review</div></div>
+  </div>
+
+  <div class="step-wrap" id="kendari-wrap" style="overflow-y:auto;flex:1">
+    <div class="step-pad">
+
+      <!-- Step 0: Info -->
+      <div class="step-section active" id="kendari-s0">
+        <div class="s-title">Info PO</div>
+        <div class="s-sub">Nama SPG, toko, dan tanggal PO</div>
+        <div class="field">
+          <label class="f-label">Nama SPG</label>
+          <input type="text" class="f-input" id="kendari-nama-input" placeholder="Ketik nama…" oninput="kendariCheck(0)">
+        </div>
+        <div class="field">
+          <label class="f-label">Toko (Kendari)</label>
+          <select class="f-input sel" id="kendari-store-sel" onchange="kendariCheck(0)">
+            <option value="">— Pilih Toko —</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="f-label">Tanggal PO</label>
+          <input type="date" class="f-input" id="kendari-date-input" oninput="kendariCheck(0)">
+        </div>
+        <div class="step-nav">
+          <div></div>
+          <button class="btn btn-p" id="kendari-next-0" onclick="kendariNext(0)" disabled>Lanjut →</button>
+        </div>
+      </div>
+
+      <!-- Step 1: Item -->
+      <div class="step-section" id="kendari-s1">
+        <div class="s-title">Item PO</div>
+        <div class="s-sub">Isi jumlah karton dan renceng per item</div>
+        <div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:4px;padding:8px 12px;background:rgba(22,163,74,.07);border-radius:8px;margin-bottom:8px;font-size:10px;color:var(--t2);font-weight:700">
+          <span>ITEM</span><span style="text-align:center;width:72px">KARTON</span><span style="text-align:center;width:72px">RENCENG</span>
+        </div>
+        <div id="kendari-item-list"></div>
+        <div style="margin-top:16px;padding:14px 16px;background:rgba(22,163,74,.07);border:1px solid rgba(22,163,74,.18);border-radius:12px">
+          <div style="font-size:11px;color:var(--t2);margin-bottom:4px">Total Nilai PO</div>
+          <div id="kendari-total-rp" style="font-size:20px;font-weight:800;color:var(--ok)">Rp 0</div>
+        </div>
+        <div class="step-nav" style="margin-top:16px">
+          <button class="btn btn-s" onclick="kendariPrev(1)">← Kembali</button>
+          <button class="btn btn-p" onclick="kendariGoReview()">Review →</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Review -->
+      <div class="step-section" id="kendari-s2">
+        <div class="s-title">Review</div>
+        <div class="s-sub">Periksa data sebelum disimpan</div>
+        <div style="background:rgba(22,163,74,.07);border:1px solid rgba(22,163,74,.18);border-radius:14px;padding:14px 16px;margin-bottom:14px;font-size:12px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="color:var(--t2)">Nama SPG</span><span id="kendari-rev-nama" style="font-weight:700"></span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="color:var(--t2)">Toko</span><span id="kendari-rev-store" style="font-weight:700"></span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">Tanggal PO</span><span id="kendari-rev-date" style="font-weight:700"></span></div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:14px">
+          <thead>
+            <tr style="background:rgba(22,163,74,.08)">
+              <th style="text-align:left;padding:7px 8px;border-bottom:1px solid var(--border)">Item</th>
+              <th style="text-align:center;padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap">Krt</th>
+              <th style="text-align:center;padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap">Rncg</th>
+              <th style="text-align:right;padding:7px 8px;border-bottom:1px solid var(--border);white-space:nowrap">Nilai</th>
+            </tr>
+          </thead>
+          <tbody id="kendari-review-body"></tbody>
+          <tfoot>
+            <tr style="font-weight:800;background:rgba(22,163,74,.07)">
+              <td colspan="3" style="padding:8px;font-size:11px">TOTAL NILAI</td>
+              <td id="kendari-rev-total" style="padding:8px;text-align:right;font-size:11px;color:var(--ok)"></td>
+            </tr>
+          </tfoot>
+        </table>
+        <div class="step-nav">
+          <button class="btn btn-s" onclick="kendariPrev(2)">← Edit</button>
+          <button class="btn btn-p" onclick="submitKendari()">✓ Simpan</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Sukses -->
+      <div class="step-section" id="kendari-s3">
+        <div style="text-align:center;padding:48px 16px">
+          <div style="font-size:48px;margin-bottom:12px">🗺️</div>
+          <div style="font-size:18px;font-weight:800;color:var(--primary);margin-bottom:6px">PO Kendari Tercatat!</div>
+          <div style="font-size:13px;color:var(--t2);margin-bottom:4px" id="kendari-success-store"></div>
+          <div style="font-size:12px;color:var(--ok);font-weight:700;margin-bottom:24px" id="kendari-success-total"></div>
+          <button class="btn btn-p" style="width:100%" onclick="resetKendari()">+ Entri Baru</button>
+        </div>
+      </div>
+
+    </div><!-- step-pad -->
+  </div><!-- step-wrap -->
+</div><!-- s-kendari -->
+
 <!-- ══════════════════ NED TOKO ══════════════════ -->
 <div id="s-ned" class="screen">
   <div class="mod-header">
@@ -968,7 +1087,7 @@
 </div><!-- #app -->
 
 <script src="wow_toko_master.js?v=1"></script>
-<script src="app.js?v=23"></script>
+<script src="app.js?v=24"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
