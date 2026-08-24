@@ -2079,7 +2079,7 @@ function openSpgIndogrosirDateModal(key){
   if(!g)return;
   const dates=Object.keys(g.byDate).sort();
   const maxOf=field=>dates.reduce((best,d)=>g.byDate[d][field]>(g.byDate[best]?g.byDate[best][field]:-1)?d:best,dates[0]);
-  const maxDates={nsAllOmz:maxOf('nsAllOmz'),nsTeaOmz:maxOf('nsTeaOmz'),nsRasaOmz:maxOf('nsRasaOmz'),hiloOmz:maxOf('hiloOmz')};
+  const maxDates={nsAllOmz:maxOf('nsAllOmz'),nsTeaOmz:maxOf('nsTeaOmz'),nsRasaOmz:maxOf('nsRasaOmz'),hiloOmz:maxOf('hiloOmz'),hiloMatchaOmz:maxOf('hiloMatchaOmz')};
   const fmt=d=>new Date(d+'T12:00:00').toLocaleDateString('id-ID',{day:'numeric',month:'short'});
   const cell=(d,field,rcField)=>{
     const v=g.byDate[d];
@@ -2087,8 +2087,8 @@ function openSpgIndogrosirDateModal(key){
     const style=isMax?'background:rgba(16,185,129,.15);border-radius:8px;padding:4px 8px;color:var(--green);font-weight:700':'';
     return`<td><div style="${style}">${v[rcField]?v[rcField]+' rc<br><span style="font-size:11px;opacity:.8">'+rp(v[field])+'</span>':'—'}${isMax&&v[rcField]?' 🏆':''}</div></td>`;
   };
-  let body='<table><thead><tr><th>Tanggal</th><th>All NS</th><th>NS Tea</th><th>NS Rasa-rasa</th><th>Hi Lo</th></tr></thead><tbody>';
-  body+=dates.map(d=>`<tr><td class="td-main">${fmt(d)}</td>${cell(d,'nsAllOmz','nsAllRc')}${cell(d,'nsTeaOmz','nsTeaRc')}${cell(d,'nsRasaOmz','nsRasaRc')}${cell(d,'hiloOmz','hiloRc')}</tr>`).join('');
+  let body='<table><thead><tr><th>Tanggal</th><th>All NS</th><th>NS Tea</th><th>NS Rasa-rasa</th><th>Hi Lo</th><th>Hi Lo Matcha</th></tr></thead><tbody>';
+  body+=dates.map(d=>`<tr><td class="td-main">${fmt(d)}</td>${cell(d,'nsAllOmz','nsAllRc')}${cell(d,'nsTeaOmz','nsTeaRc')}${cell(d,'nsRasaOmz','nsRasaRc')}${cell(d,'hiloOmz','hiloRc')}${cell(d,'hiloMatchaOmz','hiloMatchaRc')}</tr>`).join('');
   body+='</tbody></table>';
   body+='<div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center">';
   body+='<span style="font-size:11px;color:var(--t3)">🏆 = tanggal tertinggi di kategori tsb</span>';
@@ -2110,7 +2110,7 @@ function renderSpgIndogrosir(spgF){
   const tb=document.getElementById('table-body-spg-indogrosir');
   const tf=document.getElementById('tfoot-spg-indogrosir');
   if(!th)return;
-  th.innerHTML='<tr><th>Toko</th><th>Area</th><th>Laporan</th><th>All NS</th><th>NS Tea</th><th>NS Rasa-rasa</th><th>Hi Lo</th><th>Total Omzet</th></tr>';
+  th.innerHTML='<tr><th>Toko</th><th>Area</th><th>Laporan</th><th>All NS</th><th>NS Tea</th><th>NS Rasa-rasa</th><th>Hi Lo</th><th>Hi Lo Matcha</th><th>Total Omzet</th></tr>';
   const rows=spgF.filter(r=>/indogrosir/i.test(r.store||''));
   const rankHost=document.getElementById('spg-indogrosir-rank-body');
   if(rankHost){
@@ -2123,11 +2123,11 @@ function renderSpgIndogrosir(spgF){
   const byStore={};
   rows.forEach(r=>{
     const key=r.store||'?';
-    if(!byStore[key])byStore[key]={store:r.store,area:r.area,laporan:0,nsAllRc:0,nsAllOmz:0,nsTeaRc:0,nsTeaOmz:0,nsRasaRc:0,nsRasaOmz:0,hiloRc:0,hiloOmz:0,total:0,items:{},byDate:{}};
+    if(!byStore[key])byStore[key]={store:r.store,area:r.area,laporan:0,nsAllRc:0,nsAllOmz:0,nsTeaRc:0,nsTeaOmz:0,nsRasaRc:0,nsRasaOmz:0,hiloRc:0,hiloOmz:0,hiloMatchaRc:0,hiloMatchaOmz:0,total:0,items:{},byDate:{}};
     const g=byStore[key];
     g.laporan++; g.total+=r.totalOmzet||0;
     const dkey=r.tanggalJualan||r.timestamp.toISOString().slice(0,10);
-    if(!g.byDate[dkey])g.byDate[dkey]={nsAllRc:0,nsAllOmz:0,nsTeaRc:0,nsTeaOmz:0,nsRasaRc:0,nsRasaOmz:0,hiloRc:0,hiloOmz:0};
+    if(!g.byDate[dkey])g.byDate[dkey]={nsAllRc:0,nsAllOmz:0,nsTeaRc:0,nsTeaOmz:0,nsRasaRc:0,nsRasaOmz:0,hiloRc:0,hiloOmz:0,hiloMatchaRc:0,hiloMatchaOmz:0};
     const gd=g.byDate[dkey];
     Object.entries(r.items||{}).forEach(([name,{qty,omzet}])=>{
       const cat=spgIndoItemCat(name,r.area);
@@ -2135,7 +2135,10 @@ function renderSpgIndogrosir(spgF){
       if(cat==='NS Tea'){ g.nsAllRc+=qty; g.nsAllOmz+=omzet; g.nsTeaRc+=qty; g.nsTeaOmz+=omzet; gd.nsAllRc+=qty; gd.nsAllOmz+=omzet; gd.nsTeaRc+=qty; gd.nsTeaOmz+=omzet; }
       else if(cat==='Item Prioritas'){ g.nsAllRc+=qty; g.nsAllOmz+=omzet; gd.nsAllRc+=qty; gd.nsAllOmz+=omzet; }
       else if(cat==='NS Rasa-rasa'){ g.nsAllRc+=qty; g.nsAllOmz+=omzet; g.nsRasaRc+=qty; g.nsRasaOmz+=omzet; gd.nsAllRc+=qty; gd.nsAllOmz+=omzet; gd.nsRasaRc+=qty; gd.nsRasaOmz+=omzet; }
-      else if(cat==='Hi Lo'){ g.hiloRc+=qty; g.hiloOmz+=omzet; gd.hiloRc+=qty; gd.hiloOmz+=omzet; }
+      else if(cat==='Hi Lo'){
+        g.hiloRc+=qty; g.hiloOmz+=omzet; gd.hiloRc+=qty; gd.hiloOmz+=omzet;
+        if(/MATCHA/i.test(name)){ g.hiloMatchaRc+=qty; g.hiloMatchaOmz+=omzet; gd.hiloMatchaRc+=qty; gd.hiloMatchaOmz+=omzet; }
+      }
       if(!g.items[cat])g.items[cat]={};
       if(!g.items[cat][name])g.items[cat][name]={qty:0,omzet:0};
       g.items[cat][name].qty+=qty; g.items[cat][name].omzet+=omzet;
@@ -2153,8 +2156,9 @@ function renderSpgIndogrosir(spgF){
     <td>${g.nsTeaRc?g.nsTeaRc+' rc<br><span style="color:var(--t3);font-size:11px">'+rp(g.nsTeaOmz)+'</span>':'—'}</td>
     <td>${g.nsRasaRc?g.nsRasaRc+' rc<br><span style="color:var(--t3);font-size:11px">'+rp(g.nsRasaOmz)+'</span>':'—'}</td>
     <td>${g.hiloRc?g.hiloRc+' rc<br><span style="color:var(--t3);font-size:11px">'+rp(g.hiloOmz)+'</span>':'—'}</td>
+    <td>${g.hiloMatchaRc?g.hiloMatchaRc+' rc<br><span style="color:var(--t3);font-size:11px">'+rp(g.hiloMatchaOmz)+'</span>':'—'}</td>
     <td class="td-main" style="color:var(--green)">${g.total?rp(g.total):'—'}</td>
-  </tr>`).join(''):'<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:32px">Belum ada laporan dari toko Indogrosir untuk periode/filter ini.</td></tr>';
+  </tr>`).join(''):'<tr><td colspan="9" style="text-align:center;color:var(--t3);padding:32px">Belum ada laporan dari toko Indogrosir untuk periode/filter ini.</td></tr>';
   if(tf)tf.innerHTML=list.length?'<span style="color:var(--t3);font-size:11px">'+list.length+' toko Indogrosir · '+rows.length+' laporan · klik baris untuk detail per tanggal</span>':'';
 }
 function spgIndogrosirItemBreakdownHtml(g){
