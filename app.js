@@ -23916,6 +23916,7 @@ function wowFillStore(){
   pool.forEach(t=>{ names.add(t.name); if(t.pair)names.add(t.pair); });
   WOW_CUSTOM_STORES.forEach(s=>{
     if(typeof s==='string'){ names.add(s); return; }
+    if(s.excludeArea && area && s.excludeArea===area)return;
     if(s.area && area && s.area!==area)return;
     if(s.mds && mds && s.mds!==mds)return;
     names.add(s.name);
