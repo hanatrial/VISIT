@@ -3024,13 +3024,16 @@ function renderWowUnvisited(){
     if(r.store)visited.add(r.store.trim().toUpperCase());
     if(r.storePasangan)visited.add(r.storePasangan.trim().toUpperCase());
   });
+  const fa=(document.getElementById('f-area')?.value||'').trim().toLowerCase();
   const unvisited=WOW_TOKO_MASTER.filter(t=>{
     const n1=t.name.trim().toUpperCase();
     const n2=t.pair?t.pair.trim().toUpperCase():null;
-    return !visited.has(n1)&&!(n2&&visited.has(n2));
+    if(visited.has(n1)||(n2&&visited.has(n2)))return false;
+    if(fa&&!(t.area||'').toLowerCase().includes(fa))return false;
+    return true;
   });
   const q=(document.getElementById('wow-unvisited-search')?.value||'').trim().toLowerCase();
-  const filtered=q?unvisited.filter(t=>t.name.toLowerCase().includes(q)||(t.pair&&t.pair.toLowerCase().includes(q))):unvisited;
+  const filtered=q?unvisited.filter(t=>t.name.toLowerCase().includes(q)||(t.pair&&t.pair.toLowerCase().includes(q))||(t.area&&t.area.toLowerCase().includes(q))):unvisited;
   th.innerHTML='<tr><th>Area</th><th>Nama Toko</th><th>Toko Pasangan</th></tr>';
   filtered.sort((a,b)=>(a.area||'').localeCompare(b.area||'')||a.name.localeCompare(b.name));
   tb.innerHTML=filtered.length?filtered.map(t=>`<tr><td class="td-dim">${t.area||'—'}</td><td class="td-main">${t.name}</td><td class="td-dim">${t.pair||'—'}</td></tr>`).join(''):'<tr><td colspan="3" style="text-align:center;color:var(--t3);padding:32px">Semua toko sudah pernah divisit / tidak ada yang cocok pencarian.</td></tr>';
