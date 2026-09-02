@@ -34,7 +34,7 @@ const MDS_BY_AREA={
   'Gorontalo':['Aditya Hulopi','Mohammad Rahman Marwan','Abd. Rahman Lahay','Satrio Yusuf'],
   'Kendari':['Laode Asrad Ilhamid','Abdul Rahman (Rangga)','Dwi Haryanto','Rosa Sasmita'],
   'Luwuk':['Kadek Adi Merta Sastrawan'],
-  'Makassar':['Sulfiana Rusdy','A. Mappanyukki','Andi Iswan Tenri Bau','Rahmat','Hasrar','Andi Muh. Nurfikrahturrahman','Nurul Ramadhani','Syafri'],
+  'Makassar':['Sulfiana Rusdy','A. Mappanyukki','Andi Iswan Tenri Bau','Rahmat','Hasrar','Andi Muh. Nurfikrahturrahman','Musdalifah','Syafri'],
   'Mamuju':['Muhammad Rizky Sandria','Sugiono'],
   'Manado':['Melisa Pungky Mapaliey','Rivanti Gusti Husein','Ignacia Regina Naung','Ridlan Mangilong','Tesar','Meilani Watung'],
   'Palopo':['Tio Setiawan Rappun','Hijrayanti Mahruddin','Firman'],
