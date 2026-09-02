@@ -3031,8 +3031,9 @@ function renderWowUnvisited(){
   });
   const q=(document.getElementById('wow-unvisited-search')?.value||'').trim().toLowerCase();
   const filtered=q?unvisited.filter(t=>t.name.toLowerCase().includes(q)||(t.pair&&t.pair.toLowerCase().includes(q))):unvisited;
-  th.innerHTML='<tr><th>Nama Toko</th><th>Toko Pasangan</th></tr>';
-  tb.innerHTML=filtered.length?filtered.map(t=>`<tr><td class="td-main">${t.name}</td><td class="td-dim">${t.pair||'—'}</td></tr>`).join(''):'<tr><td colspan="2" style="text-align:center;color:var(--t3);padding:32px">Semua toko sudah pernah divisit / tidak ada yang cocok pencarian.</td></tr>';
+  th.innerHTML='<tr><th>Area</th><th>Nama Toko</th><th>Toko Pasangan</th></tr>';
+  filtered.sort((a,b)=>(a.area||'').localeCompare(b.area||'')||a.name.localeCompare(b.name));
+  tb.innerHTML=filtered.length?filtered.map(t=>`<tr><td class="td-dim">${t.area||'—'}</td><td class="td-main">${t.name}</td><td class="td-dim">${t.pair||'—'}</td></tr>`).join(''):'<tr><td colspan="3" style="text-align:center;color:var(--t3);padding:32px">Semua toko sudah pernah divisit / tidak ada yang cocok pencarian.</td></tr>';
   if(tf)tf.textContent=`${unvisited.length} dari ${WOW_TOKO_MASTER.length} toko belum pernah divalidasi WOW`+(q?` · ${filtered.length} cocok pencarian`:'');
 }
 function toggleWowValidasi(docId,val){
