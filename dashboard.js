@@ -26,6 +26,7 @@ function ensureXlsx(){
 const IS_OPS_DASH=!!document.getElementById('ntab-stock');
 const DASH_PIN=IS_OPS_DASH?'SPG2026':'NFI2026';
 const DASH_PIN_MDS_ONLY='MDS2026';
+const DASH_PIN_WOW_ONLY='WOW2026';
 const PIN_SCOPE=IS_OPS_DASH?'ops':'main';
 const MDS_BY_AREA={
   'Bau Bau':['Rizal'],
@@ -95,6 +96,7 @@ let cAV=null,cTrend=null,cBrand=null,mcAV=null,mcBrand=null;
 function _isTouchOnly(){try{return matchMedia('(hover: none) and (pointer: coarse)').matches;}catch(e){return false;}}
 const IS_MOBILE=((window.innerWidth||document.documentElement.clientWidth||0)<=768)||_isTouchOnly();
 let RESTRICT_TO_PJMDS=false;
+let RESTRICT_TO_WOW=false;
 /* PIN "MDS2026" logs in but only shows the Penjualan MDS tab in the nav —
    everything inside that tab (uploads, edits, checkboxes, modals, etc.)
    stays fully functional, it's just the OTHER tabs (Visit RKA, Beli Barang,
@@ -107,20 +109,32 @@ function restrictToPjmds(){
   });
   switchTab('pjmds');
 }
+/* PIN "WOW2026" — same idea as MDS2026 above, but scoped to the Display WOW
+   tab only; every other nav tab is removed so this PIN can't wander into
+   unrelated data. */
+function restrictToWow(){
+  ['ntab-rka','ntab-beli','ntab-pjmds','ntab-stock','ntab-formula','ntab-ned','ntab-spg'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.remove();
+  });
+  switchTab('wow');
+}
 function enterDash(){
   document.getElementById('pin-screen').classList.add('hidden');
   document.getElementById('app').classList.add('visible');
   if(IS_MOBILE)stripMobileHeavy();
   initDash();
   if(RESTRICT_TO_PJMDS)restrictToPjmds();
+  if(RESTRICT_TO_WOW)restrictToWow();
 }
 function checkPin(){
   const val=document.getElementById('pin-input').value;
-  if(val===DASH_PIN||val===DASH_PIN_MDS_ONLY){
+  if(val===DASH_PIN||val===DASH_PIN_MDS_ONLY||val===DASH_PIN_WOW_ONLY){
     RESTRICT_TO_PJMDS=(val===DASH_PIN_MDS_ONLY);
+    RESTRICT_TO_WOW=(val===DASH_PIN_WOW_ONLY);
     try{
       sessionStorage.setItem('mds_dash_pin_ok_'+PIN_SCOPE,'1');
-      sessionStorage.setItem('mds_dash_pin_mode_'+PIN_SCOPE,RESTRICT_TO_PJMDS?'mds_only':'full');
+      sessionStorage.setItem('mds_dash_pin_mode_'+PIN_SCOPE,RESTRICT_TO_PJMDS?'mds_only':RESTRICT_TO_WOW?'wow_only':'full');
     }catch(e){}
     enterDash();
   }else{
@@ -152,7 +166,7 @@ function stripMobileHeavy(){
    Defer to the next tick: enterDash() -> initDash() -> render() reads state
    vars (STOCK_ALL, NED_ALL, SPG_ALL, SUBTAB_*) that are declared later in this
    file, so running it inline here would hit their temporal-dead-zone. */
-let _pinOk=false;try{_pinOk=sessionStorage.getItem('mds_dash_pin_ok_'+PIN_SCOPE)==='1';RESTRICT_TO_PJMDS=sessionStorage.getItem('mds_dash_pin_mode_'+PIN_SCOPE)==='mds_only';}catch(e){}
+let _pinOk=false;try{_pinOk=sessionStorage.getItem('mds_dash_pin_ok_'+PIN_SCOPE)==='1';const _pinMode=sessionStorage.getItem('mds_dash_pin_mode_'+PIN_SCOPE);RESTRICT_TO_PJMDS=_pinMode==='mds_only';RESTRICT_TO_WOW=_pinMode==='wow_only';}catch(e){}
 if(_pinOk){setTimeout(enterDash,0);}
 else document.getElementById('pin-input').focus();
 
