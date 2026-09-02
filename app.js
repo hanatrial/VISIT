@@ -23912,13 +23912,19 @@ function wowFillStore(){
   if(area){
     pool=pool.filter(t=>(t.formArea||t.area)===area);
   }
+  let narrowedByMds=false;
   if(mds){
     const directMatches=pool.filter(t=>t.mds && (t.mds===mds || (shortMap && shortMap[t.mds]===mds)));
-    if(directMatches.length)pool=directMatches;
+    if(directMatches.length){ pool=directMatches; narrowedByMds=true; }
   }
   const names=new Set();
   pool.forEach(t=>{ names.add(t.name); if(t.pair)names.add(t.pair); });
   WOW_CUSTOM_STORES.forEach(s=>{
+    if(narrowedByMds){
+      if(typeof s!=='object'||s.mds!==mds)return;
+      names.add(s.name);
+      return;
+    }
     if(typeof s==='string'){ names.add(s); return; }
     if(s.excludeArea && area && s.excludeArea===area)return;
     if(s.area && area && s.area!==area)return;
