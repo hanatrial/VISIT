@@ -321,10 +321,23 @@
           </div>
         </div>
       </div>
-      <div class="panel-shell"><div class="panel-body">
-        <table><thead id="table-head-wow"></thead><tbody id="table-body-wow"></tbody></table>
-        <div class="tfoot-row" id="tfoot-wow"></div>
-      </div></div>
+      <div class="sub-nav">
+        <div class="sub-tab on wow" id="stab-wow-report" onclick="switchSubTab('wow','report')">📋 Report</div>
+        <div class="sub-tab wow" id="stab-wow-unvisited" onclick="switchSubTab('wow','unvisited')">🏪 Toko Belum Divisit</div>
+      </div>
+      <div id="wow-report-wrap">
+        <div class="panel-shell"><div class="panel-body">
+          <table><thead id="table-head-wow"></thead><tbody id="table-body-wow"></tbody></table>
+          <div class="tfoot-row" id="tfoot-wow"></div>
+        </div></div>
+      </div>
+      <div id="wow-unvisited-wrap" style="display:none">
+        <div class="panel-shell"><div class="panel-body">
+          <input class="fi" id="wow-unvisited-search" placeholder="Cari nama toko…" style="width:220px;margin-bottom:12px" oninput="renderWowUnvisited()">
+          <table><thead id="table-head-wow-unvisited"></thead><tbody id="table-body-wow-unvisited"></tbody></table>
+          <div class="tfoot-row" id="tfoot-wow-unvisited"></div>
+        </div></div>
+      </div>
     </div>
 
   </div>
@@ -371,6 +384,7 @@
   </div></div>
 </div>
 
-<script src="dashboard.js?v=57"></script>
+<script src="wow_toko_master.js?v=1"></script>
+<script src="dashboard.js?v=58"></script>
 </body>
 </html>

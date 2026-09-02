@@ -1291,7 +1291,7 @@ function buildSpotlight(rkaF,beliF){
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 let STOCK_ALL=[], SUBTAB_STOCK='log';
-let SUBTAB_RKA='log', SUBTAB_BELI='log', SUBTAB_FORMULA='summary', SUBTAB_PJMDS='mds', SUBTAB_NED='log', SUBTAB_SPG='log';
+let SUBTAB_RKA='log', SUBTAB_BELI='log', SUBTAB_FORMULA='summary', SUBTAB_PJMDS='mds', SUBTAB_NED='log', SUBTAB_SPG='log', SUBTAB_WOW='report';
 let NED_ALL=[], SPG_ALL=[], WOW_ALL=[];
 function switchTab(t){
   TAB=t;
@@ -1338,6 +1338,11 @@ function switchSubTab(main,sub){
     const stw=document.getElementById('spg-store-wrap');if(stw)stw.style.display=sub==='store'?'block':'none';
     const rkw=document.getElementById('spg-rank-wrap');if(rkw)rkw.style.display=sub==='rank'?'block':'none';
     const igw=document.getElementById('spg-indogrosir-wrap');if(igw)igw.style.display=sub==='indogrosir'?'block':'none';
+  }else if(main==='wow'){
+    SUBTAB_WOW=sub;
+    ['report','unvisited'].forEach(s=>{const el=document.getElementById('stab-wow-'+s);if(el)el.classList.toggle('on',s===sub);});
+    const rw2=document.getElementById('wow-report-wrap');if(rw2)rw2.style.display=sub==='report'?'block':'none';
+    const uw=document.getElementById('wow-unvisited-wrap');if(uw)uw.style.display=sub==='unvisited'?'block':'none';
   }else{
     SUBTAB_BELI=sub;
     ['log','analisis'].forEach(s=>{const el=document.getElementById('stab-beli-'+s);if(el)el.classList.toggle('on',s===sub);});
@@ -1411,7 +1416,8 @@ function render(){
     else if(SUBTAB_SPG==='indogrosir')renderSpgIndogrosir(spgF);
     else renderSpgRank(spgF);
   }else if(TAB==='wow'){
-    renderWow(wowF);
+    if(SUBTAB_WOW==='unvisited')renderWowUnvisited();
+    else renderWow(wowF);
   }
 }
 
@@ -2987,6 +2993,33 @@ function renderWow(wowF){
   const tf=document.getElementById('tfoot-wow');
   if(tf)tf.textContent=`${rows.length} kunjungan`;
   if(_expandedWowVid){const tr=document.querySelector(`tr[data-vid="${_expandedWowVid}"]`);if(tr)toggleWowDetail(tr,_expandedWowVid);}
+}
+function renderWowUnvisited(){
+  const th=document.getElementById('table-head-wow-unvisited');
+  const tb=document.getElementById('table-body-wow-unvisited');
+  const tf=document.getElementById('tfoot-wow-unvisited');
+  if(!th)return;
+  if(typeof WOW_TOKO_MASTER==='undefined'){
+    th.innerHTML='';
+    tb.innerHTML='<tr><td style="text-align:center;color:var(--t3);padding:32px">Daftar master toko (wow_toko_master.js) belum termuat.</td></tr>';
+    if(tf)tf.textContent='';
+    return;
+  }
+  const visited=new Set();
+  WOW_ALL.forEach(r=>{
+    if(r.store)visited.add(r.store.trim().toUpperCase());
+    if(r.storePasangan)visited.add(r.storePasangan.trim().toUpperCase());
+  });
+  const unvisited=WOW_TOKO_MASTER.filter(t=>{
+    const n1=t.name.trim().toUpperCase();
+    const n2=t.pair?t.pair.trim().toUpperCase():null;
+    return !visited.has(n1)&&!(n2&&visited.has(n2));
+  });
+  const q=(document.getElementById('wow-unvisited-search')?.value||'').trim().toLowerCase();
+  const filtered=q?unvisited.filter(t=>t.name.toLowerCase().includes(q)||(t.pair&&t.pair.toLowerCase().includes(q))):unvisited;
+  th.innerHTML='<tr><th>Nama Toko</th><th>Toko Pasangan</th></tr>';
+  tb.innerHTML=filtered.length?filtered.map(t=>`<tr><td class="td-main">${t.name}</td><td class="td-dim">${t.pair||'—'}</td></tr>`).join(''):'<tr><td colspan="2" style="text-align:center;color:var(--t3);padding:32px">Semua toko sudah pernah divisit / tidak ada yang cocok pencarian.</td></tr>';
+  if(tf)tf.textContent=`${unvisited.length} dari ${WOW_TOKO_MASTER.length} toko belum pernah divalidasi WOW`+(q?` · ${filtered.length} cocok pencarian`:'');
 }
 function toggleWowValidasi(docId,val){
   if(!docId)return;
