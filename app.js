@@ -23823,13 +23823,15 @@ function resetRka(){
 const WOW = { step:0, area:'', mds:'', date:'', store:'', storePasangan:'', photo:null, photoUpload:null, uploadDone:false, items:{} };
 let WOW_CUSTOM_STORES=[];
 (function(){try{WOW_CUSTOM_STORES=JSON.parse(localStorage.getItem('mds_wow_custom_stores')||'[]');}catch(e){}})();
+function wowCustomName(s){ return typeof s==='string'?s:s.name; }
 async function loadWowCustomStores(){
   try{
     if(typeof db==='undefined')return;
     const doc=await db.collection('app_data').doc('wow_stores').get();
     if(!doc.exists)return;
-    const list=doc.data().names||[];
-    list.forEach(n=>{if(!WOW_CUSTOM_STORES.some(s=>_sameName(s,n)))WOW_CUSTOM_STORES.push(n);});
+    const data=doc.data();
+    const entries=(data.entries||[]).concat(data.names||[]);
+    entries.forEach(n=>{if(!WOW_CUSTOM_STORES.some(s=>_sameName(wowCustomName(s),wowCustomName(n))))WOW_CUSTOM_STORES.push(n);});
   }catch(e){console.warn('loadWowCustomStores failed',e);}
 }
 function wowFindTokoEntry(name){
@@ -23839,11 +23841,14 @@ function wowFindTokoEntry(name){
 function addNewWowStore(){
   const nw=document.getElementById('wow-store-new').value.trim();
   if(!nw)return;
-  if(!WOW_CUSTOM_STORES.some(s=>_sameName(s,nw))){
-    WOW_CUSTOM_STORES.push(nw);
+  if(!WOW_CUSTOM_STORES.some(s=>_sameName(wowCustomName(s),nw))){
+    const area=document.getElementById('wow-area-sel')?document.getElementById('wow-area-sel').value:'';
+    const mds=document.getElementById('wow-mds-sel')?document.getElementById('wow-mds-sel').value:'';
+    const entry={name:nw,area:area||'',mds:mds||''};
+    WOW_CUSTOM_STORES.push(entry);
     try{localStorage.setItem('mds_wow_custom_stores',JSON.stringify(WOW_CUSTOM_STORES));}catch(e){}
     try{
-      if(typeof db!=='undefined')db.collection('app_data').doc('wow_stores').set({names:firebase.firestore.FieldValue.arrayUnion(nw)},{merge:true}).catch(e=>console.warn('wow store save failed',e));
+      if(typeof db!=='undefined')db.collection('app_data').doc('wow_stores').set({entries:firebase.firestore.FieldValue.arrayUnion(entry)},{merge:true}).catch(e=>console.warn('wow store save failed',e));
     }catch(e){}
   }
   document.getElementById('wow-store-input').value=nw;
@@ -23909,7 +23914,12 @@ function wowFillStore(){
   }
   const names=new Set();
   pool.forEach(t=>{ names.add(t.name); if(t.pair)names.add(t.pair); });
-  WOW_CUSTOM_STORES.forEach(n=>names.add(n));
+  WOW_CUSTOM_STORES.forEach(s=>{
+    if(typeof s==='string'){ names.add(s); return; }
+    if(s.area && area && s.area!==area)return;
+    if(s.mds && mds && s.mds!==mds)return;
+    names.add(s.name);
+  });
   dl.innerHTML=[...names].map(n=>`<option value="${n.replace(/"/g,'&quot;')}">`).join('');
 }
 function wowGoTo(step){
