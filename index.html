@@ -1019,13 +1019,13 @@
         <div class="s-sub">Area, MDS, dan tanggal visit</div>
         <div class="field">
           <label class="f-label">Nama Area</label>
-          <select class="f-input sel" id="wow-area-sel" onchange="wowFillMds()">
+          <select class="f-input sel" id="wow-area-sel" onchange="wowFillMds();wowFillStore()">
             <option value="">— Pilih Area —</option>
           </select>
         </div>
         <div class="field">
           <label class="f-label">Nama MDS</label>
-          <select class="f-input sel" id="wow-mds-sel" onchange="wowCheck(0)">
+          <select class="f-input sel" id="wow-mds-sel" onchange="wowCheck(0);wowFillStore()">
             <option value="">— Pilih Area dulu —</option>
           </select>
         </div>
@@ -1127,8 +1127,8 @@
 
 </div><!-- #app -->
 
-<script src="wow_toko_master.js?v=2"></script>
-<script src="app.js?v=28"></script>
+<script src="wow_toko_master.js?v=3"></script>
+<script src="app.js?v=29"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>

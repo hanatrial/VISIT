@@ -23895,14 +23895,22 @@ function wowFillMds(){
   if(!area) ms.innerHTML='<option value="">— Pilih Area dulu —</option>';
   wowCheck(0);
 }
+const WOW_MDS_SHORT_TO_FULL={
+  'Gorontalo':{'Apin':'Mohammad Rahman Marwan','Rio':'Satrio Yusuf','Abdul':'Abd. Rahman Lahay','Adit':'Aditya Hulopi'}
+};
 function wowFillStore(){
   const dl=document.getElementById('wow-store-datalist');
-  if(dl.dataset.built==='1')return;
+  const area=document.getElementById('wow-area-sel')?document.getElementById('wow-area-sel').value:'';
+  const mds=document.getElementById('wow-mds-sel')?document.getElementById('wow-mds-sel').value:'';
+  const shortMap=WOW_MDS_SHORT_TO_FULL[area];
+  let pool=WOW_TOKO_MASTER;
+  if(area && mds && shortMap){
+    pool=WOW_TOKO_MASTER.filter(t=>t.area===area && t.mds && shortMap[t.mds]===mds);
+  }
   const names=new Set();
-  WOW_TOKO_MASTER.forEach(t=>{ names.add(t.name); if(t.pair)names.add(t.pair); });
+  pool.forEach(t=>{ names.add(t.name); if(t.pair)names.add(t.pair); });
   WOW_CUSTOM_STORES.forEach(n=>names.add(n));
   dl.innerHTML=[...names].map(n=>`<option value="${n.replace(/"/g,'&quot;')}">`).join('');
-  dl.dataset.built='1';
 }
 function wowGoTo(step){
   WOW.step=step;
