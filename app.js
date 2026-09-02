@@ -23909,8 +23909,11 @@ function wowFillStore(){
   const mds=document.getElementById('wow-mds-sel')?document.getElementById('wow-mds-sel').value:'';
   const shortMap=WOW_MDS_SHORT_TO_FULL[area];
   let pool=WOW_TOKO_MASTER;
+  if(area){
+    pool=pool.filter(t=>(t.formArea||t.area)===area);
+  }
   if(mds){
-    const directMatches=WOW_TOKO_MASTER.filter(t=>t.mds && (t.mds===mds || (shortMap && shortMap[t.mds]===mds)));
+    const directMatches=pool.filter(t=>t.mds && (t.mds===mds || (shortMap && shortMap[t.mds]===mds)));
     if(directMatches.length)pool=directMatches;
   }
   const names=new Set();
