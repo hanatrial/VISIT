@@ -236,6 +236,23 @@ body {
   padding-right:36px;cursor:pointer;
 }
 
+.store-suggest{
+  position:absolute;left:0;right:0;top:calc(100% + 6px);
+  background:var(--surface);border:1.5px solid var(--border);border-radius:13px;
+  max-height:260px;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  box-shadow:var(--sh-sm),0 8px 24px rgba(0,0,0,0.14);
+  z-index:50;
+}
+.store-suggest.hidden{display:none;}
+.store-suggest-item{
+  padding:12px 14px;font-size:14px;font-weight:500;color:var(--text);
+  border-bottom:1px solid var(--border);cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.store-suggest-item:last-child{border-bottom:none;}
+.store-suggest-item:active{background:var(--a-light);}
+.store-suggest-empty{padding:14px;font-size:13px;color:var(--t3);text-align:center;font-weight:500;}
+
 .add-trigger{
   display:inline-flex;align-items:center;gap:8px;
   color:var(--accent);font-size:13px;font-weight:700;

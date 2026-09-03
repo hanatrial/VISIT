@@ -23878,7 +23878,7 @@ function wowStoreInputChanged(){
   }
   wowCheck(1);
 }
-function openWow(){ showScreen('s-wow'); loadWowCustomStores().then(()=>{ document.getElementById('wow-store-datalist').dataset.built=''; wowFillStore(); }); initWow(); }
+function openWow(){ showScreen('s-wow'); loadWowCustomStores().then(()=>{ wowFillStore(); }); initWow(); }
 function wowGetItems(){
   const ns=SPG_INDOGROSIR_GROUPS[0].items.map(n=>({name:n,section:'NS'}));
   const hilo=SPG_INDOGROSIR_GROUPS[1].items.concat(SPG_INDOGROSIR_GROUPS[2].items).map(n=>({name:n,section:'HI LO'}));
@@ -23910,8 +23910,8 @@ function wowFillMds(){
 const WOW_MDS_SHORT_TO_FULL={
   'Gorontalo':{'Apin':'Mohammad Rahman Marwan','Rio':'Satrio Yusuf','Abdul':'Abd. Rahman Lahay','Adit':'Aditya Hulopi'}
 };
+let WOW_STORE_NAMES=[];
 function wowFillStore(){
-  const dl=document.getElementById('wow-store-datalist');
   const area=document.getElementById('wow-area-sel')?document.getElementById('wow-area-sel').value:'';
   const mds=document.getElementById('wow-mds-sel')?document.getElementById('wow-mds-sel').value:'';
   const shortMap=WOW_MDS_SHORT_TO_FULL[area];
@@ -23938,7 +23938,49 @@ function wowFillStore(){
     if(s.mds && mds && s.mds!==mds)return;
     names.add(s.name);
   });
-  dl.innerHTML=[...names].map(n=>`<option value="${n.replace(/"/g,'&quot;')}">`).join('');
+  WOW_STORE_NAMES=[...names].sort((a,b)=>a.localeCompare(b));
+  wowRenderSuggest(document.getElementById('wow-store-input')?document.getElementById('wow-store-input').value:'');
+}
+function wowPickStore(name){
+  const inp=document.getElementById('wow-store-input');
+  inp.value=name;
+  wowStoreInputChanged();
+  wowHideSuggest();
+}
+function wowRenderSuggest(query){
+  const box=document.getElementById('wow-store-suggest');
+  if(!box)return;
+  const q=(query||'').trim().toLowerCase();
+  const matches=(q?WOW_STORE_NAMES.filter(n=>n.toLowerCase().includes(q)):WOW_STORE_NAMES).slice(0,60);
+  box.innerHTML='';
+  if(!matches.length){
+    const d=document.createElement('div');
+    d.className='store-suggest-empty';
+    d.textContent='Toko tidak ditemukan';
+    box.appendChild(d);
+    return;
+  }
+  matches.forEach(n=>{
+    const d=document.createElement('div');
+    d.className='store-suggest-item';
+    d.textContent=n;
+    d.onmousedown=(e)=>{ e.preventDefault(); wowPickStore(n); };
+    box.appendChild(d);
+  });
+}
+function wowShowSuggest(){
+  const inp=document.getElementById('wow-store-input');
+  const box=document.getElementById('wow-store-suggest');
+  if(!inp||!box)return;
+  wowRenderSuggest(inp.value);
+  box.classList.remove('hidden');
+}
+function wowHideSuggest(){
+  const box=document.getElementById('wow-store-suggest');
+  if(box)box.classList.add('hidden');
+}
+function wowHideSuggestDelayed(){
+  setTimeout(wowHideSuggest,150);
 }
 function wowGoTo(step){
   WOW.step=step;

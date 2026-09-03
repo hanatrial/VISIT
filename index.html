@@ -14,7 +14,7 @@
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=2">
+<link rel="stylesheet" href="app.css?v=3">
 </head>
 <body>
 <div id="app">
@@ -1046,10 +1046,10 @@
       <div class="step-section" id="wow-s1">
         <div class="s-title">Pilih Toko</div>
         <div class="s-sub">Ketik nama toko — kalau tokonya punya nama pasangan (khusus Makassar &amp; Gorontalo), otomatis terisi</div>
-        <div class="field">
+        <div class="field" style="position:relative">
           <label class="f-label">Nama Toko</label>
-          <input type="text" class="f-input" id="wow-store-input" list="wow-store-datalist" placeholder="Ketik / cari nama toko…" oninput="wowStoreInputChanged()">
-          <datalist id="wow-store-datalist"></datalist>
+          <input type="text" class="f-input" id="wow-store-input" placeholder="Ketik / cari nama toko…" autocomplete="off" oninput="wowStoreInputChanged();wowShowSuggest()" onfocus="wowShowSuggest()" onblur="wowHideSuggestDelayed()">
+          <div class="store-suggest hidden" id="wow-store-suggest"></div>
         </div>
         <div class="field hidden" id="wow-store-pasangan-wrap">
           <label class="f-label">Nama Toko (Pasangan)</label>
@@ -1129,7 +1129,7 @@
 </div><!-- #app -->
 
 <script src="wow_toko_master.js?v=6"></script>
-<script src="app.js?v=36"></script>
+<script src="app.js?v=37"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
