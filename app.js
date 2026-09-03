@@ -23869,6 +23869,13 @@ function wowStoreInputChanged(){
     pasInput.value='';
     pasWrap.classList.add('hidden');
   }
+  const mapLink=document.getElementById('wow-store-map-link');
+  if(entry&&entry.lat!=null&&entry.lng!=null){
+    mapLink.href=`https://www.google.com/maps?q=${entry.lat},${entry.lng}`;
+    mapLink.classList.remove('hidden');
+  } else {
+    mapLink.classList.add('hidden');
+  }
   wowCheck(1);
 }
 function openWow(){ showScreen('s-wow'); loadWowCustomStores().then(()=>{ document.getElementById('wow-store-datalist').dataset.built=''; wowFillStore(); }); initWow(); }
