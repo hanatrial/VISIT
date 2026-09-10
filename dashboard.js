@@ -2973,7 +2973,7 @@ function renderWow(wowF){
     <th onclick="sortBy('store')">Toko${ar('store')}</th>
     <th>Toko Pasangan</th>
     <th onclick="sortBy('avail')">AV${ar('avail')}</th>
-    <th>AV NS</th><th>AV Hilo</th><th>Validasi PIC</th>
+    <th>AV NS</th><th>AV Hilo</th><th>Validasi PIC</th><th>Keterangan</th>
   </tr>`;
   tb.innerHTML=rows.length?rows.map(r=>{
     const ts=r.timestamp;
@@ -3004,8 +3004,16 @@ function renderWow(wowF){
       <td><span class="tag g sm">${bav.NS}</span></td>
       <td><span class="tag g sm">${bav.HILO}</span></td>
       <td><div style="display:flex;gap:4px" onclick="event.stopPropagation()">${vBtn(true,'✓')}${vBtn(false,'✗')}${vBtn('perlu','PERLU VALIDASI',true)}</div></td>
+      <td onclick="event.stopPropagation()">
+        <select onchange="updateWowKeterangan('${r._docId}',this.value)" style="font-size:11px;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text)">
+          <option value=""${!r.keterangan?' selected':''}>—</option>
+          <option value="Hanger"${r.keterangan==='Hanger'?' selected':''}>Hanger</option>
+          <option value="Rak"${r.keterangan==='Rak'?' selected':''}>Rak</option>
+          <option value="Hanger dan Rak"${r.keterangan==='Hanger dan Rak'?' selected':''}>Hanger dan Rak</option>
+        </select>
+      </td>
     </tr>`;
-  }).join(''):`<tr><td colspan="10"><div class="empty-state">Tidak ada data Validasi Display WOW.</div></td></tr>`;
+  }).join(''):`<tr><td colspan="11"><div class="empty-state">Tidak ada data Validasi Display WOW.</div></td></tr>`;
   const tf=document.getElementById('tfoot-wow');
   if(tf)tf.textContent=`${rows.length} kunjungan`;
   if(_expandedWowVid){const tr=document.querySelector(`tr[data-vid="${_expandedWowVid}"]`);if(tr)toggleWowDetail(tr,_expandedWowVid);}
@@ -3040,6 +3048,12 @@ function renderWowUnvisited(){
   filtered.sort((a,b)=>(a.area||'').localeCompare(b.area||'')||a.name.localeCompare(b.name));
   tb.innerHTML=filtered.length?filtered.map(t=>`<tr><td class="td-dim">${t.area||'—'}</td><td class="td-main">${t.name}</td><td class="td-dim">${t.pair||'—'}</td></tr>`).join(''):'<tr><td colspan="3" style="text-align:center;color:var(--t3);padding:32px">Semua toko sudah pernah divisit / tidak ada yang cocok pencarian.</td></tr>';
   if(tf)tf.textContent=`${unvisited.length} dari ${WOW_TOKO_MASTER.length} toko belum pernah divalidasi WOW`+(q?` · ${filtered.length} cocok pencarian`:'');
+}
+function updateWowKeterangan(docId,val){
+  if(!docId)return;
+  const r=WOW_ALL.find(x=>x._docId===docId);
+  if(r)r.keterangan=val||null;
+  db.collection('wow_logs').doc(docId).update({keterangan:val||null}).catch(e=>console.error('keterangan update failed',e.code,e.message));
 }
 function toggleWowValidasi(docId,val){
   if(!docId)return;
