@@ -23820,7 +23820,7 @@ function resetRka(){
 /* ═══════════════════════════════════════
    VALIDASI DISPLAY WOW
 ═══════════════════════════════════════ */
-const WOW = { step:0, area:'', mds:'', date:'', store:'', storePasangan:'', photo:null, photoUpload:null, uploadDone:false, items:{} };
+const WOW = { step:0, area:'', mds:'', date:'', store:'', storePasangan:'', keterangan:'', photo:null, photoUpload:null, uploadDone:false, items:{} };
 let WOW_CUSTOM_STORES=[];
 (function(){try{WOW_CUSTOM_STORES=JSON.parse(localStorage.getItem('mds_wow_custom_stores')||'[]');}catch(e){}})();
 function wowCustomName(s){ return typeof s==='string'?s:s.name; }
@@ -24064,6 +24064,7 @@ function renderWowItems(){
       <div class="tgl-grp">
         <button class="tgl avail${st===true?' on':''}" onclick="setWowItem(${i},true)">Ada</button>
         <button class="tgl notavail${st===false?' on':''}" onclick="setWowItem(${i},false)">Tdk</button>
+        <button class="tgl needsval${st==='perlu'?' on':''}" onclick="setWowItem(${i},'perlu')">Perlu Validasi</button>
       </div>`;
     list.appendChild(row);
   });
@@ -24075,6 +24076,7 @@ function setWowItem(i,v){
   row.classList.add('ok');
   row.querySelectorAll('.tgl')[0].classList.toggle('on',v===true);
   row.querySelectorAll('.tgl')[1].classList.toggle('on',v===false);
+  row.querySelectorAll('.tgl')[2].classList.toggle('on',v==='perlu');
   wowCheck(3);
 }
 function handleWowPhoto(){
@@ -24103,12 +24105,14 @@ function handleWowPhoto(){
 async function submitWow(){
   const avail=Object.values(WOW.items).filter(v=>v===true).length;
   const unavail=Object.values(WOW.items).filter(v=>v===false).length;
+  const needsval=Object.values(WOW.items).filter(v=>v==='perlu').length;
   const id='WOW-'+String(Math.floor(Math.random()*9000)+1000);
   const ds=new Date(WOW.date+'T12:00:00').toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
 
   document.getElementById('wow-sid').textContent='ID: #'+id;
   document.getElementById('wow-savail').textContent=avail;
   document.getElementById('wow-sunavail').textContent=unavail;
+  document.getElementById('wow-sneedsval').textContent=needsval;
   document.getElementById('wow-sm-area').textContent=WOW.area;
   document.getElementById('wow-sm-mds').textContent=WOW.mds;
   document.getElementById('wow-sm-store').textContent=WOW.store;
@@ -24133,7 +24137,7 @@ async function submitWow(){
     const _tout=new Promise((_,r)=>setTimeout(()=>r(new Error('Tersimpan offline — akan sinkron otomatis saat sinyal bagus')),30000));
     const _ITEMS=wowGetItems();
     const _namedItems={};Object.entries(WOW.items).forEach(([i,v])=>{const it=_ITEMS[+i];if(it)_namedItems[it.name]=v;});
-    await withFirestoreRetry(()=>Promise.race([db.collection('wow_logs').add({id,area:WOW.area,mds:WOW.mds,store:WOW.store,...(WOW.storePasangan?{storePasangan:WOW.storePasangan}:{}),tanggalVisit:WOW.date,timestamp:firebase.firestore.FieldValue.serverTimestamp(),avail,unavail,items:_namedItems,...(photoB64?{photoData:photoB64}:{})}),_tout]));
+    await withFirestoreRetry(()=>Promise.race([db.collection('wow_logs').add({id,area:WOW.area,mds:WOW.mds,store:WOW.store,...(WOW.storePasangan?{storePasangan:WOW.storePasangan}:{}),tanggalVisit:WOW.date,timestamp:firebase.firestore.FieldValue.serverTimestamp(),avail,unavail,needsval,items:_namedItems,...(photoB64?{photoData:photoB64}:{})}),_tout]));
     document.getElementById('wow-sm-status').textContent='✅ Tersimpan ke server';
     document.getElementById('wow-sm-foto').textContent=photoB64?'✅ 1 foto':'—';
   }catch(e){
