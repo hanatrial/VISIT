@@ -2984,12 +2984,14 @@ function renderWow(wowF){
     const canExpand=hasPhoto||hasItems;
     const vid=r.id||'';
     const pv=r.picValidated;
-    const vBtn=(val,label)=>{
+    const vColor=val=>val===true?'var(--green)':val===false?'var(--red)':'#d69e2e';
+    const vBtn=(val,label,wide)=>{
       const on=pv===val;
-      const bg=on?(val?'var(--green)':'var(--red)'):'transparent';
+      const bg=on?vColor(val):'transparent';
       const fg=on?'#fff':'var(--t3)';
-      const bd=on?(val?'var(--green)':'var(--red)'):'var(--border)';
-      return`<button onclick="event.stopPropagation();toggleWowValidasi('${r._docId}',${val})" style="width:26px;height:22px;padding:0;border-radius:6px;border:1px solid ${bd};background:${bg};color:${fg};font-weight:700;cursor:pointer">${label}</button>`;
+      const bd=on?vColor(val):'var(--border)';
+      const jsVal=val===null?'null':typeof val==='string'?`'${val}'`:val;
+      return`<button onclick="event.stopPropagation();toggleWowValidasi('${r._docId}',${jsVal})" style="width:${wide?'auto':'26px'};height:22px;padding:${wide?'0 8px':'0'};border-radius:6px;border:1px solid ${bd};background:${bg};color:${fg};font-weight:700;font-size:10px;white-space:nowrap;cursor:pointer">${label}</button>`;
     };
     return`<tr class="${canExpand?'clickrow':''}" ${canExpand?`data-vid="${vid}" onclick="toggleWowDetail(this,'${vid}')"`:''}style="cursor:${canExpand?'pointer':'default'}">
       <td class="td-id">${r.id||'—'}</td>
@@ -3001,7 +3003,7 @@ function renderWow(wowF){
       <td><span class="tag g sm">${r.avail||0}</span></td>
       <td><span class="tag g sm">${bav.NS}</span></td>
       <td><span class="tag g sm">${bav.HILO}</span></td>
-      <td><div style="display:flex;gap:4px" onclick="event.stopPropagation()">${vBtn(true,'✓')}${vBtn(false,'✗')}</div></td>
+      <td><div style="display:flex;gap:4px" onclick="event.stopPropagation()">${vBtn(true,'✓')}${vBtn(false,'✗')}${vBtn('perlu','PERLU VALIDASI',true)}</div></td>
     </tr>`;
   }).join(''):`<tr><td colspan="10"><div class="empty-state">Tidak ada data Validasi Display WOW.</div></td></tr>`;
   const tf=document.getElementById('tfoot-wow');
