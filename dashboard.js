@@ -3026,6 +3026,9 @@ function wowMdsFullName(t){
   const shortMap=WOW_MDS_SHORT_TO_FULL_DS[t.area];
   return(shortMap&&shortMap[t.mds])||t.mds;
 }
+let WU_SORT='area',WU_DIR=1;
+function wuSortBy(c){ if(WU_SORT===c)WU_DIR*=-1; else{WU_SORT=c;WU_DIR=1;} renderWowUnvisited(); }
+function wuAr(c){ return`<span style="opacity:.25;margin-left:2px;font-size:9px">${WU_SORT===c?(WU_DIR>0?'↑':'↓'):'↕'}</span>`; }
 function renderWowUnvisited(){
   const th=document.getElementById('table-head-wow-unvisited');
   const tb=document.getElementById('table-body-wow-unvisited');
@@ -3052,8 +3055,20 @@ function renderWowUnvisited(){
   });
   const q=(document.getElementById('wow-unvisited-search')?.value||'').trim().toLowerCase();
   const filtered=q?unvisited.filter(t=>t.name.toLowerCase().includes(q)||(t.pair&&t.pair.toLowerCase().includes(q))||(t.area&&t.area.toLowerCase().includes(q))||wowMdsFullName(t).toLowerCase().includes(q)):unvisited;
-  th.innerHTML='<tr><th>Area</th><th>Nama Toko</th><th>Toko Pasangan</th><th>MDS</th></tr>';
-  filtered.sort((a,b)=>(a.area||'').localeCompare(b.area||'')||a.name.localeCompare(b.name));
+  th.innerHTML=`<tr>
+    <th style="cursor:pointer" onclick="wuSortBy('area')">Area${wuAr('area')}</th>
+    <th style="cursor:pointer" onclick="wuSortBy('name')">Nama Toko${wuAr('name')}</th>
+    <th>Toko Pasangan</th>
+    <th style="cursor:pointer" onclick="wuSortBy('mds')">MDS${wuAr('mds')}</th>
+  </tr>`;
+  filtered.sort((a,b)=>{
+    let av,bv;
+    if(WU_SORT==='mds'){ av=wowMdsFullName(a); bv=wowMdsFullName(b); }
+    else if(WU_SORT==='name'){ av=a.name||''; bv=b.name||''; }
+    else{ av=a.area||''; bv=b.area||''; }
+    const cmp=av.localeCompare(bv)||a.name.localeCompare(b.name);
+    return WU_DIR*cmp;
+  });
   tb.innerHTML=filtered.length?filtered.map(t=>`<tr><td class="td-dim">${t.area||'—'}</td><td class="td-main">${t.name}</td><td class="td-dim">${t.pair||'—'}</td><td class="td-dim">${wowMdsFullName(t)||'—'}</td></tr>`).join(''):'<tr><td colspan="4" style="text-align:center;color:var(--t3);padding:32px">Semua toko sudah pernah divisit / tidak ada yang cocok pencarian.</td></tr>';
   if(tf)tf.textContent=`${unvisited.length} dari ${WOW_TOKO_MASTER.length} toko belum pernah divalidasi WOW`+(q?` · ${filtered.length} cocok pencarian`:'');
 }
