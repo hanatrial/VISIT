@@ -456,7 +456,11 @@ function computePjmdsMdsData(selName){
   });
   const custList=Object.entries(custMap).map(([kode,x])=>({kode,nama:x.nama,klasifikasi:pjMode(x.klas),kabupaten:x.kab,omzet:x.omzet,visits:x.visits}));
   const topCustomer=[...custList].sort((a,b)=>b.omzet-a.omzet).slice(0,10);
-  const eaCount=Object.values(custMap).filter(x=>x.totalOrder>0).length;
+  /* EA = customers with a real order in the Order sheet, not the Call sheet's own
+     TotalOrder column — that field is filled in inconsistently upstream (seen as
+     low as 2/73 for some MDS despite dozens of real Order rows), so it silently
+     undercounted EA for MDS whose Call uploads skip it. */
+  const eaCount=new Set(o.filter(r=>!String(r.NamaItem).toUpperCase().startsWith('BONUS')).map(r=>r.KodeCustomer)).size;
 
   const sekMap={};
   c.filter(r=>!PJ_SEKOLAH_EXCLUDE.has(String(r.Sekolah||'').trim().toUpperCase())).forEach(r=>{
