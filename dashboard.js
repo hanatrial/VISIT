@@ -2661,8 +2661,12 @@ function buildStockCombos(){
     const store=r.store||'—';
     const override=MONTH_OVERRIDE[store.toLowerCase()];
     const mk=override||(r.timestamp?monthKey(r.timestamp):'');
-    const key=r.stockType+'|'+store+'|'+mk;
-    if(!map[key])map[key]={type:r.stockType,store,mk,value:0,items:{}};
+    const dateStr=r.timestamp?r.timestamp.toISOString().slice(0,10):(r.id||r._docId||'');
+    /* Keyed by exact submission date (not just month) — two separate stock-count
+       sessions landing in the same month used to get silently summed into one
+       inflated combo, hiding one of the two real submissions from the dropdown. */
+    const key=r.stockType+'|'+store+'|'+dateStr;
+    if(!map[key])map[key]={type:r.stockType,store,mk,dateStr,value:0,items:{}};
     let val=storeStockValue(r.items);
     if(!val&&r.totalNilai)val=r.totalNilai;
     map[key].value+=val;
@@ -2675,9 +2679,14 @@ function buildStockCombos(){
       map[key].items[nm].qty+=rncgEquiv;
     });
   });
-  _FC_COMBOS=Object.values(map).sort((a,b)=>a.store.localeCompare(b.store)||a.mk.localeCompare(b.mk));
+  _FC_COMBOS=Object.values(map).sort((a,b)=>a.store.localeCompare(b.store)||a.mk.localeCompare(b.mk)||a.dateStr.localeCompare(b.dateStr));
 }
-function fcComboLabel(c){return `[${c.type==='awal'?'Awal':'Akhir'}] ${c.store} · ${monthLabel(c.mk)} · ${rp(c.value)}`;}
+function fcDateLabel(dateStr){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(dateStr))return'';
+  const d=new Date(dateStr+'T12:00:00');
+  return d.toLocaleDateString('id-ID',{day:'numeric',month:'short'});
+}
+function fcComboLabel(c){return `[${c.type==='awal'?'Awal':'Akhir'}] ${c.store} · ${monthLabel(c.mk)} (${fcDateLabel(c.dateStr)}) · ${rp(c.value)}`;}
 let _FC_LABEL_TO_IDX={};
 function populateFcSelects(){
   buildStockCombos();
