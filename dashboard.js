@@ -3884,4 +3884,19 @@ async function exportMdsScorecard(){
   const period=MF?monthLabel(MF):(DF||'semua periode');
   XLSX.writeFile(wb,`Scorecard_MDS_${String(period).replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
+async function exportMdsScorecardSelisih(){
+  if(!PJ_RAW.call.length){alert('Data Penjualan (Call & Order) belum diupload — scorecard butuh data itu untuk kolom Omzet.');return;}
+  await ensureXlsx();
+  const rows=computeScorecardRows().filter(r=>(r.omzet-r.notaFinal)>1000000);
+  if(!rows.length){alert('Tidak ada MDS dengan selisih Total Omzet - Nota di atas Rp1.000.000 untuk periode/filter ini.');return;}
+  rows.sort((a,b)=>(b.omzet-b.notaFinal)-(a.omzet-a.notaFinal));
+  const header=['Nama MDS','Nota','Total Omzet'];
+  const aoa=[header].concat(rows.map(r=>[r.name,r.notaFinal,r.omzet]));
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols']=header.map((h,i)=>({wch:i===0?26:16}));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Selisih Omzet-Nota');
+  const period=MF?monthLabel(MF):(DF||'semua periode');
+  XLSX.writeFile(wb,`Selisih_Omzet_Nota_${String(period).replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
 
