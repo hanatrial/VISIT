@@ -1455,7 +1455,7 @@ function render(){
     document.getElementById('ds-hilo').textContent=(totHI+totHILOPLS)||'—';
     const k=FI
       ?beliF.reduce((s,r)=>{if(!r.itemQty)return s;return s+Object.entries(r.itemQty).reduce((ss,[nm,v])=>nm.toLowerCase().includes(FI)?ss+(Number(v)||0)*(ITEM_PRICE[nm]?.pcs||0):ss,0);},0)
-      :totNS*NS_PRICE+totHI*HILO_PRICE+totHILOPLS*HILOPLS_PRICE;
+      :beliF.reduce((s,r)=>s+kalc(r),0);
     document.getElementById('ds-kalc').textContent=k?rp(k):'—';
     const sub=document.getElementById('ds-kalc-sub');
     if(sub)sub.textContent=FI?`Value item: ${document.getElementById('f-item').value}`:'NS×11.250 + HILO×16.000 + HILO SCHOOL PLS×31.500';
@@ -1587,10 +1587,7 @@ function renderPjmdsDetail(beliF){
   if(!PJMDS_SEL){el.innerHTML='<div class="panel-shell"><div class="panel-body" style="text-align:center;padding:32px;color:var(--t3)">Pilih nama MDS di atas untuk lihat detail pengambilan barang.</div></div>';return;}
   const rows=beliF.filter(r=>mdsMatch(r.mds,PJMDS_SEL)).sort((a,b)=>b.timestamp-a.timestamp);
   const totNota=rows.reduce((s,r)=>s+(r.nominal||0),0);
-  const totValue=rows.reduce((s,r)=>{
-    const nsR=r.groupTotals&&r.groupTotals.NS||0,hiR=r.groupTotals&&r.groupTotals.HILO||0;
-    return s+nsR*NS_PRICE+hiR*HILO_PRICE;
-  },0);
+  const totValue=rows.reduce((s,r)=>s+kalc(r),0);
   const storeMap={};
   rows.forEach(r=>{
     const k=r.store||'—';
@@ -3225,7 +3222,7 @@ function renderBeli(beliF){
     const ts=r.timestamp;
     const nsR=r.groupTotals&&r.groupTotals.NS||0;
     const hiR=r.groupTotals&&r.groupTotals.HILO||0;
-    const fullK=nsR*NS_PRICE+hiR*HILO_PRICE;
+    const fullK=kalc(r);
     const k=FI&&r.itemQty?Object.entries(r.itemQty).reduce((s,[nm,v])=>nm.toLowerCase().includes(FI)?s+(Number(v)||0)*(ITEM_PRICE[nm]?.pcs||0):s,0):fullK;
     const nota=r.nominal||0, diff=fullK-nota;
     const dTag=diff===0?'<span class="tag t sm">0</span>':diff>0?`<span class="tag g sm">+${rp(diff)}</span>`:`<span class="tag r sm">${rp(diff)}</span>`;
@@ -3266,7 +3263,7 @@ function renderAnalisis(rkaF,beliF){
     submittedByArea[a].add(m.toLowerCase());
     if(!areaVars[a])areaVars[a]={jp:0,aso:0,nsOther:0,hilo:0,value:0};
     if(FI){if(r.itemQty)Object.entries(r.itemQty).forEach(([nm,v])=>{if(nm.toLowerCase().includes(FI))areaVars[a].value+=(Number(v)||0)*(ITEM_PRICE[nm]?.pcs||0);});}
-    else{areaVars[a].value+=((r.groupTotals&&r.groupTotals.NS||0)*NS_PRICE)+((r.groupTotals&&r.groupTotals.HILO||0)*HILO_PRICE)+((r.groupTotals&&r.groupTotals.HILOPLS||0)*HILOPLS_PRICE);}
+    else{areaVars[a].value+=kalc(r);}
     if(!r.itemQty)return;
     Object.entries(r.itemQty).forEach(([nm,qty])=>{
       const q=Number(qty)||0; if(!q)return;
@@ -3391,8 +3388,8 @@ function renderAnalisis(rkaF,beliF){
     if(fStore&&!(r.store||'').toLowerCase().includes(fStore))return;
     const m=r.mds||'—';if(!mds[m])mds[m]={name:m,area:r.area||'—',fd:r.timestamp,visits:0,a:0,t:0,ns:0,hi:0,nom:0,beli:0,stores:new Set()};if(r.timestamp<mds[m].fd)mds[m].fd=r.timestamp;});
   rkaF.forEach(r=>{const m=r.mds||'—';if(!mds[m])mds[m]={name:m,area:r.area||'—',fd:r.timestamp,visits:0,a:0,t:0,ns:0,hi:0,nom:0,beli:0,stores:new Set()};mds[m].visits++;mds[m].a+=(r.avail||0);mds[m].t+=(r.avail||0)+(r.unavail||0);mds[m].stores.add(r.store||'?');});
-  beliF.forEach(r=>{const m=r.mds||'—';if(!mds[m])mds[m]={name:m,area:r.area||'—',fd:new Date(),visits:0,a:0,t:0,ns:0,hi:0,nom:0,beli:0,stores:new Set()};mds[m].ns+=(r.groupTotals&&r.groupTotals.NS||0);mds[m].hi+=(r.groupTotals&&r.groupTotals.HILO||0);mds[m].nom+=(r.nominal||0);mds[m].beli++;mds[m].stores.add(r.store||'?');});
-  let entries=Object.values(mds).map(v=>({...v,storesCnt:v.stores.size,av:v.t?Math.round(v.a/v.t*100):null,k:v.ns*NS_PRICE+v.hi*HILO_PRICE,tdays:Math.floor((new Date()-v.fd)/864e5)}));
+  beliF.forEach(r=>{const m=r.mds||'—';if(!mds[m])mds[m]={name:m,area:r.area||'—',fd:new Date(),visits:0,a:0,t:0,ns:0,hi:0,nom:0,beli:0,val:0,stores:new Set()};mds[m].ns+=(r.groupTotals&&r.groupTotals.NS||0);mds[m].hi+=(r.groupTotals&&r.groupTotals.HILO||0);mds[m].nom+=(r.nominal||0);mds[m].val=(mds[m].val||0)+kalc(r);mds[m].beli++;mds[m].stores.add(r.store||'?');});
+  let entries=Object.values(mds).map(v=>({...v,storesCnt:v.stores.size,av:v.t?Math.round(v.a/v.t*100):null,k:v.val||0,tdays:Math.floor((new Date()-v.fd)/864e5)}));
   const analysisFields=['name','tdays','visits','av','ns','hi','k','nom','beli'];
   entries=analysisFields.includes(SC)?doSort(entries):entries.sort((a,b)=>b.visits-a.visits);
 
@@ -3474,7 +3471,7 @@ function openMDS(name){
   const hi=beliF.reduce((s,r)=>s+(r.groupTotals&&r.groupTotals.HILO||0),0);
   document.getElementById('m-ns').textContent=ns||'—';
   document.getElementById('m-hilo-sub').textContent=`HILO: ${hi}`;
-  const k=ns*NS_PRICE+hi*HILO_PRICE;
+  const k=beliF.reduce((s,r)=>s+kalc(r),0);
   document.getElementById('m-kalc').textContent=k?rp(k):'—';
   const nota=beliF.reduce((s,r)=>s+(r.nominal||0),0);
   document.getElementById('m-nota-sub').textContent=`Nota: ${nota?rp(nota):'—'}`;
@@ -3585,7 +3582,7 @@ function openMDS(name){
   document.getElementById('modal-beli-body').innerHTML=beliRows.length?beliRows.map(r=>{
     const ts=r.timestamp;
     const nsR=r.groupTotals&&r.groupTotals.NS||0,hiR=r.groupTotals&&r.groupTotals.HILO||0;
-    const k=nsR*NS_PRICE+hiR*HILO_PRICE,nota=r.nominal||0,diff=k-nota;
+    const k=kalc(r),nota=r.nominal||0,diff=k-nota;
     const hasPhoto=!!(r.photoData||r.photoUrl);
     const bid=r.id||'';
     return`<tr class="${hasPhoto?'clickrow':''}" ${hasPhoto?`data-bid="${bid}" onclick="toggleBeliDetail(this,'${bid}')"`:''}><td class="td-dim">${ts.toLocaleDateString('id-ID',{day:'numeric',month:'short'})} ${ts.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}</td><td class="td-mid">${r.store||'—'}${hasPhoto?' <span style="font-size:9px;color:var(--accent)">📷</span>':''}</td><td style="color:var(--blue)">${nsR}</td><td style="color:var(--gold)">${hiR}</td><td>${r.totalRenceng||0}</td><td style="color:var(--accent);font-weight:700">${k?rp(k):'—'}</td><td class="td-dim">${nota?rp(nota):'—'}</td><td style="color:${diff>0?'var(--accent)':diff<0?'var(--red)':'var(--t3)'}">${diff?rp(diff):'—'}</td></tr>`;
@@ -3793,7 +3790,7 @@ function exportCSV(){
   }else if(TAB==='beli'){
     csv='ID,Waktu,MDS,Area,Toko,NS Rnc,HILO Rnc,Total Rnc,Value,Nota,Selisih,Detail Item\n';
     csv+=doSort(beliF).map(r=>{
-      const ts=r.timestamp,nsR=r.groupTotals&&r.groupTotals.NS||0,hiR=r.groupTotals&&r.groupTotals.HILO||0,k=nsR*NS_PRICE+hiR*HILO_PRICE;
+      const ts=r.timestamp,nsR=r.groupTotals&&r.groupTotals.NS||0,hiR=r.groupTotals&&r.groupTotals.HILO||0,k=kalc(r);
       const detail=r.itemQty?Object.entries(r.itemQty).map(([n,v])=>`${n}:${v}`).join('; '):'';
       return[r.id,ts.toLocaleString('id-ID'),r.mds,r.area,q(r.store),nsR,hiR,r.totalRenceng||0,k,r.nominal||0,k-(r.nominal||0),q(detail)].join(',');
     }).join('\n');fn='Beli';
