@@ -180,7 +180,14 @@ function brandOf(n){
 }
 function isJP(n){return n&&n.toUpperCase().includes('NS JERUK PERAS PLS');}
 function isASO(n){return n&&n.toUpperCase().includes('NS ASO PLS');}
-function kalc(r){return((r.groupTotals&&r.groupTotals.NS||0)*NS_PRICE)+((r.groupTotals&&r.groupTotals.HILO||0)*HILO_PRICE)+((r.groupTotals&&r.groupTotals.HILOPLS||0)*HILOPLS_PRICE);}
+/* Prefers per-item pricing from ITEM_PRICE (revisable via the Harga Item panel) over
+   the old flat NS_PRICE/HILO_PRICE/HILOPLS_PRICE constants, which lumped every item
+   in a brand/category into one price and never reflected per-item price edits. Falls
+   back to the flat calc only for legacy records saved before itemQty was captured. */
+function kalc(r){
+  if(r.itemQty)return Object.entries(r.itemQty).reduce((s,[nm,v])=>s+(Number(v)||0)*(ITEM_PRICE[nm]?.pcs||0),0);
+  return((r.groupTotals&&r.groupTotals.NS||0)*NS_PRICE)+((r.groupTotals&&r.groupTotals.HILO||0)*HILO_PRICE)+((r.groupTotals&&r.groupTotals.HILOPLS||0)*HILOPLS_PRICE);
+}
 function rp(n){return'Rp '+Math.round(n).toLocaleString('id-ID');}
 function fmtNum(n){return Math.round(n||0).toLocaleString('id-ID');}
 // Stock item category helpers
