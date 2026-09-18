@@ -3890,10 +3890,10 @@ async function exportMdsScorecardSelisih(){
   const rows=computeScorecardRows().filter(r=>(r.omzet-r.notaFinal)>1000000);
   if(!rows.length){alert('Tidak ada MDS dengan selisih Total Omzet - Nota di atas Rp1.000.000 untuk periode/filter ini.');return;}
   rows.sort((a,b)=>(b.omzet-b.notaFinal)-(a.omzet-a.notaFinal));
-  const header=['Nama MDS','Nota','Total Omzet'];
-  const aoa=[header].concat(rows.map(r=>[r.name,r.notaFinal,r.omzet]));
+  const header=['Nama MDS','Area','Nota','Total Omzet','Selisih'];
+  const aoa=[header].concat(rows.map(r=>[r.name,r.area,rp(r.notaFinal),rp(r.omzet),rp(r.omzet-r.notaFinal)]));
   const ws=XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols']=header.map((h,i)=>({wch:i===0?26:16}));
+  ws['!cols']=header.map((h,i)=>({wch:i===0?26:i===1?14:16}));
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'Selisih Omzet-Nota');
   const period=MF?monthLabel(MF):(DF||'semua periode');
