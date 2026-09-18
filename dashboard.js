@@ -3889,7 +3889,7 @@ async function exportMdsScorecardSelisih(){
   await ensureXlsx();
   const rows=computeScorecardRows().filter(r=>(r.omzet-r.notaFinal)>1000000);
   if(!rows.length){alert('Tidak ada MDS dengan selisih Total Omzet - Nota di atas Rp1.000.000 untuk periode/filter ini.');return;}
-  rows.sort((a,b)=>(b.omzet-b.notaFinal)-(a.omzet-a.notaFinal));
+  rows.sort((a,b)=>a.area.localeCompare(b.area)||(b.omzet-b.notaFinal)-(a.omzet-a.notaFinal));
   const header=['Nama MDS','Area','Nota','Total Omzet','Selisih'];
   const aoa=[header].concat(rows.map(r=>[r.name,r.area,rp(r.notaFinal),rp(r.omzet),rp(r.omzet-r.notaFinal)]));
   const ws=XLSX.utils.aoa_to_sheet(aoa);
