@@ -49,7 +49,13 @@ function mdsMatch(beliName,rosterName){
   if(a===b)return true;
   return MDS_ALIAS[a]&&MDS_ALIAS[a].toUpperCase()===b;
 }
-const NS_PRICE=11250, HILO_PRICE=16000, HILOPLS_PRICE=31500;
+/* Beli Barang's item picker (BELI_PRODUCTS in app.js) only ever offers 3 groups —
+   NS, HILO, HILOPLS — and every item within a group shares one price, so a flat
+   per-group rate is both correct and far cheaper than a per-item ITEM_PRICE lookup
+   (which also silently broke on name mismatches between app.js's short item names
+   and dashboard.js's full catalog names, e.g. "HILO CHOCOLATE PLS ..." vs "HI LO
+   DRINK CHOCOLATE PLS ..."). Update these 3 numbers when prices are revised. */
+const NS_PRICE=13500, HILO_PRICE=19000, HILOPLS_PRICE=35000;
 // NS items to spotlight (partial match is fine)
 const NS_JP_KEY  = 'NS JERUK PERAS PLS';
 const NS_ASO_KEY = 'NS AMERICAN SWEET ORANGE PLS';
@@ -180,18 +186,7 @@ function brandOf(n){
 }
 function isJP(n){return n&&n.toUpperCase().includes('NS JERUK PERAS PLS');}
 function isASO(n){return n&&n.toUpperCase().includes('NS ASO PLS');}
-/* Prefers per-item pricing from ITEM_PRICE (revisable via the Harga Item panel) over
-   the old flat NS_PRICE/HILO_PRICE/HILOPLS_PRICE constants, which lumped every item
-   in a brand/category into one price and never reflected per-item price edits. Falls
-   back to the flat calc for legacy records with no itemQty, AND whenever the per-item
-   sum comes out to 0 despite having items — a name in itemQty not matching any
-   ITEM_PRICE key (old typo/variant) would otherwise silently zero the whole record
-   instead of just that one item. */
 function kalc(r){
-  if(r.itemQty){
-    const total=Object.entries(r.itemQty).reduce((s,[nm,v])=>s+(Number(v)||0)*(ITEM_PRICE[nm]?.pcs||0),0);
-    if(total>0)return total;
-  }
   return((r.groupTotals&&r.groupTotals.NS||0)*NS_PRICE)+((r.groupTotals&&r.groupTotals.HILO||0)*HILO_PRICE)+((r.groupTotals&&r.groupTotals.HILOPLS||0)*HILOPLS_PRICE);
 }
 function rp(n){return'Rp '+Math.round(n).toLocaleString('id-ID');}
@@ -1458,7 +1453,7 @@ function render(){
       :beliF.reduce((s,r)=>s+kalc(r),0);
     document.getElementById('ds-kalc').textContent=k?rp(k):'—';
     const sub=document.getElementById('ds-kalc-sub');
-    if(sub)sub.textContent=FI?`Value item: ${document.getElementById('f-item').value}`:'NS×11.250 + HILO×16.000 + HILO SCHOOL PLS×31.500';
+    if(sub)sub.textContent=FI?`Value item: ${document.getElementById('f-item').value}`:`NS×${NS_PRICE.toLocaleString('id-ID')} + HILO×${HILO_PRICE.toLocaleString('id-ID')} + HILO SCHOOL PLS×${HILOPLS_PRICE.toLocaleString('id-ID')}`;
   }
 
   // Charts/spotlight must never block the data tables below — if Chart.js is
