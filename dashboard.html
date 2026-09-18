@@ -218,6 +218,7 @@
       <div class="sub-nav">
         <div class="sub-tab on beli" id="stab-beli-log" onclick="switchSubTab('beli','log')">🛒 Riwayat Pembelian</div>
         <div class="sub-tab beli" id="stab-beli-analisis" onclick="switchSubTab('beli','analisis')">📊 Analisis Beli MDS</div>
+        <button class="exp-btn" style="margin-left:auto" onclick="openItemPriceModal()">💲 Harga Item</button>
       </div>
       <div id="beli-area-cards" style="display:none;margin-bottom:16px"></div>
       <div class="panel-shell"><div class="panel-body">
@@ -345,6 +346,21 @@
 </div>
 
 <!-- MODAL -->
+<div class="modal-overlay hidden" id="item-price-modal" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="modal-shell"><div class="modal">
+    <div class="modal-head">
+      <div><div class="modal-name">💲 Harga Item — Beli Nota MDS</div><div class="modal-sub">Dipakai untuk hitung Nota di Beli Barang &amp; Scorecard MDS. Ubah nilai lalu klik di luar kolom untuk simpan.</div></div>
+      <div class="modal-x" onclick="document.getElementById('item-price-modal').classList.add('hidden')">✕</div>
+    </div>
+    <div class="modal-body">
+      <div class="field" style="margin-bottom:12px">
+        <input type="text" class="f-input" id="item-price-search" placeholder="Cari nama item…" oninput="renderItemPriceTable()">
+      </div>
+      <table class="mt"><thead><tr><th>Nama Item</th><th>Harga per Karton (Rp)</th><th>Harga per Pcs/Renceng (Rp)</th></tr></thead><tbody id="item-price-body"></tbody></table>
+      <div class="tfoot-row" id="item-price-tfoot"></div>
+    </div>
+  </div></div>
+</div>
 <div class="modal-overlay hidden" id="mds-modal" onclick="if(event.target===this)this.classList.add('hidden')">
   <div class="modal-shell"><div class="modal">
     <div class="modal-head">
@@ -386,6 +402,6 @@
 </div>
 
 <script src="wow_toko_master.js?v=5"></script>
-<script src="dashboard.js?v=70"></script>
+<script src="dashboard.js?v=71"></script>
 </body>
 </html>
