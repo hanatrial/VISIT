@@ -183,9 +183,15 @@ function isASO(n){return n&&n.toUpperCase().includes('NS ASO PLS');}
 /* Prefers per-item pricing from ITEM_PRICE (revisable via the Harga Item panel) over
    the old flat NS_PRICE/HILO_PRICE/HILOPLS_PRICE constants, which lumped every item
    in a brand/category into one price and never reflected per-item price edits. Falls
-   back to the flat calc only for legacy records saved before itemQty was captured. */
+   back to the flat calc for legacy records with no itemQty, AND whenever the per-item
+   sum comes out to 0 despite having items — a name in itemQty not matching any
+   ITEM_PRICE key (old typo/variant) would otherwise silently zero the whole record
+   instead of just that one item. */
 function kalc(r){
-  if(r.itemQty)return Object.entries(r.itemQty).reduce((s,[nm,v])=>s+(Number(v)||0)*(ITEM_PRICE[nm]?.pcs||0),0);
+  if(r.itemQty){
+    const total=Object.entries(r.itemQty).reduce((s,[nm,v])=>s+(Number(v)||0)*(ITEM_PRICE[nm]?.pcs||0),0);
+    if(total>0)return total;
+  }
   return((r.groupTotals&&r.groupTotals.NS||0)*NS_PRICE)+((r.groupTotals&&r.groupTotals.HILO||0)*HILO_PRICE)+((r.groupTotals&&r.groupTotals.HILOPLS||0)*HILOPLS_PRICE);
 }
 function rp(n){return'Rp '+Math.round(n).toLocaleString('id-ID');}
