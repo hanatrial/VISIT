@@ -218,7 +218,8 @@
       <div class="sub-nav">
         <div class="sub-tab on beli" id="stab-beli-log" onclick="switchSubTab('beli','log')">🛒 Riwayat Pembelian</div>
         <div class="sub-tab beli" id="stab-beli-analisis" onclick="switchSubTab('beli','analisis')">📊 Analisis Beli MDS</div>
-        <button class="exp-btn" style="margin-left:auto" onclick="openItemPriceModal()">💲 Harga Item</button>
+        <button class="exp-btn" style="margin-left:auto" onclick="exportBeliDetailPerMds()">⬇ Detail per MDS (Excel)</button>
+        <button class="exp-btn" onclick="openItemPriceModal()">💲 Harga Item</button>
       </div>
       <div id="beli-area-cards" style="display:none;margin-bottom:16px"></div>
       <div class="panel-shell"><div class="panel-body">
@@ -408,6 +409,6 @@
 </div>
 
 <script src="wow_toko_master.js?v=5"></script>
-<script src="dashboard.js?v=76"></script>
+<script src="dashboard.js?v=77"></script>
 </body>
 </html>

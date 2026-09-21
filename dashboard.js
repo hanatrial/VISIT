@@ -3946,6 +3946,26 @@ async function exportMdsScorecard(){
   const period=MF?monthLabel(MF):(DF||'semua periode');
   XLSX.writeFile(wb,`Scorecard_MDS_${String(period).replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
+async function exportBeliDetailPerMds(){
+  await ensureXlsx();
+  const beliF=filtered(BELI_ALL);
+  if(!beliF.length){alert('Tidak ada data Beli Barang untuk periode/filter ini.');return;}
+  const byMds={};
+  beliF.slice().sort((a,b)=>a.timestamp-b.timestamp).forEach(r=>{
+    const m=r.mds||'—';
+    (byMds[m]=byMds[m]||[]).push(`${r.store||'—'} (${Math.round((r.nominal||0)/1000)}k)`);
+  });
+  const names=Object.keys(byMds).sort((a,b)=>a.localeCompare(b));
+  const maxN=Math.max(...names.map(n=>byMds[n].length));
+  const header=['Nama MDS'].concat(Array.from({length:maxN},(_,i)=>`Pengambilan ${i+1}`));
+  const aoa=[header].concat(names.map(n=>[n].concat(byMds[n])));
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols']=header.map((h,i)=>({wch:i===0?28:26}));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Detail per MDS');
+  const period=MF?monthLabel(MF):(DF||'semua periode');
+  XLSX.writeFile(wb,`Detail_Pengambilan_per_MDS_${String(period).replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
 async function exportMdsScorecardSelisih(){
   if(!PJ_RAW.call.length){alert('Data Penjualan (Call & Order) belum diupload — scorecard butuh data itu untuk kolom Omzet.');return;}
   await ensureXlsx();
