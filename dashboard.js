@@ -3958,8 +3958,11 @@ function ensureJsPdf(){
   return _jspdfPromise;
 }
 async function exportBeliDetailPerMds(){
-  const beliF=filtered(BELI_ALL);
-  if(!beliF.length){alert('Tidak ada data Beli Barang untuk periode/filter ini.');return;}
+  if(!PJ_RAW.call.length){alert('Data Penjualan (Call & Order) belum diupload — dibutuhkan untuk menentukan MDS dengan selisih >1jt.');return;}
+  const problem=computeScorecardRows().filter(r=>(r.omzet-r.notaFinal)>1000000).map(r=>r.name);
+  if(!problem.length){alert('Tidak ada MDS dengan selisih Total Omzet - Nota di atas Rp1.000.000 untuk periode/filter ini.');return;}
+  const beliF=filtered(BELI_ALL).filter(r=>problem.some(n=>mdsMatch(r.mds,n)));
+  if(!beliF.length){alert('MDS bermasalah tidak punya data pengambilan di periode/filter ini.');return;}
   await ensureJsPdf();
   const byArea={};
   beliF.slice().sort((a,b)=>a.timestamp-b.timestamp).forEach(r=>{
@@ -3974,14 +3977,14 @@ async function exportBeliDetailPerMds(){
   const doc=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
   Object.keys(byArea).sort((a,b)=>a.localeCompare(b)).forEach((area,i)=>{
     if(i>0)doc.addPage();
-    doc.setFontSize(13);doc.text(`Detail Pengambilan per MDS - ${area} (${period})`,14,14);
+    doc.setFontSize(13);doc.text(`MDS Selisih >1jt - Detail Pengambilan - ${area} (${period})`,14,14);
     const body=Object.keys(byArea[area]).sort((a,b)=>a.localeCompare(b)).map(m=>{
       const e=byArea[area][m];
       return[m,e.n,Math.round(e.total/1000)+'k',Object.keys(e.dates).map(d=>`${d}: ${e.dates[d].join(', ')}`).join('\n')];
     });
     doc.autoTable({startY:19,head:[['Nama MDS','Jml','Total Nota','Detail Pengambilan (per tanggal)']],body,styles:{fontSize:9,cellPadding:1.5,valign:'top'},headStyles:{fillColor:[60,60,60]},columnStyles:{0:{cellWidth:45},1:{cellWidth:12,halign:'center'},2:{cellWidth:22,halign:'right'}}});
   });
-  doc.save(`Detail_Pengambilan_per_MDS_${String(period).replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`);
+  doc.save(`Pengambilan_MDS_Selisih_1jt_${String(period).replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`);
 }
 async function exportMdsScorecardSelisih(){
   if(!PJ_RAW.call.length){alert('Data Penjualan (Call & Order) belum diupload — scorecard butuh data itu untuk kolom Omzet.');return;}
