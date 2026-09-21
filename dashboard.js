@@ -3029,6 +3029,8 @@ function renderStore(rkaF){
 // ── TAB: DISPLAY WOW ─────────────────────────────────────────────────────────
 let _expandedWowVid=null;
 function renderWow(wowF){
+  const picF=document.getElementById('wow-pic-filter')?.value||'';
+  if(picF)wowF=wowF.filter(r=>picF==='none'?(r.picValidated==null):String(r.picValidated)===picF);
   const rows=doSort(wowF);
   const totVisit=wowF.length;
   const avgAv=wowF.length?Math.round(wowF.reduce((s,r)=>s+((r.avail+r.unavail)>0?r.avail/(r.avail+r.unavail)*100:0),0)/wowF.length):0;

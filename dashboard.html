@@ -329,6 +329,13 @@
       </div>
       <div id="wow-report-wrap">
         <div class="panel-shell"><div class="panel-body">
+          <select class="fi" id="wow-pic-filter" style="margin-bottom:12px" onchange="render()">
+            <option value="">Validasi PIC: Semua</option>
+            <option value="true">✓ Sudah valid</option>
+            <option value="false">✗ Tidak valid</option>
+            <option value="perlu">Perlu Validasi</option>
+            <option value="none">Belum divalidasi</option>
+          </select>
           <table><thead id="table-head-wow"></thead><tbody id="table-body-wow"></tbody></table>
           <div class="tfoot-row" id="tfoot-wow"></div>
         </div></div>
@@ -402,6 +409,6 @@
 </div>
 
 <script src="wow_toko_master.js?v=5"></script>
-<script src="dashboard.js?v=75"></script>
+<script src="dashboard.js?v=76"></script>
 </body>
 </html>
