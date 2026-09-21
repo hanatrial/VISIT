@@ -969,6 +969,21 @@ async function restList(coll,fields){
   out.sort((a,b)=>b.timestamp-a.timestamp);
   return out;
 }
+/* Same masked REST read as restList, but only docs with timestamp >= since — Firestore
+   bills one read per document returned, so this is what keeps the daily quota from
+   being burned re-downloading months of history on every dashboard open. */
+async function restQuerySince(coll,fields,since){
+  const url=`https://firestore.googleapis.com/v1/projects/${FS_PROJECT}/databases/(default)/documents:runQuery?key=${FS_KEY}`;
+  const body={structuredQuery:{from:[{collectionId:coll}],select:{fields:fields.map(f=>({fieldPath:f}))},where:{fieldFilter:{field:{fieldPath:'timestamp'},op:'GREATER_THAN_OR_EQUAL',value:{timestampValue:since.toISOString()}}}}};
+  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok)throw new Error(`${coll} REST query ${r.status}`);
+  const j=await r.json();
+  const out=j.filter(x=>x.document).map(x=>fsDoc(x.document));
+  out.sort((a,b)=>b.timestamp-a.timestamp);
+  return out;
+}
+/* beli_logs is only read for the current + previous month (start of previous month). */
+function beliSince(){const d=new Date();return new Date(d.getFullYear(),d.getMonth()-1,1);}
 /* True when this HTML shell actually has the given tab's section — lets one shared
    dashboard.js serve multiple thin dashboard shells (each with only its own tabs'
    markup) without ever fetching a collection the current page can't show. */
@@ -991,11 +1006,11 @@ function loadAll(){
       buildMonthOpts();render();
     }).catch(err=>console.error('rka_logs get failed',err.code,err.message));
   });
-  if(has('sec-beli'))restList('beli_logs',BELI_FIELDS).then(rows=>{
+  if(has('sec-beli'))restQuerySince('beli_logs',BELI_FIELDS,beliSince()).then(rows=>{
     BELI_ALL=rows;buildMonthOpts();render();
   }).catch(e=>{
     console.warn('beli_logs REST failed, falling back to SDK',e.message);
-    db.collection('beli_logs').limit(2000).get(SRV).then(s=>{
+    db.collection('beli_logs').where('timestamp','>=',beliSince()).limit(2000).get(SRV).then(s=>{
       BELI_ALL=[];s.forEach(d=>BELI_ALL.push(liteDoc(d)));
       BELI_ALL.sort((a,b)=>b.timestamp-a.timestamp);
       buildMonthOpts();render();
