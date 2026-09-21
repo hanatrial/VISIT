@@ -3994,11 +3994,11 @@ async function exportBeliDetailPerMds(){
   Object.keys(byArea).sort((a,b)=>a.localeCompare(b)).forEach(area=>{
     Object.keys(byArea[area]).sort((a,b)=>a.localeCompare(b)).forEach(m=>{
       const e=byArea[area][m];
-      body.push([m,area,e.n,Object.keys(e.dates).map(d=>`${d}: ${e.dates[d].join(', ')}`).join('\n')]);
+      body.push([m,area,e.n,Object.keys(e.dates).map(d=>`${d}: ${e.dates[d].join(' / ')}`).join('\n')]);
     });
   });
   doc.setFontSize(13);doc.text(`MDS Selisih >1jt - Detail Pengambilan (${period})`,14,14);
-  doc.autoTable({startY:19,head:[['Nama MDS','Area','Jml','Detail Pengambilan (per tanggal)']],body,styles:{fontSize:9,cellPadding:1.5,valign:'top'},headStyles:{fillColor:[60,60,60]},columnStyles:{0:{cellWidth:42},1:{cellWidth:24},2:{cellWidth:12,halign:'center'}}});
+  doc.autoTable({startY:19,head:[['Nama MDS','Area','Jml','Detail Pengambilan (per tanggal)']],body,styles:{fontSize:9,cellPadding:1.5,valign:'top'},headStyles:{fillColor:[60,60,60]},columnStyles:{0:{cellWidth:42},1:{cellWidth:24},2:{cellWidth:12,halign:'center'}},willDrawCell:h=>{if(h.section==='body'&&h.column.index===3){h.cell._lines=h.cell.text.slice();h.cell.text=[];}},didDrawCell:h=>{if(h.section!=='body'||h.column.index!==3||!h.cell._lines)return;const d=h.doc,fs=h.cell.styles.fontSize,lh=fs*d.getLineHeightFactor()/d.internal.scaleFactor;let y=h.cell.y+h.cell.padding('top');h.cell._lines.forEach(line=>{let x=h.cell.x+h.cell.padding('left');line.split(/(\d+k\b)/).forEach(seg=>{if(!seg)return;const b=/^\d+k$/.test(seg);d.setFont(undefined,b?'bold':'normal');d.setFontSize(fs);const sp=(d.getTextWidth('a a')-d.getTextWidth('aa'))*1.7,tr=seg.trim(),lead=seg.length-seg.trimStart().length,trail=seg.length-seg.trimEnd().length;x+=lead*sp;if(tr){d.text(tr,x,y,{baseline:'top'});x+=d.getTextWidth(tr);}x+=trail*sp;});y+=lh;});d.setFont(undefined,'normal');}});
   doc.save(`Pengambilan_MDS_Selisih_1jt_${String(period).replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`);
 }
 async function exportMdsScorecardSelisih(){
