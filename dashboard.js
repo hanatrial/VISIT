@@ -3990,15 +3990,15 @@ async function exportBeliDetailPerMds(){
   });
   const period=MF?monthLabel(MF):(DF||'semua periode');
   const doc=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
-  Object.keys(byArea).sort((a,b)=>a.localeCompare(b)).forEach((area,i)=>{
-    if(i>0)doc.addPage();
-    doc.setFontSize(13);doc.text(`MDS Selisih >1jt - Detail Pengambilan - ${area} (${period})`,14,14);
-    const body=Object.keys(byArea[area]).sort((a,b)=>a.localeCompare(b)).map(m=>{
+  const body=[];
+  Object.keys(byArea).sort((a,b)=>a.localeCompare(b)).forEach(area=>{
+    Object.keys(byArea[area]).sort((a,b)=>a.localeCompare(b)).forEach(m=>{
       const e=byArea[area][m];
-      return[m,e.n,Math.round(e.total/1000)+'k',Object.keys(e.dates).map(d=>`${d}: ${e.dates[d].join(', ')}`).join('\n')];
+      body.push([m,area,e.n,Object.keys(e.dates).map(d=>`${d}: ${e.dates[d].join(', ')}`).join('\n')]);
     });
-    doc.autoTable({startY:19,head:[['Nama MDS','Jml','Total Nota','Detail Pengambilan (per tanggal)']],body,styles:{fontSize:9,cellPadding:1.5,valign:'top'},headStyles:{fillColor:[60,60,60]},columnStyles:{0:{cellWidth:45},1:{cellWidth:12,halign:'center'},2:{cellWidth:22,halign:'right'}}});
   });
+  doc.setFontSize(13);doc.text(`MDS Selisih >1jt - Detail Pengambilan (${period})`,14,14);
+  doc.autoTable({startY:19,head:[['Nama MDS','Area','Jml','Detail Pengambilan (per tanggal)']],body,styles:{fontSize:9,cellPadding:1.5,valign:'top'},headStyles:{fillColor:[60,60,60]},columnStyles:{0:{cellWidth:42},1:{cellWidth:24},2:{cellWidth:12,halign:'center'}}});
   doc.save(`Pengambilan_MDS_Selisih_1jt_${String(period).replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`);
 }
 async function exportMdsScorecardSelisih(){
