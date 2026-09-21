@@ -3956,11 +3956,16 @@ async function exportBeliDetailPerMds(){
     (byMds[m]=byMds[m]||[]).push(`${r.store||'—'} (${Math.round((r.nominal||0)/1000)}k)`);
   });
   const names=Object.keys(byMds).sort((a,b)=>a.localeCompare(b));
-  const maxN=Math.max(...names.map(n=>byMds[n].length));
-  const header=['Nama MDS'].concat(Array.from({length:maxN},(_,i)=>`Pengambilan ${i+1}`));
-  const aoa=[header].concat(names.map(n=>[n].concat(byMds[n])));
+  const header=['Nama MDS','Jumlah Pengambilan','Detail Pengambilan'];
+  const aoa=[header];
+  names.forEach(n=>{
+    const items=byMds[n];
+    const half=Math.ceil(items.length/2);
+    aoa.push([n,items.length,items.slice(0,half).join(', ')]);
+    if(items.length>half)aoa.push(['','',items.slice(half).join(', ')]);
+  });
   const ws=XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols']=header.map((h,i)=>({wch:i===0?28:26}));
+  ws['!cols']=[{wch:28},{wch:20},{wch:150}];
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'Detail per MDS');
   const period=MF?monthLabel(MF):(DF||'semua periode');
