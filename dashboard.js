@@ -3965,15 +3965,21 @@ async function exportBeliDetailPerMds(){
   beliF.slice().sort((a,b)=>a.timestamp-b.timestamp).forEach(r=>{
     const a=r.area||'—',m=r.mds||'—';
     const ar=(byArea[a]=byArea[a]||{});
-    (ar[m]=ar[m]||[]).push(`${r.store||'—'} (${Math.round((r.nominal||0)/1000)}k)`);
+    const e=(ar[m]=ar[m]||{n:0,total:0,dates:{}});
+    const d=r.timestamp.toLocaleDateString('id-ID',{day:'numeric',month:'short'});
+    e.n++;e.total+=(r.nominal||0);
+    (e.dates[d]=e.dates[d]||[]).push(`${r.store||'-'} ${Math.round((r.nominal||0)/1000)}k`);
   });
   const period=MF?monthLabel(MF):(DF||'semua periode');
   const doc=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
   Object.keys(byArea).sort((a,b)=>a.localeCompare(b)).forEach((area,i)=>{
     if(i>0)doc.addPage();
     doc.setFontSize(13);doc.text(`Detail Pengambilan per MDS - ${area} (${period})`,14,14);
-    const body=Object.keys(byArea[area]).sort((a,b)=>a.localeCompare(b)).map(m=>[m,byArea[area][m].length,byArea[area][m].join(', ')]);
-    doc.autoTable({startY:19,head:[['Nama MDS','Jml','Detail Pengambilan']],body,styles:{fontSize:9,cellPadding:1.5,valign:'top'},headStyles:{fillColor:[60,60,60]},columnStyles:{0:{cellWidth:45},1:{cellWidth:12,halign:'center'}}});
+    const body=Object.keys(byArea[area]).sort((a,b)=>a.localeCompare(b)).map(m=>{
+      const e=byArea[area][m];
+      return[m,e.n,Math.round(e.total/1000)+'k',Object.keys(e.dates).map(d=>`${d}: ${e.dates[d].join(', ')}`).join('\n')];
+    });
+    doc.autoTable({startY:19,head:[['Nama MDS','Jml','Total Nota','Detail Pengambilan (per tanggal)']],body,styles:{fontSize:9,cellPadding:1.5,valign:'top'},headStyles:{fillColor:[60,60,60]},columnStyles:{0:{cellWidth:45},1:{cellWidth:12,halign:'center'},2:{cellWidth:22,halign:'right'}}});
   });
   doc.save(`Detail_Pengambilan_per_MDS_${String(period).replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`);
 }
