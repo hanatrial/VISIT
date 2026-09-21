@@ -218,8 +218,7 @@
       <div class="sub-nav">
         <div class="sub-tab on beli" id="stab-beli-log" onclick="switchSubTab('beli','log')">🛒 Riwayat Pembelian</div>
         <div class="sub-tab beli" id="stab-beli-analisis" onclick="switchSubTab('beli','analisis')">📊 Analisis Beli MDS</div>
-        <button class="exp-btn" style="margin-left:auto" onclick="exportBeliDetailPerMds()">⬇ Detail per MDS (Excel)</button>
-        <button class="exp-btn" onclick="openItemPriceModal()">💲 Harga Item</button>
+        <button class="exp-btn" style="margin-left:auto" onclick="openItemPriceModal()">💲 Harga Item</button>
       </div>
       <div id="beli-area-cards" style="display:none;margin-bottom:16px"></div>
       <div class="panel-shell"><div class="panel-body">
@@ -237,6 +236,7 @@
         </div>
         <div>
           <button class="exp-btn" onclick="exportMdsScorecardSelisih()">⬇ Selisih &gt;1jt (Excel)</button>
+          <button class="exp-btn" onclick="exportBeliDetailPerMds()">⬇ Detail per MDS (Excel)</button>
           <button class="exp-btn" onclick="pjGuardedClick('pjdata-file-input')">⟲ Update Data</button>
           <input type="file" id="pjdata-file-input" accept=".xlsx,.xls" style="display:none">
         </div>
