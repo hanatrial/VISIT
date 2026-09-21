@@ -3946,30 +3946,36 @@ async function exportMdsScorecard(){
   const period=MF?monthLabel(MF):(DF||'semua periode');
   XLSX.writeFile(wb,`Scorecard_MDS_${String(period).replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
+let _jspdfPromise=null;
+function ensureJsPdf(){
+  if(window.jspdf&&window.jspdf.jsPDF&&window.jspdf.jsPDF.API.autoTable)return Promise.resolve();
+  if(!_jspdfPromise){
+    const load=src=>new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('Gagal memuat '+src));document.head.appendChild(s);});
+    _jspdfPromise=load('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
+      .then(()=>load('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'))
+      .catch(e=>{_jspdfPromise=null;throw e;});
+  }
+  return _jspdfPromise;
+}
 async function exportBeliDetailPerMds(){
-  await ensureXlsx();
   const beliF=filtered(BELI_ALL);
   if(!beliF.length){alert('Tidak ada data Beli Barang untuk periode/filter ini.');return;}
-  const byMds={};
+  await ensureJsPdf();
+  const byArea={};
   beliF.slice().sort((a,b)=>a.timestamp-b.timestamp).forEach(r=>{
-    const m=r.mds||'—';
-    (byMds[m]=byMds[m]||[]).push(`${r.store||'—'} (${Math.round((r.nominal||0)/1000)}k)`);
+    const a=r.area||'—',m=r.mds||'—';
+    const ar=(byArea[a]=byArea[a]||{});
+    (ar[m]=ar[m]||[]).push(`${r.store||'—'} (${Math.round((r.nominal||0)/1000)}k)`);
   });
-  const names=Object.keys(byMds).sort((a,b)=>a.localeCompare(b));
-  const header=['Nama MDS','Jumlah Pengambilan','Detail Pengambilan'];
-  const aoa=[header];
-  names.forEach(n=>{
-    const items=byMds[n];
-    const half=Math.ceil(items.length/2);
-    aoa.push([n,items.length,items.slice(0,half).join(', ')]);
-    if(items.length>half)aoa.push(['','',items.slice(half).join(', ')]);
-  });
-  const ws=XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols']=[{wch:28},{wch:20},{wch:150}];
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'Detail per MDS');
   const period=MF?monthLabel(MF):(DF||'semua periode');
-  XLSX.writeFile(wb,`Detail_Pengambilan_per_MDS_${String(period).replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  const doc=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+  Object.keys(byArea).sort((a,b)=>a.localeCompare(b)).forEach((area,i)=>{
+    if(i>0)doc.addPage();
+    doc.setFontSize(13);doc.text(`Detail Pengambilan per MDS - ${area} (${period})`,14,14);
+    const body=Object.keys(byArea[area]).sort((a,b)=>a.localeCompare(b)).map(m=>[m,byArea[area][m].length,byArea[area][m].join(', ')]);
+    doc.autoTable({startY:19,head:[['Nama MDS','Jml','Detail Pengambilan']],body,styles:{fontSize:9,cellPadding:1.5,valign:'top'},headStyles:{fillColor:[60,60,60]},columnStyles:{0:{cellWidth:45},1:{cellWidth:12,halign:'center'}}});
+  });
+  doc.save(`Detail_Pengambilan_per_MDS_${String(period).replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`);
 }
 async function exportMdsScorecardSelisih(){
   if(!PJ_RAW.call.length){alert('Data Penjualan (Call & Order) belum diupload — scorecard butuh data itu untuk kolom Omzet.');return;}
