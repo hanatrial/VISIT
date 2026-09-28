@@ -23834,6 +23834,24 @@ async function loadWowCustomStores(){
     entries.forEach(n=>{if(!WOW_CUSTOM_STORES.some(s=>_sameName(wowCustomName(s),wowCustomName(n))))WOW_CUSTOM_STORES.push(n);});
   }catch(e){console.warn('loadWowCustomStores failed',e);}
 }
+let WOW_VISITED_NAMES=new Set();
+let WOW_VISITED_LOADED=false;
+const WOW_VISITED_FILTER_AREAS=['Makassar','Gorontalo'];
+async function loadWowVisitedStores(){
+  try{
+    if(typeof db==='undefined')return;
+    const snap=await withFirestoreRetry(()=>db.collection('wow_logs').where('area','in',WOW_VISITED_FILTER_AREAS).get());
+    const set=new Set();
+    snap.forEach(doc=>{
+      const r=doc.data();
+      if(!((r.avail||0)>0))return;
+      if(r.store)set.add(String(r.store).trim().toUpperCase());
+      if(r.storePasangan)set.add(String(r.storePasangan).trim().toUpperCase());
+    });
+    WOW_VISITED_NAMES=set;
+    WOW_VISITED_LOADED=true;
+  }catch(e){console.warn('loadWowVisitedStores failed',e);}
+}
 function wowFindTokoEntry(name){
   const n=String(name).trim();
   return WOW_TOKO_MASTER.find(t=>_sameName(t.name,n)||(t.pair&&_sameName(t.pair,n)));
@@ -23878,7 +23896,7 @@ function wowStoreInputChanged(){
   }
   wowCheck(1);
 }
-function openWow(){ showScreen('s-wow'); loadWowCustomStores().then(()=>{ wowFillStore(); }); initWow(); }
+function openWow(){ showScreen('s-wow'); Promise.all([loadWowCustomStores(),loadWowVisitedStores()]).then(()=>{ wowFillStore(); }); initWow(); }
 function wowGetItems(){
   const ns=SPG_INDOGROSIR_GROUPS[0].items.map(n=>({name:n,section:'NS'}));
   const hilo=SPG_INDOGROSIR_GROUPS[1].items.concat(SPG_INDOGROSIR_GROUPS[2].items).map(n=>({name:n,section:'HI LO'}));
@@ -23918,6 +23936,13 @@ function wowFillStore(){
   let pool=WOW_TOKO_MASTER;
   if(area){
     pool=pool.filter(t=>(t.formArea||t.area)===area);
+  }
+  if(WOW_VISITED_LOADED && area && WOW_VISITED_FILTER_AREAS.includes(area)){
+    pool=pool.filter(t=>{
+      const n1=t.name.trim().toUpperCase();
+      const n2=t.pair?t.pair.trim().toUpperCase():null;
+      return !(WOW_VISITED_NAMES.has(n1)||(n2&&WOW_VISITED_NAMES.has(n2)));
+    });
   }
   let narrowedByMds=false;
   if(mds){
