@@ -103,13 +103,13 @@ function _isTouchOnly(){try{return matchMedia('(hover: none) and (pointer: coars
 const IS_MOBILE=((window.innerWidth||document.documentElement.clientWidth||0)<=768)||_isTouchOnly();
 let RESTRICT_TO_PJMDS=false;
 let RESTRICT_TO_WOW=false;
-/* PIN "MDS2026" logs in but only shows the Penjualan MDS tab in the nav —
-   everything inside that tab (uploads, edits, checkboxes, modals, etc.)
-   stays fully functional, it's just the OTHER tabs (Visit RKA, Beli Barang,
-   Stock Sell Out, Sell Out Formula, NED Toko, Report Harian SPG) that are
-   hidden from the nav bar so this PIN can't wander into unrelated data. */
+/* PIN "MDS2026" logs in but only shows the Beli Barang and Penjualan MDS tabs
+   in the nav — everything inside those tabs (uploads, edits, checkboxes,
+   modals, etc.) stays fully functional, it's just the OTHER tabs (Visit RKA,
+   Display WOW, Stock Sell Out, Sell Out Formula, NED Toko, Report Harian SPG)
+   that are hidden from the nav bar so this PIN can't wander into unrelated data. */
 function restrictToPjmds(){
-  ['ntab-rka','ntab-beli','ntab-stock','ntab-formula','ntab-ned','ntab-spg'].forEach(id=>{
+  ['ntab-rka','ntab-wow','ntab-stock','ntab-formula','ntab-ned','ntab-spg'].forEach(id=>{
     const el=document.getElementById(id);
     if(el)el.remove();
   });
