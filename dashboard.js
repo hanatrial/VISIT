@@ -3132,6 +3132,7 @@ function renderWowUnvisited(){
   }
   const visited=new Set();
   WOW_ALL.forEach(r=>{
+    if(!(r.avail>0))return; // AV=0 dianggap belum divisit
     if(r.store)visited.add(r.store.trim().toUpperCase());
     if(r.storePasangan)visited.add(r.storePasangan.trim().toUpperCase());
   });
