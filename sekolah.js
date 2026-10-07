@@ -23,7 +23,7 @@ const PJ_DEFAULT_MATCH={'Selvia Risvin Bandola':'Selvia Risvin B'};
 let PJMDS_MANUAL_MATCH={};
 let PJ_RAW={call:[],order:[]};
 let MF='';
-let SB_SORT='area',SB_DIR=1,SB_ROWS=[],SB_MODAL_NAME='Sekolah';
+let SB_SORT='area',SB_DIR=1,SB_ROWS=[],SB_MODAL_NAME='Sekolah',SB_CUR=null;
 
 var dbSulawesi;
 try{
@@ -153,12 +153,32 @@ function computeSekolahBaru(){
 function sbSortBy(c){if(SB_SORT===c)SB_DIR*=-1;else{SB_SORT=c;SB_DIR=c==='area'||c==='name'?1:-1;}renderSekolahBaru();}
 function sbShowSekolah(i){
   const r=SB_ROWS[i];if(!r)return;
-  const yn=(v,label)=>v?`<span class="tag g sm">✓ ${label}</span>`:`<span class="tag b sm">Belum</span>`;
+  SB_CUR=r;
   document.getElementById('sekolah-modal-title').textContent=`🏫 Sekolah Transaksi — ${r.name}`;
-  document.getElementById('sekolah-modal-sub').textContent=`${r.sek} sekolah sudah transaksi · ${r.schools.filter(s=>s.baru).length} baru, ${r.schools.filter(s=>!s.baru).length} sudah ada di database`;
-  document.getElementById('sekolah-modal-body').innerHTML=r.schools.map((s,n)=>`<tr><td>${n+1}</td><td>${s.nama}</td><td>${s.kab||'-'}</td><td>${s.baru?'<span class="tag g sm">Baru</span>':'<span class="tag b sm">Lama</span>'}</td><td>${yn(s.hilo,'Hilo')}</td><td>${yn(s.tea,'NS Tea')}</td><td style="text-align:center">${s.item}</td></tr>`).join('');
+  sbFillModal(0,r.schools.length,'');
   document.getElementById('sekolah-modal').classList.remove('hidden');
   SB_MODAL_NAME='Sekolah_'+r.name.replace(/[^A-Za-z0-9]+/g,'_');
+}
+const SB_MAX_PER_IMAGE=30;
+function sbFillModal(from,to,partLabel){
+  const r=SB_CUR;if(!r)return;
+  const yn=(v,label)=>v?`<span class="tag g sm">✓ ${label}</span>`:`<span class="tag b sm">Belum</span>`;
+  document.getElementById('sekolah-modal-sub').textContent=`${r.sek} sekolah sudah transaksi · ${r.schools.filter(s=>s.baru).length} baru, ${r.schools.filter(s=>!s.baru).length} sudah ada di database${partLabel?' · '+partLabel:''}`;
+  document.getElementById('sekolah-modal-body').innerHTML=r.schools.slice(from,to).map((s,k)=>`<tr><td>${from+k+1}</td><td>${s.nama}</td><td>${s.kab||'-'}</td><td>${s.baru?'<span class="tag g sm">Baru</span>':'<span class="tag b sm">Lama</span>'}</td><td>${yn(s.hilo,'Hilo')}</td><td>${yn(s.tea,'NS Tea')}</td><td style="text-align:center">${s.item}</td></tr>`).join('');
+}
+/* Detail sekolah: sampai 30 sekolah = 1 gambar; lebih dari 30 dibagi 2 gambar (baris dibagi dua rata). */
+async function exportSekolahDetail(){
+  const r=SB_CUR;if(!r)return;
+  const el=document.querySelector('#sekolah-modal .modal');
+  const n=r.schools.length;
+  if(n<=SB_MAX_PER_IMAGE){await exportImage(el,SB_MODAL_NAME);return;}
+  const mid=Math.ceil(n/2);
+  sbFillModal(0,mid,'Bagian 1 dari 2');
+  await exportImage(el,SB_MODAL_NAME+'_1dari2');
+  await new Promise(res=>setTimeout(res,600));
+  sbFillModal(mid,n,'Bagian 2 dari 2');
+  await exportImage(el,SB_MODAL_NAME+'_2dari2');
+  sbFillModal(0,n,'');
 }
 function renderSekolahBaru(){
   const wrap=document.getElementById('sb-content');if(!wrap)return;
@@ -216,9 +236,9 @@ async function exportImage(el,name){
         const th=cl.querySelectorAll('th');th.forEach(t=>{t.style.position='static';});
       }
     });
-    canvas.toBlob(b=>{
+    await new Promise(res=>canvas.toBlob(b=>{
       const url=URL.createObjectURL(b);
-      const a=document.createElement('a');a.href=url;a.download=name+'_'+new Date().toISOString().slice(0,10)+'.png';a.click();URL.revokeObjectURL(url);
-    },'image/png');
+      const a=document.createElement('a');a.href=url;a.download=name+'_'+new Date().toISOString().slice(0,10)+'.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);res();
+    },'image/png'));
   }catch(e){console.error(e);alert('Gagal membuat gambar: '+e.message);}
 }
