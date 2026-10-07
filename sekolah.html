@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Sekolah Baru — MDS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<link rel="stylesheet" href="dashboard.css?v=8">
+</head>
+<body>
+<div id="pin-screen">
+  <div class="pin-shell"><div class="pin-inner">
+    <div class="pin-orb">🏫</div>
+    <div class="pin-eye">Nutrifood Sulawesi</div>
+    <div class="pin-title">Sekolah Baru</div>
+    <div class="pin-sub">Masukkan password untuk melanjutkan</div>
+    <input id="pin-input" class="pin-field" type="password" placeholder="••••••••" maxlength="20" onkeydown="if(event.key==='Enter')checkPin()">
+    <div class="pin-err" id="pin-err"></div>
+    <button class="pin-cta" onclick="checkPin()">Masuk →</button>
+  </div></div>
+</div>
+<div id="app">
+  <div class="topbar">
+    <div class="tb-left">
+      <div class="tb-logo">🏫</div>
+      <div><div class="tb-title">Sekolah Baru</div><div class="tb-sub" id="sb-status">Memuat data…</div></div>
+    </div>
+    <div class="tb-right">
+      <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Ganti tema">🌙</button>
+    </div>
+  </div>
+  <div style="padding:16px;max-width:1400px;margin:0 auto">
+    <div class="panel-shell" style="margin-bottom:12px"><div class="panel-body" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+      <label style="font-size:11px;color:var(--t3)">BULAN</label>
+      <select id="sb-month" class="fi" style="width:180px" onchange="render()"><option value="">Semua</option></select>
+      <label style="font-size:11px;color:var(--t3);margin-left:8px">AREA</label>
+      <select id="sb-area" class="fi" style="width:180px" onchange="render()"><option value="">Semua Area</option></select>
+    </div></div>
+    <div id="sb-content"></div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="sekolah-modal" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="modal-shell"><div class="modal">
+    <div class="modal-head">
+      <div><div class="modal-name" id="sekolah-modal-title">🏫 Sekolah Transaksi</div><div class="modal-sub" id="sekolah-modal-sub"></div></div>
+      <button class="exp-btn" onclick="exportImage(document.querySelector('#sekolah-modal .modal'),SB_MODAL_NAME)">⬇ Gambar (PNG)</button>
+      <div class="modal-x" onclick="document.getElementById('sekolah-modal').classList.add('hidden')">✕</div>
+    </div>
+    <div class="modal-body">
+      <table class="mt"><thead><tr><th>#</th><th>Sekolah</th><th>Kabupaten</th><th>Status</th><th>Hilo</th><th>NS Tea</th><th style="text-align:center">Item Unik</th></tr></thead><tbody id="sekolah-modal-body"></tbody></table>
+    </div>
+  </div></div>
+</div>
+
+<script src="sekolah_db.js?v=1"></script>
+<script src="sekolah.js?v=2"></script>
+</body>
+</html>

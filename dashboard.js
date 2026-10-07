@@ -1423,10 +1423,9 @@ function switchSubTab(main,sub){
     const dw=document.getElementById('formula-detail-wrap');if(dw)dw.style.display=sub==='detail'?'block':'none';
   }else if(main==='pjmds'){
     SUBTAB_PJMDS=sub;
-    ['mds','scorecard','baru'].forEach(s=>{const el=document.getElementById('stab-pjmds-'+s);if(el)el.classList.toggle('on',s===sub);});
+    ['mds','scorecard'].forEach(s=>{const el=document.getElementById('stab-pjmds-'+s);if(el)el.classList.toggle('on',s===sub);});
     const mw=document.getElementById('pjmds-mds-wrap');if(mw)mw.style.display=sub==='mds'?'block':'none';
     const sw2=document.getElementById('pjmds-scorecard-wrap');if(sw2)sw2.style.display=sub==='scorecard'?'block':'none';
-    const bw2=document.getElementById('pjmds-baru-wrap');if(bw2)bw2.style.display=sub==='baru'?'block':'none';
   }else if(main==='ned'){
     SUBTAB_NED=sub;
     ['log','urgent'].forEach(s=>{const el=document.getElementById('stab-ned-'+s);if(el)el.classList.toggle('on',s===sub);});
@@ -1502,7 +1501,6 @@ function render(){
   }else if(TAB==='pjmds'){
     renderPjmds(beliF);
     if(SUBTAB_PJMDS==='scorecard')renderScorecard();
-    if(SUBTAB_PJMDS==='baru')renderSekolahBaru();
   }else if(TAB==='formula'){
     if(SUBTAB_FORMULA==='summary')renderFormula(stockF);
     else if(SUBTAB_FORMULA==='calc'){populateFcSelects();renderInTransitImports();renderFcTable();fcPreview();}
@@ -3874,82 +3872,6 @@ function computeScorecardRows(){
       teaVolume,hiloVolume,callCount,eaCount,sekolahCount,singleSkuCount,varian5Count,eaHiloMatchaCount,
       omzet,selisih:omzet-notaFinal,matched:!!resolved};
   }).filter(r=>r.trx>0||r.omzet>0);
-}
-// ── SEKOLAH BARU: sekolah dari data Call yang belum ada di database sekolah ──
-const SEKOLAH_DB_SET=(typeof SEKOLAH_DB_NAMES!=='undefined')?new Set(SEKOLAH_DB_NAMES):new Set();
-function sekNormKey(s){return String(s||'').trim().replace(/\s+/g,' ').toUpperCase();}
-function computeSekolahBaru(){
-  const names=computeScorecardRows().map(r=>r.name);
-  const rows=[],detail=[];
-  names.forEach(name=>{
-    const mds=pjResolveMdsName(name)||name;
-    const c=pjPeriodFilterCall(PJ_RAW.call.filter(r=>r.NamaMDS===mds));
-    if(!c.length){rows.push({name,area:mdsAreaOf(name),total:0,sek:0,schools:[],hilo:0,tea:0,ea:0,line:0,lineEa:0});return;}
-    const o=pjPeriodFilterOrder(PJ_RAW.order.filter(r=>r.NamaMDS===mds),c).filter(r=>!String(r.NamaItem).toUpperCase().startsWith('BONUS'));
-    const hiloCust=new Set(o.filter(r=>String(r.Brand).toUpperCase()==='HI LO').map(r=>r.KodeCustomer));
-    const teaCust=new Set(o.filter(r=>r.Brand==='NUTRISARI'&&String(r.NamaItem).toUpperCase().includes('TEA PLS')).map(r=>r.KodeCustomer));
-    const sek={},custSek={};
-    c.forEach(r=>{
-      const key=sekNormKey(r.Sekolah);
-      if(!key||PJ_SEKOLAH_EXCLUDE.has(key))return;
-      if(!sek[key])sek[key]={nama:r.Sekolah,kab:r.Kabupaten,baru:!SEKOLAH_DB_SET.has(key),hilo:false,tea:false,items:new Set()};custSek[r.KodeCustomer]=key;
-      if(hiloCust.has(r.KodeCustomer))sek[key].hilo=true;
-      if(teaCust.has(r.KodeCustomer))sek[key].tea=true;
-    });
-    o.forEach(r=>{const k=custSek[r.KodeCustomer];if(k&&sek[k]&&r.NamaItem)sek[k].items.add(String(r.NamaItem).trim().toUpperCase());});
-    const allList=Object.values(sek);
-    const list=allList.filter(x=>x.baru);
-    const area=mdsAreaOf(name);
-    const withItems=list.filter(x=>x.items.size>0),lineTot=withItems.reduce((a,x)=>a+x.items.size,0);
-    const schools=allList.filter(x=>x.items.size>0).sort((a,b)=>b.baru-a.baru||a.nama.localeCompare(b.nama)).map(x=>({nama:x.nama,kab:x.kab,baru:x.baru,hilo:x.hilo,tea:x.tea,item:x.items.size}));
-    rows.push({name,area,total:list.length,sek:schools.length,schools,hilo:list.filter(x=>x.hilo).length,tea:list.filter(x=>x.tea).length,ea:withItems.length,line:lineTot,lineEa:withItems.length?lineTot/withItems.length:0});
-    list.forEach(x=>detail.push({area,mds:name,sekolah:x.nama,kab:x.kab,hilo:x.hilo,tea:x.tea,line:x.items.size}));
-  });
-  return{rows,detail};
-}
-let SB_SORT='area',SB_DIR=1,SB_ROWS=[];
-function sbShowSekolah(i){
-  const r=SB_ROWS[i];if(!r)return;
-  const yn=(v,label)=>v?`<span class="tag g sm">✓ ${label}</span>`:`<span class="tag b sm">Belum</span>`;
-  document.getElementById('sekolah-modal-title').textContent=`🏫 Sekolah Transaksi — ${r.name}`;
-  document.getElementById('sekolah-modal-sub').textContent=`${r.sek} sekolah sudah transaksi · ${r.schools.filter(s=>s.baru).length} baru, ${r.schools.filter(s=>!s.baru).length} sudah ada di database`;
-  document.getElementById('sekolah-modal-body').innerHTML=r.schools.map((s,n)=>`<tr><td>${n+1}</td><td>${s.nama}</td><td>${s.kab||'-'}</td><td>${s.baru?'<span class="tag g sm">Baru</span>':'<span class="tag b sm">Lama</span>'}</td><td>${yn(s.hilo,'Hilo')}</td><td>${yn(s.tea,'NS Tea')}</td><td style="text-align:center">${s.item}</td></tr>`).join('');
-  document.getElementById('sekolah-modal').classList.remove('hidden');
-}
-function sbSortBy(c){if(SB_SORT===c)SB_DIR*=-1;else{SB_SORT=c;SB_DIR=c==='area'||c==='name'?1:-1;}renderSekolahBaru();}
-function renderSekolahBaru(){
-  const wrap=document.getElementById('pjmds-baru-wrap');if(!wrap)return;
-  if(!PJ_RAW.call.length){wrap.innerHTML='<div class="panel-shell"><div class="panel-body" style="text-align:center;color:var(--t3);padding:32px">Data Call/Order belum dimuat.</div></div>';return;}
-  const{rows}=computeSekolahBaru();
-  SB_ROWS=rows;
-  rows.sort((a,b)=>{const av=a[SB_SORT],bv=b[SB_SORT];const cmp=typeof av==='string'?av.localeCompare(bv):av-bv;return SB_DIR*(cmp||a.name.localeCompare(b.name));});
-  const ar=c=>`<span style="opacity:.25;margin-left:2px;font-size:9px">${SB_SORT===c?(SB_DIR>0?'↑':'↓'):'↕'}</span>`;
-  const sum=k=>rows.reduce((s,r)=>s+r[k],0);
-  wrap.innerHTML=`<div class="panel-shell"><div class="panel-body">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px">
-      <div class="ch-label" style="margin-bottom:0">🆕 Sekolah Baru (belum ada di database sekolah)</div>
-      <button class="exp-btn" onclick="exportSekolahBaru()">⬇ Detail Sekolah (CSV)</button>
-    </div>
-    <div style="font-size:11px;color:var(--t3);margin-bottom:10px">Sekolah dari data Call yang namanya belum ada di database (${SEKOLAH_DB_SET.size.toLocaleString('id-ID')} sekolah). Sekolah = total sekolah yang sudah transaksi (termasuk yang sudah ada di database) — klik angkanya untuk lihat detail. Sekolah Hilo / NS Tea = sekolah baru yang kantin/customernya order item Hilo / NS Tea. LINE/EA = total item unik per sekolah ÷ jumlah sekolah yang order. Mengikuti filter periode &amp; area.</div>
-    <div style="max-height:70vh;overflow-y:auto"><table class="sc-table"><thead><tr>
-      <th onclick="sbSortBy('area')" style="cursor:pointer">Area${ar('area')}</th>
-      <th onclick="sbSortBy('name')" style="cursor:pointer">MDS${ar('name')}</th>
-      <th onclick="sbSortBy('sek')" style="cursor:pointer;text-align:center">Sekolah${ar('sek')}</th>
-      <th onclick="sbSortBy('hilo')" style="cursor:pointer;text-align:center">Sekolah Hilo${ar('hilo')}</th>
-      <th onclick="sbSortBy('tea')" style="cursor:pointer;text-align:center">Sekolah NS Tea${ar('tea')}</th>
-      <th onclick="sbSortBy('lineEa')" style="cursor:pointer;text-align:center">LINE/EA${ar('lineEa')}</th>
-    </tr></thead><tbody>${rows.length?rows.map((r,i)=>`<tr><td>${r.area}</td><td>${r.name}</td><td style="text-align:center">${r.sek?`<a href="#" onclick="sbShowSekolah(${i});return false" style="color:var(--violet);font-weight:700;text-decoration:underline">${r.sek}</a>`:'0'}</td><td style="text-align:center">${r.hilo}</td><td style="text-align:center">${r.tea}</td><td style="text-align:center">${r.ea?r.lineEa.toFixed(1):'-'}</td></tr>`).join(''):'<tr><td colspan="6" style="text-align:center;color:var(--t3);padding:24px">Tidak ada sekolah baru.</td></tr>'}</tbody>
-    <tfoot><tr><td colspan="2" style="font-weight:700">Total</td><td style="text-align:center;font-weight:700">${sum('sek')}</td><td style="text-align:center;font-weight:700">${sum('hilo')}</td><td style="text-align:center;font-weight:700">${sum('tea')}</td><td style="text-align:center;font-weight:700">${sum('ea')?(sum('line')/sum('ea')).toFixed(1):'-'}</td></tr></tfoot></table></div>
-  </div></div>`;
-}
-function exportSekolahBaru(){
-  const{detail}=computeSekolahBaru();
-  const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
-  detail.sort((a,b)=>a.area.localeCompare(b.area)||a.mds.localeCompare(b.mds)||a.sekolah.localeCompare(b.sekolah));
-  const csv='Area,MDS,Sekolah,Kabupaten,Hilo,NS Tea,Item Unik\n'+detail.map(d=>[q(d.area),q(d.mds),q(d.sekolah),q(d.kab),d.hilo?'Ya':'Tidak',d.tea?'Ya':'Tidak',d.line].join(',')).join('\n');
-  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;a.download=`Sekolah_Baru_${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(url);
 }
 function scPctCapped(val,target){return target>0?Math.min(val/target*100,100):0;}
 function scRankScore(r){
