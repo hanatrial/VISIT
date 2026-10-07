@@ -1420,11 +1420,10 @@ function switchSubTab(main,sub){
     const dw=document.getElementById('formula-detail-wrap');if(dw)dw.style.display=sub==='detail'?'block':'none';
   }else if(main==='pjmds'){
     SUBTAB_PJMDS=sub;
-    ['mds','scorecard','baru','line'].forEach(s=>{const el=document.getElementById('stab-pjmds-'+s);if(el)el.classList.toggle('on',s===sub);});
+    ['mds','scorecard','baru'].forEach(s=>{const el=document.getElementById('stab-pjmds-'+s);if(el)el.classList.toggle('on',s===sub);});
     const mw=document.getElementById('pjmds-mds-wrap');if(mw)mw.style.display=sub==='mds'?'block':'none';
     const sw2=document.getElementById('pjmds-scorecard-wrap');if(sw2)sw2.style.display=sub==='scorecard'?'block':'none';
     const bw2=document.getElementById('pjmds-baru-wrap');if(bw2)bw2.style.display=sub==='baru'?'block':'none';
-    const lw2=document.getElementById('pjmds-line-wrap');if(lw2)lw2.style.display=sub==='line'?'block':'none';
   }else if(main==='ned'){
     SUBTAB_NED=sub;
     ['log','urgent'].forEach(s=>{const el=document.getElementById('stab-ned-'+s);if(el)el.classList.toggle('on',s===sub);});
@@ -1501,7 +1500,6 @@ function render(){
     renderPjmds(beliF);
     if(SUBTAB_PJMDS==='scorecard')renderScorecard();
     if(SUBTAB_PJMDS==='baru')renderSekolahBaru();
-    if(SUBTAB_PJMDS==='line')renderLineEa();
   }else if(TAB==='formula'){
     if(SUBTAB_FORMULA==='summary')renderFormula(stockF);
     else if(SUBTAB_FORMULA==='calc'){populateFcSelects();renderInTransitImports();renderFcTable();fcPreview();}
@@ -3920,26 +3918,15 @@ function renderSekolahBaru(){
       <div class="ch-label" style="margin-bottom:0">🆕 Sekolah Baru (belum ada di database sekolah)</div>
       <button class="exp-btn" onclick="exportSekolahBaru()">⬇ Detail Sekolah (CSV)</button>
     </div>
-    <div style="font-size:11px;color:var(--t3);margin-bottom:10px">Sekolah dari data Call yang namanya belum ada di database (${SEKOLAH_DB_SET.size.toLocaleString('id-ID')} sekolah). Sekolah Hilo / NS Tea = sekolah yang kantin/customernya order item Hilo / NS Tea. Mengikuti filter periode &amp; area.</div>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:10px">Sekolah dari data Call yang namanya belum ada di database (${SEKOLAH_DB_SET.size.toLocaleString('id-ID')} sekolah). Sekolah Hilo / NS Tea = sekolah yang kantin/customernya order item Hilo / NS Tea. LINE/EA = total item unik per sekolah ÷ jumlah sekolah yang order. Mengikuti filter periode &amp; area.</div>
     <div style="max-height:70vh;overflow-y:auto"><table class="sc-table"><thead><tr>
       <th onclick="sbSortBy('area')" style="cursor:pointer">Area${ar('area')}</th>
       <th onclick="sbSortBy('name')" style="cursor:pointer">MDS${ar('name')}</th>
       <th onclick="sbSortBy('hilo')" style="cursor:pointer;text-align:center">Sekolah Hilo${ar('hilo')}</th>
       <th onclick="sbSortBy('tea')" style="cursor:pointer;text-align:center">Sekolah NS Tea${ar('tea')}</th>
-    </tr></thead><tbody>${rows.length?rows.map(r=>`<tr><td>${r.area}</td><td>${r.name}</td><td style="text-align:center">${r.hilo}</td><td style="text-align:center">${r.tea}</td></tr>`).join(''):'<tr><td colspan="4" style="text-align:center;color:var(--t3);padding:24px">Tidak ada sekolah baru.</td></tr>'}</tbody>
-    <tfoot><tr><td colspan="2" style="font-weight:700">Total</td><td style="text-align:center;font-weight:700">${sum('hilo')}</td><td style="text-align:center;font-weight:700">${sum('tea')}</td></tr></tfoot></table></div>
-  </div></div>`;
-}
-function renderLineEa(){
-  const wrap=document.getElementById('pjmds-line-wrap');if(!wrap)return;
-  if(!PJ_RAW.call.length){wrap.innerHTML='<div class="panel-shell"><div class="panel-body" style="text-align:center;color:var(--t3);padding:32px">Data Call/Order belum dimuat.</div></div>';return;}
-  const rows=computeSekolahBaru().rows.filter(r=>r.ea>0).sort((a,b)=>b.lineEa-a.lineEa);
-  const tEa=rows.reduce((s,r)=>s+r.ea,0),tLine=rows.reduce((s,r)=>s+r.line,0);
-  wrap.innerHTML=`<div class="panel-shell"><div class="panel-body">
-    <div class="ch-label" style="margin-bottom:6px">📊 LINE/EA Sekolah Baru</div>
-    <div style="font-size:11px;color:var(--t3);margin-bottom:10px">Line = jumlah item unik yang masuk per sekolah; EA = sekolah yang sudah order. LINE/EA = total Line ÷ jumlah sekolah. Hanya sekolah yang belum ada di database sekolah. Mengikuti filter periode &amp; area.</div>
-    <div style="max-height:70vh;overflow-y:auto"><table class="sc-table"><thead><tr><th>Area</th><th>MDS</th><th style="text-align:center">EA (Sekolah)</th><th style="text-align:center">Total Line</th><th style="text-align:center">LINE/EA</th></tr></thead><tbody>${rows.length?rows.map(r=>`<tr><td>${r.area}</td><td>${r.name}</td><td style="text-align:center">${r.ea}</td><td style="text-align:center">${r.line}</td><td style="text-align:center;font-weight:700">${r.lineEa.toFixed(1)}</td></tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--t3);padding:24px">Belum ada order.</td></tr>'}</tbody>
-    <tfoot><tr><td colspan="2" style="font-weight:700">Total</td><td style="text-align:center;font-weight:700">${tEa}</td><td style="text-align:center;font-weight:700">${tLine}</td><td style="text-align:center;font-weight:700">${tEa?(tLine/tEa).toFixed(1):'-'}</td></tr></tfoot></table></div>
+      <th onclick="sbSortBy('lineEa')" style="cursor:pointer;text-align:center">LINE/EA${ar('lineEa')}</th>
+    </tr></thead><tbody>${rows.length?rows.map(r=>`<tr><td>${r.area}</td><td>${r.name}</td><td style="text-align:center">${r.hilo}</td><td style="text-align:center">${r.tea}</td><td style="text-align:center">${r.ea?r.lineEa.toFixed(1):'-'}</td></tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--t3);padding:24px">Tidak ada sekolah baru.</td></tr>'}</tbody>
+    <tfoot><tr><td colspan="2" style="font-weight:700">Total</td><td style="text-align:center;font-weight:700">${sum('hilo')}</td><td style="text-align:center;font-weight:700">${sum('tea')}</td><td style="text-align:center;font-weight:700">${sum('ea')?(sum('line')/sum('ea')).toFixed(1):'-'}</td></tr></tfoot></table></div>
   </div></div>`;
 }
 function exportSekolahBaru(){
