@@ -35,11 +35,11 @@ try{
 // ── tema + PIN ──────────────────────────────────────────────────────────────
 function applyTheme(t){
   document.documentElement.setAttribute('data-theme',t);
-  try{localStorage.setItem('mds_theme',t);}catch(e){}
+  try{localStorage.setItem('mds_sekolah_theme',t);}catch(e){}
   const b=document.getElementById('theme-toggle');if(b)b.textContent=t==='light'?'☀️':'🌙';
 }
 function toggleTheme(){applyTheme(document.documentElement.getAttribute('data-theme')==='light'?'dark':'light');}
-(function(){let t='dark';try{t=localStorage.getItem('mds_theme')||'dark';}catch(e){}applyTheme(t);})();
+(function(){let t='light';try{t=localStorage.getItem('mds_sekolah_theme')||'light';}catch(e){}applyTheme(t);})();
 
 function checkPin(){
   if(document.getElementById('pin-input').value.replace(/\s+/g,'')===SB_PIN){
