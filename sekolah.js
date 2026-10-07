@@ -42,7 +42,7 @@ function toggleTheme(){applyTheme(document.documentElement.getAttribute('data-th
 (function(){let t='dark';try{t=localStorage.getItem('mds_theme')||'dark';}catch(e){}applyTheme(t);})();
 
 function checkPin(){
-  if(document.getElementById('pin-input').value===SB_PIN){
+  if(document.getElementById('pin-input').value.replace(/\s+/g,'')===SB_PIN){
     try{sessionStorage.setItem('mds_sekolah_pin_ok','1');}catch(e){}
     enter();
   }else{
