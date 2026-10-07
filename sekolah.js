@@ -112,14 +112,9 @@ async function init(){
     st.textContent='Gagal memuat data (kemungkinan kuota Firestore habis — coba lagi nanti).';
     return;
   }
-  const months=new Set();
-  PJ_RAW.call.forEach(r=>{const d=pjToDate(r.Tanggal);if(d)months.add(monthKey(d));});
-  const ms=document.getElementById('sb-month');
-  [...months].sort().reverse().forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k;ms.appendChild(o);});
   render();
 }
 function render(){
-  MF=document.getElementById('sb-month').value;
   renderSekolahBaru();
 }
 
