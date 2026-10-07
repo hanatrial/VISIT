@@ -40,9 +40,11 @@ const MDS_BY_AREA={
   'Palopo':['Tio Setiawan Rappun','Hijrayanti Mahruddin','Firman'],
   'Palu':['Muh Nasir K','Yuliana Rusli','Rafdi'],
   'Pare-Pare':['Marwan','Yurike Kyusuchi','Muhlis'],
-  'Poso':['Syaifullah'],
+  'Poso':['Syaifullah','Selvia Risvin Bandola'],
 };
-const MDS_ALIAS={'SUGI':'Sugiono'};
+const MDS_ALIAS={'SUGI':'Sugiono','SELV':'Selvia Risvin Bandola'};
+/* Roster name (Beli Barang) -> NamaMDS as spelled in the Call/Order upload, for names pjNormName can't reconcile on its own. */
+const PJ_DEFAULT_MATCH={'Selvia Risvin Bandola':'Selvia Risvin B'};
 function mdsMatch(beliName,rosterName){
   if(!beliName||!rosterName)return false;
   const a=String(beliName).trim().toUpperCase(),b=String(rosterName).trim().toUpperCase();
@@ -493,6 +495,7 @@ function pjNormName(s){return String(s||'').toUpperCase().trim().replace(/[.,]/g
 function pjResolveMdsName(selName){
   if(!selName)return null;
   if(PJMDS_MANUAL_MATCH[selName])return PJMDS_MANUAL_MATCH[selName];
+  if(PJ_DEFAULT_MATCH[selName]&&PJ_RAW.call.some(r=>r.NamaMDS===PJ_DEFAULT_MATCH[selName]))return PJ_DEFAULT_MATCH[selName];
   const target=pjNormName(selName);
   const names=[...new Set(PJ_RAW.call.map(r=>r.NamaMDS).filter(Boolean))];
   const found=names.find(n=>pjNormName(n)===target);

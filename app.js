@@ -41,7 +41,7 @@ const MDS_BY_AREA = {
   'Palopo':         ['Tio Setiawan Rappun','Hijrayanti Mahruddin','Firman'],
   'Palu':           ['Muh Nasir K','Yuliana Rusli','Rafdi'],
   'Pare-Pare':      ['Marwan','Yurike Kyusuchi','Muhlis'],
-  'Poso':           ['Syaifullah'],
+  'Poso':           ['Syaifullah','Selvia Risvin Bandola'],
 };
 const STORES_BY_AREA = {
   'Bone':     ['HYPERMART BONE','SURYA INDAH AHMAD YANI','SURYA INDAH COKRO','SURYA INDAH MAKMUR','SURYA INDAH MH THAMRIN','SURYA INDAH SUDIRMAN','SURYA INDAH WAHIDIN'],
