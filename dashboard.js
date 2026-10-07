@@ -3924,11 +3924,10 @@ function renderSekolahBaru(){
     <div style="max-height:70vh;overflow-y:auto"><table class="sc-table"><thead><tr>
       <th onclick="sbSortBy('area')" style="cursor:pointer">Area${ar('area')}</th>
       <th onclick="sbSortBy('name')" style="cursor:pointer">MDS${ar('name')}</th>
-      <th onclick="sbSortBy('total')" style="cursor:pointer;text-align:center">Sekolah Baru${ar('total')}</th>
       <th onclick="sbSortBy('hilo')" style="cursor:pointer;text-align:center">Sekolah Hilo${ar('hilo')}</th>
       <th onclick="sbSortBy('tea')" style="cursor:pointer;text-align:center">Sekolah NS Tea${ar('tea')}</th>
-    </tr></thead><tbody>${rows.length?rows.map(r=>`<tr><td>${r.area}</td><td>${r.name}</td><td style="text-align:center">${r.total}</td><td style="text-align:center">${r.hilo}</td><td style="text-align:center">${r.tea}</td></tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--t3);padding:24px">Tidak ada sekolah baru.</td></tr>'}</tbody>
-    <tfoot><tr><td colspan="2" style="font-weight:700">Total</td><td style="text-align:center;font-weight:700">${sum('total')}</td><td style="text-align:center;font-weight:700">${sum('hilo')}</td><td style="text-align:center;font-weight:700">${sum('tea')}</td></tr></tfoot></table></div>
+    </tr></thead><tbody>${rows.length?rows.map(r=>`<tr><td>${r.area}</td><td>${r.name}</td><td style="text-align:center">${r.hilo}</td><td style="text-align:center">${r.tea}</td></tr>`).join(''):'<tr><td colspan="4" style="text-align:center;color:var(--t3);padding:24px">Tidak ada sekolah baru.</td></tr>'}</tbody>
+    <tfoot><tr><td colspan="2" style="font-weight:700">Total</td><td style="text-align:center;font-weight:700">${sum('hilo')}</td><td style="text-align:center;font-weight:700">${sum('tea')}</td></tr></tfoot></table></div>
   </div></div>`;
 }
 function renderLineEa(){
