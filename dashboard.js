@@ -3876,13 +3876,12 @@ function computeScorecardRows(){
 const SEKOLAH_DB_SET=(typeof SEKOLAH_DB_NAMES!=='undefined')?new Set(SEKOLAH_DB_NAMES):new Set();
 function sekNormKey(s){return String(s||'').trim().replace(/\s+/g,' ').toUpperCase();}
 function computeSekolahBaru(){
-  const fa=document.getElementById('f-area').value.toLowerCase();
-  const names=fa?allMdsNames().filter(n=>(mdsAreaOf(n)||'').toLowerCase().includes(fa)):allMdsNames();
+  const names=computeScorecardRows().map(r=>r.name);
   const rows=[],detail=[];
   names.forEach(name=>{
     const mds=pjResolveMdsName(name)||name;
     const c=pjPeriodFilterCall(PJ_RAW.call.filter(r=>r.NamaMDS===mds));
-    if(!c.length)return;
+    if(!c.length){rows.push({name,area:mdsAreaOf(name),total:0,hilo:0,tea:0,ea:0,line:0,lineEa:0});return;}
     const o=pjPeriodFilterOrder(PJ_RAW.order.filter(r=>r.NamaMDS===mds),c).filter(r=>!String(r.NamaItem).toUpperCase().startsWith('BONUS'));
     const hiloCust=new Set(o.filter(r=>String(r.Brand).toUpperCase()==='HI LO').map(r=>r.KodeCustomer));
     const teaCust=new Set(o.filter(r=>r.Brand==='NUTRISARI'&&String(r.NamaItem).toUpperCase().includes('TEA PLS')).map(r=>r.KodeCustomer));
@@ -3896,7 +3895,6 @@ function computeSekolahBaru(){
     });
     o.forEach(r=>{const k=custSek[r.KodeCustomer];if(k&&sek[k]&&r.NamaItem)sek[k].items.add(String(r.NamaItem).trim().toUpperCase());});
     const list=Object.values(sek);
-    if(!list.length)return;
     const area=mdsAreaOf(name);
     const withItems=list.filter(x=>x.items.size>0),lineTot=withItems.reduce((a,x)=>a+x.items.size,0);
     rows.push({name,area,total:list.length,hilo:list.filter(x=>x.hilo).length,tea:list.filter(x=>x.tea).length,ea:withItems.length,line:lineTot,lineEa:withItems.length?lineTot/withItems.length:0});
