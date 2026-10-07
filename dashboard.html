@@ -359,6 +359,17 @@
 </div>
 
 <!-- MODAL -->
+<div class="modal-overlay hidden" id="sekolah-modal" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="modal-shell"><div class="modal">
+    <div class="modal-head">
+      <div><div class="modal-name" id="sekolah-modal-title">🏫 Sekolah Transaksi</div><div class="modal-sub" id="sekolah-modal-sub"></div></div>
+      <div class="modal-x" onclick="document.getElementById('sekolah-modal').classList.add('hidden')">✕</div>
+    </div>
+    <div class="modal-body">
+      <table class="mt"><thead><tr><th>#</th><th>Sekolah</th><th>Kabupaten</th><th>Status</th><th>Hilo</th><th>NS Tea</th><th style="text-align:center">Item Unik</th></tr></thead><tbody id="sekolah-modal-body"></tbody></table>
+    </div>
+  </div></div>
+</div>
 <div class="modal-overlay hidden" id="item-price-modal" onclick="if(event.target===this)this.classList.add('hidden')">
   <div class="modal-shell"><div class="modal">
     <div class="modal-head">
@@ -416,6 +427,6 @@
 
 <script src="wow_toko_master.js?v=8"></script>
 <script src="sekolah_db.js?v=1"></script>
-<script src="dashboard.js?v=96"></script>
+<script src="dashboard.js?v=97"></script>
 </body>
 </html>
