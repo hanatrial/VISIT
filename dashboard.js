@@ -1420,10 +1420,11 @@ function switchSubTab(main,sub){
     const dw=document.getElementById('formula-detail-wrap');if(dw)dw.style.display=sub==='detail'?'block':'none';
   }else if(main==='pjmds'){
     SUBTAB_PJMDS=sub;
-    ['mds','scorecard','baru'].forEach(s=>{const el=document.getElementById('stab-pjmds-'+s);if(el)el.classList.toggle('on',s===sub);});
+    ['mds','scorecard','baru','line'].forEach(s=>{const el=document.getElementById('stab-pjmds-'+s);if(el)el.classList.toggle('on',s===sub);});
     const mw=document.getElementById('pjmds-mds-wrap');if(mw)mw.style.display=sub==='mds'?'block':'none';
     const sw2=document.getElementById('pjmds-scorecard-wrap');if(sw2)sw2.style.display=sub==='scorecard'?'block':'none';
     const bw2=document.getElementById('pjmds-baru-wrap');if(bw2)bw2.style.display=sub==='baru'?'block':'none';
+    const lw2=document.getElementById('pjmds-line-wrap');if(lw2)lw2.style.display=sub==='line'?'block':'none';
   }else if(main==='ned'){
     SUBTAB_NED=sub;
     ['log','urgent'].forEach(s=>{const el=document.getElementById('stab-ned-'+s);if(el)el.classList.toggle('on',s===sub);});
@@ -1500,6 +1501,7 @@ function render(){
     renderPjmds(beliF);
     if(SUBTAB_PJMDS==='scorecard')renderScorecard();
     if(SUBTAB_PJMDS==='baru')renderSekolahBaru();
+    if(SUBTAB_PJMDS==='line')renderLineEa();
   }else if(TAB==='formula'){
     if(SUBTAB_FORMULA==='summary')renderFormula(stockF);
     else if(SUBTAB_FORMULA==='calc'){populateFcSelects();renderInTransitImports();renderFcTable();fcPreview();}
@@ -3886,19 +3888,21 @@ function computeSekolahBaru(){
     const o=pjPeriodFilterOrder(PJ_RAW.order.filter(r=>r.NamaMDS===mds),c).filter(r=>!String(r.NamaItem).toUpperCase().startsWith('BONUS'));
     const hiloCust=new Set(o.filter(r=>String(r.Brand).toUpperCase()==='HI LO').map(r=>r.KodeCustomer));
     const teaCust=new Set(o.filter(r=>r.Brand==='NUTRISARI'&&String(r.NamaItem).toUpperCase().includes('TEA PLS')).map(r=>r.KodeCustomer));
-    const sek={};
+    const sek={},custSek={};
     c.forEach(r=>{
       const key=sekNormKey(r.Sekolah);
       if(!key||PJ_SEKOLAH_EXCLUDE.has(key)||SEKOLAH_DB_SET.has(key))return;
-      if(!sek[key])sek[key]={nama:r.Sekolah,kab:r.Kabupaten,hilo:false,tea:false};
+      if(!sek[key])sek[key]={nama:r.Sekolah,kab:r.Kabupaten,hilo:false,tea:false,items:new Set()};custSek[r.KodeCustomer]=key;
       if(hiloCust.has(r.KodeCustomer))sek[key].hilo=true;
       if(teaCust.has(r.KodeCustomer))sek[key].tea=true;
     });
+    o.forEach(r=>{const k=custSek[r.KodeCustomer];if(k&&sek[k]&&r.NamaItem)sek[k].items.add(String(r.NamaItem).trim().toUpperCase());});
     const list=Object.values(sek);
     if(!list.length)return;
     const area=mdsAreaOf(name);
-    rows.push({name,area,total:list.length,hilo:list.filter(x=>x.hilo).length,tea:list.filter(x=>x.tea).length});
-    list.forEach(x=>detail.push({area,mds:name,sekolah:x.nama,kab:x.kab,hilo:x.hilo,tea:x.tea}));
+    const withItems=list.filter(x=>x.items.size>0),lineTot=withItems.reduce((a,x)=>a+x.items.size,0);
+    rows.push({name,area,total:list.length,hilo:list.filter(x=>x.hilo).length,tea:list.filter(x=>x.tea).length,ea:withItems.length,line:lineTot,lineEa:withItems.length?lineTot/withItems.length:0});
+    list.forEach(x=>detail.push({area,mds:name,sekolah:x.nama,kab:x.kab,hilo:x.hilo,tea:x.tea,line:x.items.size}));
   });
   return{rows,detail};
 }
@@ -3927,11 +3931,23 @@ function renderSekolahBaru(){
     <tfoot><tr><td colspan="2" style="font-weight:700">Total</td><td style="text-align:center;font-weight:700">${sum('total')}</td><td style="text-align:center;font-weight:700">${sum('hilo')}</td><td style="text-align:center;font-weight:700">${sum('tea')}</td></tr></tfoot></table></div>
   </div></div>`;
 }
+function renderLineEa(){
+  const wrap=document.getElementById('pjmds-line-wrap');if(!wrap)return;
+  if(!PJ_RAW.call.length){wrap.innerHTML='<div class="panel-shell"><div class="panel-body" style="text-align:center;color:var(--t3);padding:32px">Data Call/Order belum dimuat.</div></div>';return;}
+  const rows=computeSekolahBaru().rows.filter(r=>r.ea>0).sort((a,b)=>b.lineEa-a.lineEa);
+  const tEa=rows.reduce((s,r)=>s+r.ea,0),tLine=rows.reduce((s,r)=>s+r.line,0);
+  wrap.innerHTML=`<div class="panel-shell"><div class="panel-body">
+    <div class="ch-label" style="margin-bottom:6px">📊 LINE/EA Sekolah Baru</div>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:10px">Line = jumlah item unik yang masuk per sekolah; EA = sekolah yang sudah order. LINE/EA = total Line ÷ jumlah sekolah. Hanya sekolah yang belum ada di database sekolah. Mengikuti filter periode &amp; area.</div>
+    <div style="max-height:70vh;overflow-y:auto"><table class="sc-table"><thead><tr><th>Area</th><th>MDS</th><th style="text-align:center">EA (Sekolah)</th><th style="text-align:center">Total Line</th><th style="text-align:center">LINE/EA</th></tr></thead><tbody>${rows.length?rows.map(r=>`<tr><td>${r.area}</td><td>${r.name}</td><td style="text-align:center">${r.ea}</td><td style="text-align:center">${r.line}</td><td style="text-align:center;font-weight:700">${r.lineEa.toFixed(1)}</td></tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--t3);padding:24px">Belum ada order.</td></tr>'}</tbody>
+    <tfoot><tr><td colspan="2" style="font-weight:700">Total</td><td style="text-align:center;font-weight:700">${tEa}</td><td style="text-align:center;font-weight:700">${tLine}</td><td style="text-align:center;font-weight:700">${tEa?(tLine/tEa).toFixed(1):'-'}</td></tr></tfoot></table></div>
+  </div></div>`;
+}
 function exportSekolahBaru(){
   const{detail}=computeSekolahBaru();
   const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
   detail.sort((a,b)=>a.area.localeCompare(b.area)||a.mds.localeCompare(b.mds)||a.sekolah.localeCompare(b.sekolah));
-  const csv='Area,MDS,Sekolah,Kabupaten,Hilo,NS Tea\n'+detail.map(d=>[q(d.area),q(d.mds),q(d.sekolah),q(d.kab),d.hilo?'Ya':'Tidak',d.tea?'Ya':'Tidak'].join(',')).join('\n');
+  const csv='Area,MDS,Sekolah,Kabupaten,Hilo,NS Tea,Item Unik\n'+detail.map(d=>[q(d.area),q(d.mds),q(d.sekolah),q(d.kab),d.hilo?'Ya':'Tidak',d.tea?'Ya':'Tidak',d.line].join(',')).join('\n');
   const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;a.download=`Sekolah_Baru_${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(url);
