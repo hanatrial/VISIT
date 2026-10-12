@@ -255,23 +255,25 @@ function abbrevItem(raw){
   else if(/^HI ?LO\b/.test(n)){brand='Hilo';n=n.replace(/^HI ?LO\s*/,'');}
   const small=new Set(['ASO','JP','TS','3IN1']);
   const title=n.split(' ').filter(Boolean).map(w=>small.has(w)?(w==='3IN1'?'3in1':w):w.charAt(0)+w.slice(1).toLowerCase()).join(' ');
-  return (brand?brand+' ':'')+title;
+  return {brand,flavor:title};
 }
-function abbrevItems(list){
-  const seen=new Set(),out=[];
-  list.map(abbrevItem).forEach(a=>{if(a&&!seen.has(a)){seen.add(a);out.push(a);}});
-  const order=a=>a.startsWith('NS ')?0:a.startsWith('Hilo ')?1:2;
-  return out.sort((a,b)=>order(a)-order(b)||a.localeCompare(b));
+/* Kelompokkan per merek, hanya rasa (tanpa awalan NS/Hilo), tanpa duplikat. Item selain NS/Hilo tidak ditampilkan. */
+function flavorsByBrand(list){
+  const out={NS:[],Hilo:[]};
+  list.map(abbrevItem).forEach(x=>{if(x.flavor&&out[x.brand]&&!out[x.brand].includes(x.flavor))out[x.brand].push(x.flavor);});
+  out.NS.sort((a,b)=>a.localeCompare(b));out.Hilo.sort((a,b)=>a.localeCompare(b));
+  return out;
 }
 const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 function buildBaruImageEl(r,from,to,partLabel){
   const baru=r.schools.filter(s=>s.baru);
   const el=document.createElement('div');
-  el.style.cssText='position:fixed;left:0;top:0;z-index:-1;width:1100px;box-sizing:border-box;padding:28px 30px;font-family:inherit;background:'+solidBg(document.body)+';color:var(--t1,#222)';
-  const rows=baru.slice(from,to).map((s,k)=>`<tr><td style="padding:9px 8px;border-bottom:1px solid rgba(120,110,90,.25);vertical-align:top;color:#8a8270;width:36px">${from+k+1}</td><td style="padding:9px 8px;border-bottom:1px solid rgba(120,110,90,.25);vertical-align:top;font-weight:600;width:330px">${esc(s.nama)}</td><td style="padding:9px 8px;border-bottom:1px solid rgba(120,110,90,.25);vertical-align:top;line-height:1.55">${abbrevItems(s.itemNames||[]).map(esc).join(', ')||'-'}</td></tr>`).join('');
+  el.style.cssText='position:fixed;left:0;top:0;z-index:-1;width:1250px;box-sizing:border-box;padding:28px 30px;font-family:inherit;background:'+solidBg(document.body)+';color:var(--t1,#222)';
+  const cell=(arr)=>arr.length?arr.map(esc).join(' / '):'-';
+  const rows=baru.slice(from,to).map((s,k)=>{const fb=flavorsByBrand(s.itemNames||[]);return `<tr><td style="padding:9px 8px;border-bottom:1px solid rgba(120,110,90,.25);vertical-align:top;color:#8a8270;width:36px">${from+k+1}</td><td style="padding:9px 8px;border-bottom:1px solid rgba(120,110,90,.25);vertical-align:top;font-weight:600;width:290px">${esc(s.nama)}</td><td style="padding:9px 8px;border-bottom:1px solid rgba(120,110,90,.25);vertical-align:top;line-height:1.55;width:370px">${cell(fb.NS)}</td><td style="padding:9px 8px;border-bottom:1px solid rgba(120,110,90,.25);vertical-align:top;line-height:1.55">${cell(fb.Hilo)}</td></tr>`;}).join('');
   el.innerHTML=`<div style="font-size:22px;font-weight:800;margin-bottom:4px">🆕 Sekolah Baru — ${esc(r.name)}</div>
-    <div style="font-size:12px;color:#8a8270;margin-bottom:14px">${baru.length} sekolah baru yang sudah transaksi · item yang sudah masuk${partLabel?' · '+partLabel:''}</div>
-    <table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:rgba(120,110,90,.12)"><th style="text-align:left;padding:8px;font-size:11px;letter-spacing:.06em;color:#8a8270">#</th><th style="text-align:left;padding:8px;font-size:11px;letter-spacing:.06em;color:#8a8270">SEKOLAH</th><th style="text-align:left;padding:8px;font-size:11px;letter-spacing:.06em;color:#8a8270">ITEM SUDAH MASUK</th></tr></thead><tbody>${rows}</tbody></table>`;
+    <div style="font-size:12px;color:#8a8270;margin-bottom:14px">${baru.length} sekolah baru yang sudah transaksi${partLabel?' · '+partLabel:''}</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:rgba(120,110,90,.12)"><th style="text-align:left;padding:8px;font-size:11px;letter-spacing:.06em;color:#8a8270">#</th><th style="text-align:left;padding:8px;font-size:11px;letter-spacing:.06em;color:#8a8270">SEKOLAH</th><th style="text-align:left;padding:8px;font-size:11px;letter-spacing:.06em;color:#8a8270">ITEM SUDAH MASUK NS</th><th style="text-align:left;padding:8px;font-size:11px;letter-spacing:.06em;color:#8a8270">ITEM SUDAH MASUK HILO</th></tr></thead><tbody>${rows}</tbody></table>`;
   document.body.appendChild(el);
   return el;
 }
