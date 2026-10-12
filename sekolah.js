@@ -144,7 +144,7 @@ function computeSekolahBaru(){
     const allList=Object.values(sek);
     const list=allList.filter(x=>x.baru);
     const withItems=list.filter(x=>x.items.size>0),lineTot=withItems.reduce((a,x)=>a+x.items.size,0);
-    const schools=allList.filter(x=>x.items.size>0).sort((a,b)=>b.baru-a.baru||a.nama.localeCompare(b.nama)).map(x=>({nama:x.nama,kab:x.kab,baru:x.baru,hilo:x.hilo,tea:x.tea,item:x.items.size}));
+    const schools=allList.filter(x=>x.items.size>0).sort((a,b)=>b.baru-a.baru||a.nama.localeCompare(b.nama)).map(x=>({nama:x.nama,kab:x.kab,baru:x.baru,hilo:x.hilo,tea:x.tea,item:x.items.size,itemNames:[...x.items]}));
     rows.push({name,area,total:list.length,sek:schools.length,schools,hilo:list.filter(x=>x.hilo).length,tea:list.filter(x=>x.tea).length,ea:withItems.length,line:lineTot,lineEa:withItems.length?lineTot/withItems.length:0});
     list.forEach(x=>detail.push({area,mds:name,sekolah:x.nama,kab:x.kab,hilo:x.hilo,tea:x.tea,line:x.items.size}));
   });
@@ -241,4 +241,50 @@ async function exportImage(el,name){
       const a=document.createElement('a');a.href=url;a.download=name+'_'+new Date().toISOString().slice(0,10)+'.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);res();
     },'image/png'));
   }catch(e){console.error(e);alert('Gagal membuat gambar: '+e.message);}
+}
+
+/* ── Gambar khusus sekolah baru: nama sekolah + item yang sudah masuk (disingkat) ───────────────
+   Nutrisari -> "NS <rasa>", Hilo -> "Hilo <varian>". Ukuran kemasan (mis. 4PX40SX11G) dan kata PLS dibuang. */
+function abbrevItem(raw){
+  let n=String(raw||'').toUpperCase().trim();
+  n=n.replace(/\b\d+(\.\d+)?[A-Z]{1,2}X\d+[A-Z]{1,2}X\d+(\.\d+)?[A-Z]{1,2}\b/g,'')   // 4PX40SX11G, 15RX10SX14G
+     .replace(/\b\d+[A-Z]{1,2}X\d+[A-Z]{1,2}X\d+[A-Z]{1,2}\b/g,'')                    // 14GX18PX40S
+     .replace(/\bPLS\b/g,'').replace(/\bDRINK\b/g,'').replace(/\s+/g,' ').trim();
+  let brand='';
+  if(/^NS\b/.test(n)){brand='NS';n=n.replace(/^NS\s*/,'');}
+  else if(/^HI ?LO\b/.test(n)){brand='Hilo';n=n.replace(/^HI ?LO\s*/,'');}
+  const small=new Set(['ASO','JP','TS','3IN1']);
+  const title=n.split(' ').filter(Boolean).map(w=>small.has(w)?(w==='3IN1'?'3in1':w):w.charAt(0)+w.slice(1).toLowerCase()).join(' ');
+  return (brand?brand+' ':'')+title;
+}
+function abbrevItems(list){
+  const seen=new Set(),out=[];
+  list.map(abbrevItem).forEach(a=>{if(a&&!seen.has(a)){seen.add(a);out.push(a);}});
+  const order=a=>a.startsWith('NS ')?0:a.startsWith('Hilo ')?1:2;
+  return out.sort((a,b)=>order(a)-order(b)||a.localeCompare(b));
+}
+const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function buildBaruImageEl(r,from,to,partLabel){
+  const baru=r.schools.filter(s=>s.baru);
+  const el=document.createElement('div');
+  el.style.cssText='position:fixed;left:0;top:0;z-index:-1;width:1100px;box-sizing:border-box;padding:28px 30px;font-family:inherit;background:'+solidBg(document.body)+';color:var(--t1,#222)';
+  const rows=baru.slice(from,to).map((s,k)=>`<tr><td style="padding:9px 8px;border-bottom:1px solid rgba(120,110,90,.25);vertical-align:top;color:#8a8270;width:36px">${from+k+1}</td><td style="padding:9px 8px;border-bottom:1px solid rgba(120,110,90,.25);vertical-align:top;font-weight:600;width:330px">${esc(s.nama)}</td><td style="padding:9px 8px;border-bottom:1px solid rgba(120,110,90,.25);vertical-align:top;line-height:1.55">${abbrevItems(s.itemNames||[]).map(esc).join(', ')||'-'}</td></tr>`).join('');
+  el.innerHTML=`<div style="font-size:22px;font-weight:800;margin-bottom:4px">🆕 Sekolah Baru — ${esc(r.name)}</div>
+    <div style="font-size:12px;color:#8a8270;margin-bottom:14px">${baru.length} sekolah baru yang sudah transaksi · item yang sudah masuk${partLabel?' · '+partLabel:''}</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:rgba(120,110,90,.12)"><th style="text-align:left;padding:8px;font-size:11px;letter-spacing:.06em;color:#8a8270">#</th><th style="text-align:left;padding:8px;font-size:11px;letter-spacing:.06em;color:#8a8270">SEKOLAH</th><th style="text-align:left;padding:8px;font-size:11px;letter-spacing:.06em;color:#8a8270">ITEM SUDAH MASUK</th></tr></thead><tbody>${rows}</tbody></table>`;
+  document.body.appendChild(el);
+  return el;
+}
+/* Sampai 30 sekolah baru = 1 gambar; lebih dari 30 dibagi 2. */
+async function exportSekolahBaruImage(){
+  const r=SB_CUR;if(!r)return;
+  const n=r.schools.filter(s=>s.baru).length;
+  if(!n){alert('Tidak ada sekolah baru yang sudah transaksi di MDS ini.');return;}
+  const base=SB_MODAL_NAME+'_SekolahBaru';
+  const parts=n<=SB_MAX_PER_IMAGE?[[0,n,'']]:[[0,Math.ceil(n/2),'Bagian 1 dari 2'],[Math.ceil(n/2),n,'Bagian 2 dari 2']];
+  for(let i=0;i<parts.length;i++){
+    const el=buildBaruImageEl(r,parts[i][0],parts[i][1],parts[i][2]);
+    try{await exportImage(el,parts.length>1?base+'_'+(i+1)+'dari'+parts.length:base);}finally{el.remove();}
+    if(i<parts.length-1)await new Promise(res=>setTimeout(res,600));
+  }
 }
