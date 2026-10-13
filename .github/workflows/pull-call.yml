@@ -22,4 +22,7 @@ jobs:
       - name: Pasang pustaka xlsx
         run: npm install --no-save --no-package-lock xlsx@0.18.5
       - name: Tarik Call & Order ke Firestore
+        # TZ WITA supaya format tanggal sama persis dengan upload manual dari browser (WITA)
+        env:
+          TZ: Asia/Makassar
         run: node scripts/pull-call.js
