@@ -491,30 +491,6 @@ async function handlePjmdsDataFile(file){
     el.textContent='Gagal membaca file: '+(err.message||err);
   }
 }
-/* Tarik data Call & Order langsung dari Google Sheet (sumber yang sama dengan penarikan otomatis
-   GitHub Actions). Hasilnya diproses dan disimpan persis seperti tombol "Update Data". */
-const PJ_SHEET_ID='18659aHA0dQiBW-dRd616uOuujYoABeo7l1d2AeUXvsU';
-async function pjPullFromSheet(){
-  const el=document.getElementById('pjdata-status');
-  const btn=document.getElementById('pjpull-btn');
-  if(btn&&btn.disabled)return;
-  if(!confirm('Tarik data Call & Order terbaru dari Google Sheet?\n\nData Call/Order di cloud akan diganti dengan isi sheet saat ini (sekitar 12 MB, butuh beberapa detik).'))return;
-  const label=btn?btn.textContent:'';
-  if(btn){btn.disabled=true;btn.textContent='⏳ Menarik…';}
-  try{
-    if(el)el.textContent='Mengunduh data dari Google Sheet…';
-    const res=await fetch('https://docs.google.com/spreadsheets/d/'+PJ_SHEET_ID+'/export?format=xlsx');
-    if(!res.ok)throw new Error('Google Sheet tidak bisa diakses (HTTP '+res.status+'). Pastikan sheet masih bisa dilihat siapa saja yang punya link.');
-    const blob=await res.blob();
-    const file=new File([blob],'Google Sheet Call (tarik manual).xlsx',{type:blob.type});
-    await handlePjmdsDataFile(file);
-  }catch(err){
-    console.error(err);
-    if(el)el.textContent='Gagal tarik data: '+(err.message||err);
-  }finally{
-    if(btn){btn.disabled=false;btn.textContent=label;}
-  }
-}
 function pjNormName(s){return String(s||'').toUpperCase().trim().replace(/[.,]/g,'').replace(/\s+/g,' ');}
 function pjResolveMdsName(selName){
   if(!selName)return null;
