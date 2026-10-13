@@ -4,8 +4,8 @@ name: Tarik data Call (Google Sheet)
 on:
   schedule:
     - cron: '0 22 * * *'
-    # UJI COBA satu kali: 13 Okt 2026 14.45 WITA (06.45 UTC). Hapus baris ini setelah uji.
-    - cron: '45 6 13 10 *'
+    # UJI COBA satu kali: 13 Okt 2026 15.30 WITA (07.30 UTC). Hapus baris ini setelah uji.
+    - cron: '30 7 13 10 *'
   workflow_dispatch: {}
 
 concurrency:
