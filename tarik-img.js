@@ -20,9 +20,10 @@
     const t=normName(sel);
     return PJ.names.find(n=>normName(n)===t)||null;
   }
-  async function loadPJ(setMsg){
-    if(window.PJ_CACHE){PJ={call:window.PJ_CACHE.call,order:window.PJ_CACHE.order,at:window.PJ_CACHE.at};}
-    else if(!PJ){
+  async function loadPJ(setMsg,metaAt){
+    // pakai data yang baru ditarik di halaman ini bila versinya sama dengan di cloud
+    if(window.PJ_CACHE&&(!metaAt||window.PJ_CACHE.at===metaAt)){PJ={call:window.PJ_CACHE.call,order:window.PJ_CACHE.order,at:window.PJ_CACHE.at};}
+    else if(!(PJ&&metaAt&&PJ.at===metaAt)){
       setMsg('Memuat data dari cloud…');
       const meta=await fsGet('meta');
       if(!meta)throw new Error('Belum ada data Call/Order di cloud. Tarik data dulu.');
@@ -41,6 +42,42 @@
       const f=mm&&mm.fields&&mm.fields.map&&mm.fields.map.mapValue&&mm.fields.map.mapValue.fields;
       if(f)Object.keys(f).forEach(k=>{if(f[k].stringValue)MANUAL[k]=f[k].stringValue;});
     }catch(e){MANUAL={};}
+  }
+
+  /* ── simpanan gambar (memori + IndexedDB) ───────────────────────────── */
+  const MEM={};   // area -> {area,sig,at,time,items:[{g,name,file,blob,w,h,fit}]}
+  function idb(){
+    return new Promise((res,rej)=>{
+      if(!window.indexedDB)return rej(new Error('no idb'));
+      const rq=indexedDB.open('tarik-img',1);
+      rq.onupgradeneeded=()=>rq.result.createObjectStore('area',{keyPath:'area'});
+      rq.onsuccess=()=>res(rq.result);rq.onerror=()=>rej(rq.error);
+    });
+  }
+  async function idbGet(area){
+    try{const db=await idb();return await new Promise((res,rej)=>{const r=db.transaction('area').objectStore('area').get(area);r.onsuccess=()=>res(r.result||null);r.onerror=()=>rej(r.error);});}catch(e){return null;}
+  }
+  async function idbPut(rec){
+    try{const db=await idb();await new Promise((res,rej)=>{const tx=db.transaction('area','readwrite');tx.objectStore('area').put(rec);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);});}catch(e){console.warn('Simpanan gambar gagal',e);}
+  }
+  async function loadStored(area){
+    if(MEM[area])return MEM[area];
+    const rec=await idbGet(area);
+    if(rec&&rec.items&&rec.items.length){MEM[area]=rec;return rec;}
+    return null;
+  }
+  function groupsOf(rec){
+    const groups=[{title:'Gambar Semua',items:[]},{title:'Detail Sekolah',items:[]},{title:'Sekolah Baru',items:[]}];
+    rec.items.forEach(it=>{groups[it.g].items.push(Object.assign({},it,{url:URL.createObjectURL(it.blob)}));});
+    return groups;
+  }
+  // tanda isi: berubah hanya bila isi sekolah/item berubah (bukan sekadar waktu tarik)
+  async function signature(rows){
+    const txt=JSON.stringify(rows.map(r=>[r.name,r.sek,r.hilo,r.tea,r.ea,r.line,r.schools.map(s=>[s.nama,s.kab,s.baru,s.hilo,s.tea,s.item,(s.itemNames||[]).slice().sort()])]));
+    try{
+      const h=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(txt));
+      return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    }catch(e){let x=5381;for(let i=0;i<txt.length;i++)x=((x<<5)+x+txt.charCodeAt(i))|0;return 'd'+x+'_'+txt.length;}
   }
 
   /* ── hitungan (sama dengan sekolah.js) ──────────────────────────────── */
@@ -162,9 +199,8 @@
 
   /* ── pipeline ───────────────────────────────────────────────────────── */
   const safe=s=>String(s).replace(/[^A-Za-z0-9]+/g,'_').replace(/^_|_$/g,'');
-  async function generate(area){
+  async function generate(area,rows){
     const msg=t=>{$('imgMsg').textContent=t;};
-    const rows=computeArea(area);
     const tasks=[];
     tasks.push({g:0,name:area+' — semua MDS',file:area+'_1-Semua',make:()=>elMain(area,rows)});
     rows.filter(r=>r.sek>0).forEach(r=>{
@@ -174,7 +210,7 @@
       const nb=r.schools.filter(s=>s.baru).length;
       splitParts(nb).forEach((p,i,arr)=>tasks.push({g:2,name:r.name+(arr.length>1?' ('+(i+1)+'/'+arr.length+')':''),file:area+'_3-SekolahBaru_'+safe(r.name)+(arr.length>1?'_'+(i+1)+'dari'+arr.length:''),make:()=>elBaru(r,p[0],p[1],p[2])}));
     });
-    const groups=[{title:'Gambar Semua',items:[]},{title:'Detail Sekolah',items:[]},{title:'Sekolah Baru',items:[]}];
+    const items=[];
     const stamp=new Date().toISOString().slice(0,10);
     for(let i=0;i<tasks.length;i++){
       const t=tasks[i];
@@ -182,10 +218,11 @@
       $('imgBarI').style.width=((i)/tasks.length*100)+'%';
       await sleep(20);
       const s=await snap(t.make());
-      groups[t.g].items.push({name:t.name,file:t.file+'_'+stamp+'.png',blob:s.blob,url:s.url,w:s.w,h:s.h,fit:t.g===0});
+      URL.revokeObjectURL(s.url);   // URL dibuat ulang saat ditampilkan
+      items.push({g:t.g,name:t.name,file:t.file+'_'+stamp+'.png',blob:s.blob,w:s.w,h:s.h,fit:t.g===0});
     }
     $('imgBarI').style.width='100%';
-    return groups;
+    return items;
   }
 
   /* ── tampilan hasil ─────────────────────────────────────────────────── */
@@ -225,25 +262,56 @@
     document.body.appendChild(box);
   }
 
+  let shownUrls=[];
+  function showRec(area,rec,note){
+    shownUrls.forEach(u=>URL.revokeObjectURL(u));shownUrls=[];
+    const groups=groupsOf(rec);
+    groups.forEach(g=>g.items.forEach(it=>shownUrls.push(it.url)));
+    render(area,groups);
+    $('imgNote').textContent=note||'';
+  }
   async function pick(area){
     if(busyImg)return;busyImg=true;
-    document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on',b.dataset.area===area));
-    // bebaskan gambar sebelumnya
-    if(current)current.groups.forEach(g=>g.items.forEach(it=>URL.revokeObjectURL(it.url)));
-    current=null;$('imgOut').innerHTML='';$('imgProg').style.display='block';$('imgBarI').style.width='0';
-    document.querySelectorAll('#seg button').forEach(b=>b.disabled=true);
+    document.querySelectorAll('#seg button').forEach(b=>{b.classList.toggle('on',b.dataset.area===area);b.disabled=true;});
+    $('imgProg').style.display='none';$('imgNote').textContent='';
+    const msg=t=>{$('imgMsg').textContent=t;};
     try{
       try{window.__wl=await navigator.wakeLock.request('screen');}catch(e){}
-      await loadPJ(t=>{$('imgMsg').textContent=t;});
+      const stored=await loadStored(area);
+      if(stored){showRec(area,stored,'Gambar tersimpan (dibuat '+fmtWita(stored.time)+'). Memeriksa data terbaru…');}
+      else{$('imgOut').innerHTML='';}
+
+      // 1) cek versi data di cloud (1 bacaan kecil)
+      let metaAt=null,online=true;
+      try{const m=await fsGet('meta');metaAt=m&&m.fields&&m.fields.updatedAt&&m.fields.updatedAt.stringValue;}catch(e){online=false;}
+      if(stored&&(!online||(metaAt&&stored.at===metaAt))){
+        $('imgNote').textContent=online?'✓ Data belum berubah sejak gambar ini dibuat ('+fmtWita(stored.time)+'). Tidak perlu dibuat ulang.'
+                                      :'Tidak ada internet, memakai gambar tersimpan ('+fmtWita(stored.time)+').';
+        return;
+      }
+      if(!online)throw new Error('Tidak ada internet / cloud tidak bisa dihubungi, dan belum ada gambar tersimpan.');
+
+      // 2) data berbeda -> hitung ulang isi; buat gambar baru hanya bila isi berubah
+      $('imgProg').style.display='block';$('imgBarI').style.width='0';
+      await loadPJ(msg,metaAt);
+      const rows=computeArea(area);
+      const sig=await signature(rows);
+      if(stored&&sig===stored.sig){
+        stored.at=PJ.at||metaAt;MEM[area]=stored;await idbPut(stored);
+        $('imgProg').style.display='none';
+        $('imgNote').textContent='✓ Data ditarik ulang tetapi isi sekolah tidak berubah. Memakai gambar tersimpan ('+fmtWita(stored.time)+').';
+        return;
+      }
       await ensureH2C();
-      const groups=await generate(area);
-      current={area,groups};
+      const items=await generate(area,rows);
+      const rec={area,sig,at:PJ.at||metaAt,time:new Date().toISOString(),items};
+      MEM[area]=rec;await idbPut(rec);
       $('imgProg').style.display='none';
-      render(area,groups);
-      const total=groups.reduce((s,g)=>s+g.items.length,0);
-      notify('✅ Gambar '+area+' siap',total+' gambar (semua, detail sekolah, sekolah baru)','tarik-img');
+      showRec(area,rec,'Gambar baru dibuat '+fmtWita(rec.time)+(stored?' karena data berubah.':'.'));
+      notify('✅ Gambar '+area+' siap',items.length+' gambar (semua, detail sekolah, sekolah baru)','tarik-img');
     }catch(e){
       console.error(e);
+      $('imgProg').style.display='block';
       $('imgMsg').textContent='❌ '+(e.message||e);
       $('imgBarI').style.width='0';
       notify('❌ Gagal membuat gambar',String(e.message||e).slice(0,140),'tarik-img-err');
