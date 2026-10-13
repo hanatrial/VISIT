@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B2B26">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tarik Data">
+<link rel="manifest" href="tarik.webmanifest">
+<link rel="icon" type="image/png" href="tarik-icon-192.png">
+<link rel="apple-touch-icon" href="tarik-icon-180.png">
+<title>Tarik Data Call — MDS</title>
+<style>
+  :root{--bg:#F4F1E8;--card:#fff;--ink:#12261F;--mut:#6b7a73;--line:#e3ded0;--g1:#0B2B26;--g2:#235347;--lime:#B5D334;--ok:#1f9d63;--err:#c0392b;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  body{min-height:100vh;min-height:100dvh;display:flex;justify-content:center;padding:max(20px,env(safe-area-inset-top)) 18px max(24px,env(safe-area-inset-bottom))}
+  main{width:100%;max-width:460px;display:flex;flex-direction:column;gap:16px}
+  header{display:flex;align-items:center;gap:12px;padding-top:6px}
+  .logo{width:46px;height:46px;border-radius:13px;background:var(--g1);display:grid;place-items:center;flex:none}
+  .logo svg{width:26px;height:26px}
+  h1{font-size:20px;line-height:1.15;margin:0;font-weight:800;letter-spacing:-.01em}
+  .sub{font-size:12.5px;color:var(--mut);margin-top:2px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px}
+  .last{display:flex;flex-direction:column;gap:3px}
+  .last .k{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);font-weight:700}
+  .last .v{font-size:17px;font-weight:700}
+  .last .s{font-size:12.5px;color:var(--mut)}
+  button.go{width:100%;border:0;border-radius:18px;padding:20px 16px;font-size:19px;font-weight:800;color:var(--g1);background:var(--lime);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 6px 0 #8da524;transition:transform .08s,box-shadow .08s}
+  button.go:active{transform:translateY(4px);box-shadow:0 2px 0 #8da524}
+  button.go:disabled{opacity:.7;cursor:progress;transform:translateY(4px);box-shadow:0 2px 0 #8da524}
+  button.go svg{width:24px;height:24px}
+  .steps{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;list-style:none}
+  .steps li{display:flex;gap:10px;align-items:center;font-size:14px;color:var(--mut)}
+  .steps li .dot{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;flex:none;font-size:12px;font-weight:800;color:#fff}
+  .steps li.on{color:var(--ink);font-weight:700}
+  .steps li.on .dot{border-color:var(--g2);border-top-color:transparent;animation:spin .8s linear infinite}
+  .steps li.done{color:var(--ink)}
+  .steps li.done .dot{background:var(--ok);border-color:var(--ok)}
+  .steps li.done .dot::after{content:'\2713'}
+  .steps li.fail .dot::after{content:'\00D7'}
+  .steps li.fail{color:var(--err);font-weight:700}
+  .steps li.fail .dot{background:var(--err);border-color:var(--err)}
+  .steps li small{display:block;font-weight:400;color:var(--mut);font-size:12px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .bar{height:8px;border-radius:99px;background:#ece8da;overflow:hidden;margin-top:12px}
+  .bar>i{display:block;height:100%;width:0;background:var(--g2);border-radius:99px;transition:width .25s}
+  .result{display:none;border-radius:20px;padding:18px;border:1px solid}
+  .result.ok{display:block;background:#eaf7f0;border-color:#bfe6d1}
+  .result.err{display:block;background:#fdecea;border-color:#f3c3bd}
+  .result h2{margin:0 0 6px;font-size:18px}
+  .result.ok h2{color:#146c43}.result.err h2{color:var(--err)}
+  .result p{margin:2px 0;font-size:14px;line-height:1.45}
+  .nums{display:flex;gap:10px;margin-top:10px}
+  .nums div{flex:1;background:#fff;border-radius:14px;padding:10px 12px;border:1px solid #cfe9dc}
+  .nums b{display:block;font-size:20px}.nums span{font-size:11.5px;color:var(--mut)}
+  .hint{font-size:12.5px;color:var(--mut);line-height:1.5}
+  .hint b{color:var(--ink)}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .ghost{border:1.5px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;padding:10px 14px;font-size:13.5px;font-weight:700;cursor:pointer}
+  .ghost[hidden]{display:none}
+  a.lnk{color:var(--g2);font-weight:700}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#B5D334" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/></svg></div>
+    <div><h1>Tarik Data Call</h1><div class="sub">Ambil data Call &amp; Order terbaru dari Google Sheet</div></div>
+  </header>
+
+  <section class="card last" id="last">
+    <div class="k">Terakhir diperbarui</div>
+    <div class="v" id="lastV">Memuat…</div>
+    <div class="s" id="lastS"></div>
+  </section>
+
+  <button class="go" id="go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/></svg><span id="goT">Tarik Data Sekarang</span></button>
+
+  <section class="card" id="prog" style="display:none">
+    <ul class="steps" id="steps">
+      <li id="s1"><span class="dot"></span><div>Mengunduh dari Google Sheet<small id="s1t"></small></div></li>
+      <li id="s2"><span class="dot"></span><div>Membaca data Call &amp; Order<small id="s2t"></small></div></li>
+      <li id="s3"><span class="dot"></span><div>Menyimpan ke cloud<small id="s3t"></small></div></li>
+    </ul>
+    <div class="bar"><i id="barI"></i></div>
+  </section>
+
+  <section class="result" id="res"></section>
+
+  <section class="card hint" id="tips">
+    <div class="row">
+      <button class="ghost" id="installBtn" hidden>📲 Pasang aplikasi</button>
+      <button class="ghost" id="notifBtn" hidden>🔔 Aktifkan notifikasi</button>
+    </div>
+    <p id="iosHint" style="display:none;margin:10px 0 0"><b>iPhone:</b> ketuk tombol Bagikan lalu <b>Tambah ke Layar Utama</b>. Notifikasi hanya aktif setelah aplikasi dipasang.</p>
+    <p style="margin:10px 0 0">Tidak perlu password. Data tersimpan di cloud yang sama dengan dashboard, jadi setelah selesai tinggal buka ulang dashboard. Butuh internet dan sekitar 1 menit.</p>
+  </section>
+</main>
+<script src="scripts/sheet-map.js?v=1"></script>
+<script src="tarik.js?v=1"></script>
+</body>
+</html>

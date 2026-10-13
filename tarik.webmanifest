@@ -1,0 +1,18 @@
+{
+  "id": "tarik-data-call",
+  "name": "Tarik Data Call MDS",
+  "short_name": "Tarik Data",
+  "description": "Ambil data Call & Order terbaru dari Google Sheet ke dashboard MDS dengan satu ketukan.",
+  "lang": "id",
+  "start_url": "tarik.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F4F1E8",
+  "theme_color": "#0B2B26",
+  "icons": [
+    { "src": "tarik-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "tarik-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "tarik-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

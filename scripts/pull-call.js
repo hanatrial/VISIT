@@ -1,8 +1,10 @@
 /* Tarik data Call & Order dari Google Sheet ke Firestore (mds-sulawesi / pjmds_data),
    format sama dengan tombol "Update Data" di dashboard.js (handlePjmdsDataFile + pjStorageSet).
    Dijalankan terjadwal oleh .github/workflows/pull-call.yml (sekitar 06.00 dan 19.00 WITA).
+   Pemetaan data ada di scripts/sheet-map.js (dipakai bersama halaman tarik.html).
    Pakai: node scripts/pull-call.js [--dry]   (--dry = hanya baca & cek, tidak menulis) */
 const XLSX=require('xlsx');
+const {mapSheet}=require('./sheet-map.js');
 const SHEET_ID='18659aHA0dQiBW-dRd616uOuujYoABeo7l1d2AeUXvsU';
 const FS_PROJECT='mds-sulawesi', FS_KEY='AIzaSyCA8Q8athqYIsY3By5wPxcU97GjDBR6DAs';
 const COLLECTION='pjmds_data';
@@ -11,11 +13,6 @@ const DRY=process.argv.includes('--dry');
 const MAX_CHUNK_BYTES=900000;     // batas dokumen Firestore 1 MiB
 const PJ_CHUNK_SIZE=700000;       // sama dengan dashboard.js
 
-const iso=v=>v instanceof Date?v.toISOString():v;
-function findSheet(wb,name){
-  const n=wb.SheetNames.find(s=>s.trim().toLowerCase()===name.toLowerCase());
-  return n?wb.Sheets[n]:null;
-}
 async function fsGet(path){
   const r=await fetch(`${DB}/${path}?key=${FS_KEY}`);
   if(r.status===404)return null;
@@ -45,28 +42,8 @@ async function currentCounts(){
   if(!res.ok)throw new Error('Unduh Google Sheet gagal: HTTP '+res.status);
   const buf=Buffer.from(await res.arrayBuffer());
   console.log('Diunduh',(buf.length/1024/1024).toFixed(1),'MB');
-  const wb=XLSX.read(buf,{type:'buffer',cellDates:true});
-  const callSheet=findSheet(wb,'Call'),orderSheet=findSheet(wb,'Order');
-  if(!callSheet)throw new Error('Sheet "Call" tidak ditemukan. Sheet yang ada: '+wb.SheetNames.join(', '));
-  const callRaw=XLSX.utils.sheet_to_json(callSheet,{defval:null});
-  const orderRaw=orderSheet?XLSX.utils.sheet_to_json(orderSheet,{defval:null}):[];
-
-  const call=callRaw.map(r=>({
-    Bulan:Number(r['Bulan']),Tanggal:iso(r['Tanggal']),
-    NamaMDS:r['Nama MDS'],PIC:r['PIC'],Provinsi:r['Provinsi'],
-    KodeCustomer:String(r['Kode Customer']),NamaCustomer:r['Nama Customer'],Kabupaten:r['Kabupaten'],
-    Klasifikasi:r['Klasifikasi'],Sekolah:r['Sekolah'],StatusSekolah:r['Status Sekolah']===true,
-    OmzetNS:Number(r['Omzet NS'])||0,OmzetHILO:Number(r['Omzet HILO'])||0,TotalOrder:Number(r['Total Order'])||0,
-    CheckIn:iso(r['Check In']),
-    KoordinatCall:r['Koordinat Call']||null
-  }));
-  // Value kosong dibiarkan 0: dashboard menghitungnya saat dibaca (pjOrderValue = Value || Qty*harga).
-  const order=orderRaw.map(r=>({
-    Bulan:Number(r['Bulan']),Tanggal:iso(r['Tanggal']),
-    NamaMDS:r['Nama MDS'],KodeCustomer:String(r['Kode Customer']),
-    NamaCustomer:r['Nama Customer'],Kabupaten:r['Kabupaten'],Klasifikasi:r['Klasifikasi'],
-    Brand:r['Brand'],NamaItem:r['Nama Item']||'',Qty:Number(r['Qty'])||0,Value:Number(r['Value'])||0
-  }));
+  const wb=XLSX.read(buf,{type:'buffer',sheets:['Call','Order']});
+  const {call,order}=mapSheet(XLSX,wb);
   console.log(`Sheet: ${call.length} baris call, ${order.length} baris order`);
 
   // Pengaman: jangan timpa data bagus dengan hasil kosong / jauh lebih kecil.
@@ -86,7 +63,8 @@ async function currentCounts(){
 
   for(let i=0;i<chunks.length;i++)await fsPatch('chunk_'+i,{data:{stringValue:chunks[i]}});
   const oldCount=cur?cur.chunkCount:0;
-  await fsPatch('meta',{chunkCount:{integerValue:String(chunks.length)},updatedAt:{stringValue:new Date().toISOString()}});
+  await fsPatch('meta',{chunkCount:{integerValue:String(chunks.length)},updatedAt:{stringValue:new Date().toISOString()},
+    callCount:{integerValue:String(call.length)},orderCount:{integerValue:String(order.length)}});
   for(let i=chunks.length;i<oldCount;i++)await fsDelete('chunk_'+i);
   console.log('Selesai: data tersimpan di Firestore.');
 })().catch(e=>{console.error('GAGAL:',e.message);process.exit(1);});
