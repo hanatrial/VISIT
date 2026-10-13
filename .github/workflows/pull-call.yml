@@ -1,0 +1,25 @@
+name: Tarik data Call (Google Sheet)
+
+# 06.00 WITA = 22.00 UTC hari sebelumnya. GitHub kadang menunda jadwal beberapa menit.
+on:
+  schedule:
+    - cron: '0 22 * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: pull-call
+  cancel-in-progress: false
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Pasang pustaka xlsx
+        run: npm install --no-save --no-package-lock xlsx@0.18.5
+      - name: Tarik Call & Order ke Firestore
+        run: node scripts/pull-call.js
