@@ -4,8 +4,6 @@ name: Tarik data Call (Google Sheet)
 on:
   schedule:
     - cron: '0 22 * * *'
-    # UJI COBA satu kali: 13 Okt 2026 16.00 WITA (08.00 UTC). Hapus setelah uji.
-    - cron: '0 8 13 10 *'
   workflow_dispatch: {}
 
 concurrency:
