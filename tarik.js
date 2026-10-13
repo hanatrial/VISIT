@@ -170,6 +170,7 @@ async function run(){
       callCount:{integerValue:String(call.length)},orderCount:{integerValue:String(order.length)}});
     for(let i=chunks.length;i<oldCount;i++)await fsDelete('chunk_'+i);
     setStep(3,'done','Tersimpan di cloud');bar(100);
+    window.PJ_CACHE={call,order,at:nowIso};   // dipakai bagian gambar per area, tanpa unduh ulang
 
     const dCall=before&&before.call!=null?call.length-before.call:null;
     const dOrder=before&&before.order!=null?order.length-before.order:null;

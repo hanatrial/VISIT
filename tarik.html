@@ -63,6 +63,22 @@
   .ghost{border:1.5px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;padding:10px 14px;font-size:13.5px;font-weight:700;cursor:pointer}
   .ghost[hidden]{display:none}
   a.lnk{color:var(--g2);font-weight:700}
+  .seg{display:flex;gap:8px;margin:10px 0 4px}
+  .seg button{flex:1;border:2px solid var(--line);background:#fff;color:var(--ink);border-radius:14px;padding:14px 10px;font-size:16px;font-weight:800;cursor:pointer}
+  .seg button.on{background:var(--g1);border-color:var(--g1);color:var(--lime)}
+  .seg button:disabled{opacity:.65;cursor:progress}
+  .imgH{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);font-weight:800;margin:16px 0 8px}
+  .imgGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .imgCard{border:1px solid var(--line);border-radius:14px;padding:8px;background:#fff;display:flex;flex-direction:column;gap:6px}
+  .imgCard img{width:100%;border-radius:8px;border:1px solid var(--line);cursor:zoom-in;background:#F4F1E8}
+  .imgCap{font-size:12.5px;font-weight:700;line-height:1.3}
+  .imgBox{position:fixed;inset:0;z-index:50;background:rgba(18,38,31,.96);display:flex;flex-direction:column}
+  .imgBoxBar{display:flex;align-items:center;gap:12px;padding:12px 14px;color:#fff;font-size:14px;font-weight:700}
+  .imgBoxBar span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .imgBoxBar a{color:var(--lime)}
+  .imgBoxScroll{flex:1;overflow:auto;padding:8px}
+  .imgBoxScroll img{display:block;width:100%;min-width:640px;height:auto;border-radius:8px}
+
 </style>
 </head>
 <body>
@@ -91,6 +107,13 @@
 
   <section class="result" id="res"></section>
 
+  <section class="card" id="imgCard">
+    <div class="last"><div class="k">Gambar Sekolah Baru per area</div><div class="s">Pilih area: dibuat gambar semua, detail sekolah per MDS, dan sekolah baru per MDS.</div></div>
+    <div class="seg" id="seg"><button type="button" data-area="Makassar">Makassar</button><button type="button" data-area="Gorontalo">Gorontalo</button></div>
+    <div id="imgProg" style="display:none"><div class="hint" id="imgMsg" style="margin-top:10px"></div><div class="bar"><i id="imgBarI"></i></div></div>
+    <div id="imgOut"></div>
+  </section>
+
   <section class="card hint" id="tips">
     <div class="row">
       <button class="ghost" id="installBtn" hidden>📲 Pasang aplikasi</button>
@@ -101,6 +124,8 @@
   </section>
 </main>
 <script src="scripts/sheet-map.js?v=1"></script>
-<script src="tarik.js?v=1"></script>
+<script src="sekolah_db.js?v=1"></script>
+<script src="tarik.js?v=2"></script>
+<script src="tarik-img.js?v=1"></script>
 </body>
 </html>
