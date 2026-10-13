@@ -108,13 +108,20 @@
   }
   const head=(title,sub)=>'<div style="font-size:22px;font-weight:800;margin-bottom:4px">'+title+'</div><div style="font-size:12px;color:'+MUT+';margin-bottom:14px">'+sub+'</div>';
 
+  /* Gambar ringkasan dibuat RAMPING (lebar 560) supaya muat tanpa geser di layar HP:
+     nama MDS terbaca jelas, kolom angka dipadatkan. */
   function elMain(area,rows){
     const sum=k=>rows.reduce((s,r)=>s+r[k],0);
-    const body=rows.map(r=>'<tr><td style="'+TD+'">'+esc(r.name)+'</td><td style="'+TD+';text-align:center;font-weight:700">'+r.sek+'</td><td style="'+TD+';text-align:center">'+r.hilo+'</td><td style="'+TD+';text-align:center">'+r.tea+'</td><td style="'+TD+';text-align:center">'+(r.ea?r.lineEa.toFixed(1):'-')+'</td></tr>').join('');
-    const tot='<tr><td style="padding:10px 8px;font-weight:800">Total</td><td style="padding:10px 8px;text-align:center;font-weight:800">'+sum('sek')+'</td><td style="padding:10px 8px;text-align:center;font-weight:800">'+sum('hilo')+'</td><td style="padding:10px 8px;text-align:center;font-weight:800">'+sum('tea')+'</td><td style="padding:10px 8px;text-align:center;font-weight:800">'+(sum('ea')?(sum('line')/sum('ea')).toFixed(1):'-')+'</td></tr>';
-    return shell(1000,head('🆕 Sekolah Baru — '+esc(area),'Sekolah = total sekolah yang sudah transaksi · Sekolah Hilo / NS Tea = sekolah baru (belum ada di database) yang order Hilo / NS Tea · LINE/EA = item unik per sekolah baru'
-      +(PJ.at?' · Data per '+esc(fmtWita(PJ.at)):''))+
-      '<table style="width:100%;border-collapse:collapse;font-size:14px"><thead><tr style="background:rgba(120,110,90,.12)"><th style="'+TH+'">MDS</th><th style="'+TH+';text-align:center">SEKOLAH</th><th style="'+TH+';text-align:center">SEKOLAH HILO</th><th style="'+TH+';text-align:center">SEKOLAH NS TEA</th><th style="'+TH+';text-align:center">LINE/EA</th></tr></thead><tbody>'+body+tot+'</tbody></table>');
+    const P='padding:11px 6px;border-bottom:1px solid '+LINE+';vertical-align:middle';
+    const body=rows.map(r=>'<tr><td style="'+P+';font-size:17px;font-weight:600;line-height:1.25">'+esc(r.name)+'</td><td style="'+P+';text-align:center;font-weight:800;font-size:18px">'+r.sek+'</td><td style="'+P+';text-align:center;font-size:17px">'+r.hilo+'</td><td style="'+P+';text-align:center;font-size:17px">'+r.tea+'</td><td style="'+P+';text-align:center;font-size:17px">'+(r.ea?r.lineEa.toFixed(1):'-')+'</td></tr>').join('');
+    const T='padding:12px 6px;font-weight:800;font-size:17px';
+    const tot='<tr><td style="'+T+'">Total</td><td style="'+T+';text-align:center;font-size:18px">'+sum('sek')+'</td><td style="'+T+';text-align:center">'+sum('hilo')+'</td><td style="'+T+';text-align:center">'+sum('tea')+'</td><td style="'+T+';text-align:center">'+(sum('ea')?(sum('line')/sum('ea')).toFixed(1):'-')+'</td></tr>';
+    const H='text-align:center;padding:9px 4px;font-size:11.5px;letter-spacing:.03em;color:'+MUT+';line-height:1.2';
+    return shell(560,'<div style="font-size:24px;font-weight:800;margin-bottom:4px">🆕 Sekolah Baru — '+esc(area)+'</div>'+
+      '<div style="font-size:12.5px;color:'+MUT+';margin-bottom:12px;line-height:1.4">'+(PJ.at?'Data per '+esc(fmtWita(PJ.at)):'')+'</div>'+
+      '<table style="width:100%;border-collapse:collapse;table-layout:fixed"><colgroup><col style="width:34%"><col style="width:15%"><col style="width:15%"><col style="width:18%"><col style="width:18%"></colgroup>'+
+      '<thead><tr style="background:rgba(120,110,90,.12)"><th style="'+H+';text-align:left">MDS</th><th style="'+H+'">SEKOLAH</th><th style="'+H+'">HILO</th><th style="'+H+'">NS TEA</th><th style="'+H+'">LINE/EA</th></tr></thead><tbody>'+body+tot+'</tbody></table>'+
+      '<div style="font-size:11.5px;color:'+MUT+';margin-top:12px;line-height:1.45"><b>Sekolah</b> = sudah transaksi (baru + lama) · <b>Hilo / NS Tea</b> = sekolah baru yang order · <b>LINE/EA</b> = item unik per sekolah baru</div>');
   }
   function elDetail(r,from,to,part){
     const nb=r.schools.filter(s=>s.baru).length;
@@ -175,7 +182,7 @@
       $('imgBarI').style.width=((i)/tasks.length*100)+'%';
       await sleep(20);
       const s=await snap(t.make());
-      groups[t.g].items.push({name:t.name,file:t.file+'_'+stamp+'.png',blob:s.blob,url:s.url,w:s.w,h:s.h});
+      groups[t.g].items.push({name:t.name,file:t.file+'_'+stamp+'.png',blob:s.blob,url:s.url,w:s.w,h:s.h,fit:t.g===0});
     }
     $('imgBarI').style.width='100%';
     return groups;
@@ -212,7 +219,7 @@
     });
   }
   function openBox(it){
-    const box=document.createElement('div');box.className='imgBox';
+    const box=document.createElement('div');box.className='imgBox'+(it.fit?' fit':'');
     box.innerHTML='<div class="imgBoxBar"><span>'+esc(it.name)+'</span><a class="lnk" download="'+esc(it.file)+'" href="'+it.url+'">Simpan</a><button class="ghost" type="button">Tutup</button></div><div class="imgBoxScroll"><img src="'+it.url+'" alt=""></div>';
     box.querySelector('button').onclick=()=>box.remove();
     document.body.appendChild(box);
