@@ -1,9 +1,11 @@
 name: Tarik data Call (Google Sheet)
 
-# 06.00 WITA = 22.00 UTC hari sebelumnya. GitHub kadang menunda jadwal beberapa menit.
+# WITA = UTC+8: 06.00 WITA = 22.00 UTC (hari sebelumnya), 19.00 WITA = 11.00 UTC.
+# GitHub kadang menunda jadwal beberapa menit.
 on:
   schedule:
-    - cron: '0 22 * * *'
+    - cron: '0 22 * * *'   # 06.00 WITA
+    - cron: '0 11 * * *'   # 19.00 WITA
   workflow_dispatch: {}
 
 concurrency:

@@ -1,6 +1,6 @@
 /* Tarik data Call & Order dari Google Sheet ke Firestore (mds-sulawesi / pjmds_data),
    format sama dengan tombol "Update Data" di dashboard.js (handlePjmdsDataFile + pjStorageSet).
-   Dijalankan terjadwal oleh .github/workflows/pull-call.yml (tiap 06.00 WITA).
+   Dijalankan terjadwal oleh .github/workflows/pull-call.yml (tiap 06.00 dan 19.00 WITA).
    Pakai: node scripts/pull-call.js [--dry]   (--dry = hanya baca & cek, tidak menulis) */
 const XLSX=require('xlsx');
 const SHEET_ID='18659aHA0dQiBW-dRd616uOuujYoABeo7l1d2AeUXvsU';
@@ -76,7 +76,7 @@ async function currentCounts(){
   if(cur&&call.length<cur.call*0.5)throw new Error(`Baris call turun drastis (${cur.call} -> ${call.length}), dibatalkan.`);
   if(cur&&order.length<cur.order*0.5)throw new Error(`Baris order turun drastis (${cur.order} -> ${order.length}), dibatalkan.`);
 
-  const payload=JSON.stringify({call,order,meta:{filename:'Google Sheet Call (otomatis 06.00 WITA)',uploadedAt:new Date().toISOString()}});
+  const payload=JSON.stringify({call,order,meta:{filename:'Google Sheet Call (otomatis)',uploadedAt:new Date().toISOString()}});
   let size=PJ_CHUNK_SIZE;
   const chunksOf=n=>{const a=[];for(let i=0;i<payload.length;i+=n)a.push(payload.slice(i,i+n));return a;};
   let chunks=chunksOf(size);
