@@ -89,7 +89,6 @@
       <input class="fi" id="f-item" placeholder="Item Beli…" style="width:130px" list="item-beli-list" oninput="render()">
       <datalist id="item-beli-list"></datalist>
       <span class="freset" onclick="clearFilters()">✕ Reset</span>
-      <button class="exp-btn" onclick="exportCSV()">↓ Export CSV</button>
     </div></div>
 
     <!-- VISIT RKA SECTION -->
@@ -237,8 +236,6 @@
         <div>
           <button class="exp-btn" onclick="exportMdsScorecardSelisih()">⬇ Selisih &gt;1jt (Excel)</button>
           <button class="exp-btn" onclick="exportBeliDetailPerMds()">⬇ Pengambilan MDS Selisih (PDF)</button>
-          <button class="exp-btn" onclick="pjGuardedClick('pjdata-file-input')">⟲ Update Data</button>
-          <input type="file" id="pjdata-file-input" accept=".xlsx,.xls" style="display:none">
         </div>
       </div></div>
       <div class="panel-shell" style="margin-top:12px"><div class="panel-body" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
@@ -409,6 +406,6 @@
 </div>
 
 <script src="wow_toko_master.js?v=8"></script>
-<script src="dashboard.js?v=100"></script>
+<script src="dashboard.js?v=101"></script>
 </body>
 </html>

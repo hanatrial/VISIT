@@ -23,6 +23,8 @@ const PJ_DEFAULT_MATCH={'Selvia Risvin Bandola':'Selvia Risvin B'};
 let PJMDS_MANUAL_MATCH={};
 let PJ_RAW={call:[],order:[]};
 let MF='';
+/* MDS yang tidak ditampilkan di halaman ini (atas permintaan). */
+const SB_HIDE_MDS=new Set(['A. Arwandi Amrah','Amal Akbar','M. Murdiono Arma','Muhammad Rizky Sandria','Rosa Sasmita','Tesar','Kadek Adi Merta Sastrawan']);
 let SB_SORT='area',SB_DIR=1,SB_ROWS=[],SB_MODAL_NAME='Sekolah',SB_CUR=null;
 
 var dbSulawesi;
@@ -121,7 +123,7 @@ function render(){
 // ── hitungan ────────────────────────────────────────────────────────────────
 function computeSekolahBaru(){
   const fa=document.getElementById('sb-area').value;
-  const names=Object.values(MDS_BY_AREA).flat().filter(n=>!fa||mdsAreaOf(n)===fa);
+  const names=Object.values(MDS_BY_AREA).flat().filter(n=>!SB_HIDE_MDS.has(n)&&(!fa||mdsAreaOf(n)===fa));
   const rows=[],detail=[];
   names.forEach(name=>{
     const mds=pjResolveMdsName(name)||name;

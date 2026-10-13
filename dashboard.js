@@ -440,7 +440,7 @@ async function loadPjmdsData(){
       const updTxt=PJ_RAW.meta?.uploadedAt?pjFmtUpdatedAt(PJ_RAW.meta.uploadedAt):'-';
       if(el)el.textContent=`Data tersimpan: ${PJ_RAW.meta?.filename||'file sebelumnya'} · ${PJ_RAW.call.length} baris call, ${PJ_RAW.order.length} baris order · terakhir update ${updTxt}`;
     }else if(el){
-      el.textContent='Belum ada data Call/Order diupload — klik "⟲ Update Data".';
+      el.textContent='Belum ada data Call/Order. Tarik data lewat halaman Tarik Data.';
     }
   }catch(e){console.error('loadPjmdsData failed',e);if(el)el.textContent='Gagal memuat data tersimpan.';}
   render();
@@ -831,7 +831,7 @@ function pjOpenSekolahModal(namaSekolah){
 function renderPjmdsSalesDetail(mds){
   const d=computePjmdsMdsData(mds);
   if(!d){
-    return`<div class="panel-shell" style="margin-top:12px"><div class="panel-body" style="text-align:center;padding:24px;color:var(--t3)">Belum ada data Call/Order untuk MDS ini. Upload lewat "⟲ Update Data".</div></div>`;
+    return`<div class="panel-shell" style="margin-top:12px"><div class="panel-body" style="text-align:center;padding:24px;color:var(--t3)">Belum ada data Call/Order untuk MDS ini.</div></div>`;
   }
   const nameNote=d.resolvedName&&d.resolvedName!==mds?` <span style="color:var(--t3);font-weight:500">(dicocokkan sbg "${d.resolvedName}")</span>`:'';
   let html=`<div class="ch-label" style="margin:16px 0 10px">📊 Laporan Aktivitas — ${mds}${nameNote} <span style="color:var(--t3);font-weight:500">· ${d.provinsi||'-'}</span></div>`;
