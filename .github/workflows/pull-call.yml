@@ -1,14 +1,13 @@
 name: Tarik data Call (Google Sheet)
 
-# WITA = UTC+8. Jadwal sengaja TIDAK di menit 00: awal jam adalah waktu paling padat di GitHub
-# dan jadwal di situ sering terlambat atau dibuang. Tiap slot ada 2 percobaan (data sama,
-# aman diulang; concurrency mencegah dua run bersamaan).
+# WITA = UTC+8. Jadwal sengaja TIDAK di menit 00 (awal jam paling padat di GitHub). GitHub sering
+# menjalankan jadwal terlambat (teramati ~3 jam), jadi jamnya dimajukan dari jam target data siap.
+# Aman diulang: data yang ditarik sama, concurrency mencegah dua run bersamaan.
 on:
   schedule:
-    - cron: '17 22 * * *'   # 06.17 WITA
-    - cron: '47 22 * * *'   # 06.47 WITA (cadangan)
-    - cron: '23 11 * * *'   # 19.23 WITA
-    - cron: '53 11 * * *'   # 19.53 WITA (cadangan)
+    - cron: '17 19 * * *'   # 03.17 WITA (target data siap sekitar pagi)
+    - cron: '17 7 * * *'    # 15.17 WITA
+    - cron: '18 10 * * *'   # 18.18 WITA
   workflow_dispatch: {}
 
 concurrency:
