@@ -73,7 +73,7 @@
   }
   // tanda isi: berubah hanya bila isi sekolah/item berubah (bukan sekadar waktu tarik)
   async function signature(rows){
-    const txt=(rows.latest||'')+JSON.stringify(rows.map(r=>[r.name,r.sek,r.hilo,r.tea,r.dHilo||0,r.dTea||0,r.ea,r.line,r.schools.map(s=>[s.nama,s.kab,s.baru,s.hilo,s.tea,s.item,(s.itemNames||[]).slice().sort()])]));
+    const txt=(rows.latest||'')+(rows.prev||'')+JSON.stringify(rows.map(r=>[r.name,r.sek,r.hilo,r.tea,r.dHilo||0,r.dTea||0,r.ea,r.line,r.schools.map(s=>[s.nama,s.kab,s.baru,s.hilo,s.tea,s.item,(s.itemNames||[]).slice().sort()])]));
     try{
       const h=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(txt));
       return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('');
@@ -121,17 +121,25 @@
   function prevDay(key){const d=new Date(key+'T00:00:00Z');d.setUTCDate(d.getUTCDate()-1);return d.toISOString().slice(0,10);}
   const BLN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
   function fmtKey(k){const p=k.split('-');return Number(p[2])+' '+BLN[Number(p[1])-1]+' '+p[0];}
-  /* Hitungan terkini + selisih Hilo / NS Tea dibanding data sampai hari sebelumnya
-     (hari terbaru = tanggal terakhir di data Call). */
+  /* Tanggal pembanding: mundur N hari dari tanggal data ditarik (WITA), Minggu tidak dihitung.
+     N = 2 bila data ditarik sebelum 12.00 WITA, N = 1 bila 12.00 WITA atau sesudahnya. */
+  function baselineKey(atIso){
+    const wita=new Date((atIso?Date.parse(atIso):Date.now())+8*3600e3);   // kolom UTC = jam dinding WITA
+    const n=wita.getUTCHours()<12?2:1;
+    const d=new Date(wita.toISOString().slice(0,10)+'T00:00:00Z');
+    for(let c=0;c<n;){d.setUTCDate(d.getUTCDate()-1);if(d.getUTCDay()!==0)c++;}
+    return{key:d.toISOString().slice(0,10),n};
+  }
+  window.__baselineKey=baselineKey;   // untuk pengujian
+  /* Hitungan terkini + selisih Hilo / NS Tea dibanding data sampai tanggal pembanding. */
   function computeAreaDelta(area){
     const rows=computeArea(area,null);
     let latest=null;PJ.call.forEach(r=>{const k=dkey(r.Tanggal);if(k&&(!latest||k>latest))latest=k;});
-    if(!latest)return{rows,latest:null,prev:null};
-    const prev=prevDay(latest);
-    const old=computeArea(area,prev);
+    const base=baselineKey(PJ.at);
+    const old=computeArea(area,base.key);
     rows.forEach(r=>{const o=old.find(x=>x.name===r.name)||{hilo:0,tea:0};r.dHilo=r.hilo-o.hilo;r.dTea=r.tea-o.tea;});
-    rows.latest=latest;rows.prev=prev;
-    return{rows,latest,prev};
+    rows.latest=latest;rows.prev=base.key;rows.nHari=base.n;
+    return{rows,latest,prev:base.key};
   }
 
   /* ── singkatan item: NS / Hilo ──────────────────────────────────────── */
@@ -180,7 +188,7 @@
     const T='padding:12px 4px;font-weight:800;font-size:17px';
     const tot='<tr><td style="'+T+'">Total</td><td style="'+T+';text-align:center;font-size:18px">'+sum('sek')+'</td><td style="'+T+';text-align:center;white-space:nowrap">'+sum('hilo')+dBadge(sum('dHilo'))+'</td><td style="'+T+';text-align:center;white-space:nowrap">'+sum('tea')+dBadge(sum('dTea'))+'</td><td style="'+T+';text-align:center">'+(sum('ea')?(sum('line')/sum('ea')).toFixed(1):'-')+'</td></tr>';
     const H='text-align:center;padding:9px 4px;font-size:11.5px;letter-spacing:.03em;color:'+MUT+';line-height:1.2';
-    const note=rows.prev?'<b style="color:#1f9d63">(+n)</b> = tambahan dibanding data s.d. '+esc(fmtKey(rows.prev))+' · ':'';
+    const note=rows.prev?'<b style="color:#1f9d63">(+n)</b> = tambahan dibanding data s.d. '+esc(fmtKey(rows.prev))+' ('+rows.nHari+' hari lalu, Minggu tidak dihitung) · ':'';
     return shell(560,'<div style="font-size:24px;font-weight:800;margin-bottom:4px">🆕 Sekolah Baru — '+esc(area)+'</div>'+
       '<div style="font-size:12.5px;color:'+MUT+';margin-bottom:12px;line-height:1.4">'+(rows.latest?'Data sampai '+esc(fmtKey(rows.latest)):(PJ.at?'Data per '+esc(fmtWita(PJ.at)):''))+'</div>'+
       '<table style="width:100%;border-collapse:collapse;table-layout:fixed"><colgroup><col style="width:33%"><col style="width:14%"><col style="width:18%"><col style="width:19%"><col style="width:16%"></colgroup>'+
