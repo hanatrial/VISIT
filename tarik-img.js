@@ -73,7 +73,7 @@
   }
   // tanda isi: berubah hanya bila isi sekolah/item berubah (bukan sekadar waktu tarik)
   async function signature(rows){
-    const txt=JSON.stringify(rows.map(r=>[r.name,r.sek,r.hilo,r.tea,r.ea,r.line,r.schools.map(s=>[s.nama,s.kab,s.baru,s.hilo,s.tea,s.item,(s.itemNames||[]).slice().sort()])]));
+    const txt=(rows.latest||'')+JSON.stringify(rows.map(r=>[r.name,r.sek,r.hilo,r.tea,r.dHilo||0,r.dTea||0,r.ea,r.line,r.schools.map(s=>[s.nama,s.kab,s.baru,s.hilo,s.tea,s.item,(s.itemNames||[]).slice().sort()])]));
     try{
       const h=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(txt));
       return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('');
@@ -81,13 +81,13 @@
   }
 
   /* ── hitungan (sama dengan sekolah.js) ──────────────────────────────── */
-  function computeArea(area){
+  function computeArea(area,upto){
     const rows=[];
     AREAS[area].forEach(name=>{
       const mds=resolveMds(name)||name;
-      const c=PJ.call.filter(r=>r.NamaMDS===mds);
+      const c=PJ.call.filter(r=>r.NamaMDS===mds&&inRange(r,upto));
       if(!c.length){rows.push({name,area,sek:0,schools:[],hilo:0,tea:0,ea:0,line:0,lineEa:0});return;}
-      const o=PJ.order.filter(r=>r.NamaMDS===mds).filter(r=>!String(r.NamaItem).toUpperCase().startsWith('BONUS'));
+      const o=PJ.order.filter(r=>r.NamaMDS===mds&&inRange(r,upto)).filter(r=>!String(r.NamaItem).toUpperCase().startsWith('BONUS'));
       const hiloCust=new Set(o.filter(r=>String(r.Brand).toUpperCase()==='HI LO').map(r=>r.KodeCustomer));
       const teaCust=new Set(o.filter(r=>r.Brand==='NUTRISARI'&&String(r.NamaItem).toUpperCase().includes('TEA PLS')).map(r=>r.KodeCustomer));
       const sek={},custSek={};
@@ -109,6 +109,29 @@
     });
     rows.sort((a,b)=>a.name.localeCompare(b.name));
     return rows;
+  }
+
+  /* Tanggal data (WITA) dari nilai ISO hasil sheet-map: tengah malam WITA dikurangi 36 detik.
+     Ditambah 8 jam + 36 detik lalu dipotong ke tanggal. */
+  function dkey(iso){
+    const t=Date.parse(iso);if(isNaN(t))return null;
+    return new Date(t+8*3600e3+36e3).toISOString().slice(0,10);
+  }
+  function inRange(r,upto){if(!upto)return true;const k=dkey(r.Tanggal);return !k||k<=upto;}
+  function prevDay(key){const d=new Date(key+'T00:00:00Z');d.setUTCDate(d.getUTCDate()-1);return d.toISOString().slice(0,10);}
+  const BLN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  function fmtKey(k){const p=k.split('-');return Number(p[2])+' '+BLN[Number(p[1])-1]+' '+p[0];}
+  /* Hitungan terkini + selisih Hilo / NS Tea dibanding data sampai hari sebelumnya
+     (hari terbaru = tanggal terakhir di data Call). */
+  function computeAreaDelta(area){
+    const rows=computeArea(area,null);
+    let latest=null;PJ.call.forEach(r=>{const k=dkey(r.Tanggal);if(k&&(!latest||k>latest))latest=k;});
+    if(!latest)return{rows,latest:null,prev:null};
+    const prev=prevDay(latest);
+    const old=computeArea(area,prev);
+    rows.forEach(r=>{const o=old.find(x=>x.name===r.name)||{hilo:0,tea:0};r.dHilo=r.hilo-o.hilo;r.dTea=r.tea-o.tea;});
+    rows.latest=latest;rows.prev=prev;
+    return{rows,latest,prev};
   }
 
   /* ── singkatan item: NS / Hilo ──────────────────────────────────────── */
@@ -147,18 +170,22 @@
 
   /* Gambar ringkasan dibuat RAMPING (lebar 560) supaya muat tanpa geser di layar HP:
      nama MDS terbaca jelas, kolom angka dipadatkan. */
+  /* Gambar ringkasan dibuat RAMPING (lebar 560) supaya muat tanpa geser di layar HP.
+     Hilo / NS Tea diberi catatan (+n) = tambahan dibanding data sampai hari sebelumnya. */
+  const dBadge=n=>!n?'':'<span style="font-size:12px;font-weight:800;margin-left:4px;color:'+(n>0?'#1f9d63':'#c0392b')+'">('+(n>0?'+':'')+n+')</span>';
   function elMain(area,rows){
-    const sum=k=>rows.reduce((s,r)=>s+r[k],0);
-    const P='padding:11px 6px;border-bottom:1px solid '+LINE+';vertical-align:middle';
-    const body=rows.map(r=>'<tr><td style="'+P+';font-size:17px;font-weight:600;line-height:1.25">'+esc(r.name)+'</td><td style="'+P+';text-align:center;font-weight:800;font-size:18px">'+r.sek+'</td><td style="'+P+';text-align:center;font-size:17px">'+r.hilo+'</td><td style="'+P+';text-align:center;font-size:17px">'+r.tea+'</td><td style="'+P+';text-align:center;font-size:17px">'+(r.ea?r.lineEa.toFixed(1):'-')+'</td></tr>').join('');
-    const T='padding:12px 6px;font-weight:800;font-size:17px';
-    const tot='<tr><td style="'+T+'">Total</td><td style="'+T+';text-align:center;font-size:18px">'+sum('sek')+'</td><td style="'+T+';text-align:center">'+sum('hilo')+'</td><td style="'+T+';text-align:center">'+sum('tea')+'</td><td style="'+T+';text-align:center">'+(sum('ea')?(sum('line')/sum('ea')).toFixed(1):'-')+'</td></tr>';
+    const sum=k=>rows.reduce((s,r)=>s+(r[k]||0),0);
+    const P='padding:11px 4px;border-bottom:1px solid '+LINE+';vertical-align:middle';
+    const body=rows.map(r=>'<tr><td style="'+P+';font-size:17px;font-weight:600;line-height:1.25">'+esc(r.name)+'</td><td style="'+P+';text-align:center;font-weight:800;font-size:18px">'+r.sek+'</td><td style="'+P+';text-align:center;font-size:17px;white-space:nowrap">'+r.hilo+dBadge(r.dHilo)+'</td><td style="'+P+';text-align:center;font-size:17px;white-space:nowrap">'+r.tea+dBadge(r.dTea)+'</td><td style="'+P+';text-align:center;font-size:17px">'+(r.ea?r.lineEa.toFixed(1):'-')+'</td></tr>').join('');
+    const T='padding:12px 4px;font-weight:800;font-size:17px';
+    const tot='<tr><td style="'+T+'">Total</td><td style="'+T+';text-align:center;font-size:18px">'+sum('sek')+'</td><td style="'+T+';text-align:center;white-space:nowrap">'+sum('hilo')+dBadge(sum('dHilo'))+'</td><td style="'+T+';text-align:center;white-space:nowrap">'+sum('tea')+dBadge(sum('dTea'))+'</td><td style="'+T+';text-align:center">'+(sum('ea')?(sum('line')/sum('ea')).toFixed(1):'-')+'</td></tr>';
     const H='text-align:center;padding:9px 4px;font-size:11.5px;letter-spacing:.03em;color:'+MUT+';line-height:1.2';
+    const note=rows.prev?'<b style="color:#1f9d63">(+n)</b> = tambahan dibanding data s.d. '+esc(fmtKey(rows.prev))+' · ':'';
     return shell(560,'<div style="font-size:24px;font-weight:800;margin-bottom:4px">🆕 Sekolah Baru — '+esc(area)+'</div>'+
-      '<div style="font-size:12.5px;color:'+MUT+';margin-bottom:12px;line-height:1.4">'+(PJ.at?'Data per '+esc(fmtWita(PJ.at)):'')+'</div>'+
-      '<table style="width:100%;border-collapse:collapse;table-layout:fixed"><colgroup><col style="width:34%"><col style="width:15%"><col style="width:15%"><col style="width:18%"><col style="width:18%"></colgroup>'+
+      '<div style="font-size:12.5px;color:'+MUT+';margin-bottom:12px;line-height:1.4">'+(rows.latest?'Data sampai '+esc(fmtKey(rows.latest)):(PJ.at?'Data per '+esc(fmtWita(PJ.at)):''))+'</div>'+
+      '<table style="width:100%;border-collapse:collapse;table-layout:fixed"><colgroup><col style="width:33%"><col style="width:14%"><col style="width:18%"><col style="width:19%"><col style="width:16%"></colgroup>'+
       '<thead><tr style="background:rgba(120,110,90,.12)"><th style="'+H+';text-align:left">MDS</th><th style="'+H+'">SEKOLAH</th><th style="'+H+'">HILO</th><th style="'+H+'">NS TEA</th><th style="'+H+'">LINE/EA</th></tr></thead><tbody>'+body+tot+'</tbody></table>'+
-      '<div style="font-size:11.5px;color:'+MUT+';margin-top:12px;line-height:1.45"><b>Sekolah</b> = sudah transaksi (baru + lama) · <b>Hilo / NS Tea</b> = sekolah baru yang order · <b>LINE/EA</b> = item unik per sekolah baru</div>');
+      '<div style="font-size:11.5px;color:'+MUT+';margin-top:12px;line-height:1.45">'+note+'<b>Sekolah</b> = sudah transaksi (baru + lama) · <b>Hilo / NS Tea</b> = sekolah baru yang order · <b>LINE/EA</b> = item unik per sekolah baru</div>');
   }
   function elDetail(r,from,to,part){
     const nb=r.schools.filter(s=>s.baru).length;
@@ -294,7 +321,7 @@
       // 2) data berbeda -> hitung ulang isi; buat gambar baru hanya bila isi berubah
       $('imgProg').style.display='block';$('imgBarI').style.width='0';
       await loadPJ(msg,metaAt);
-      const rows=computeArea(area);
+      const rows=computeAreaDelta(area).rows;
       const sig=await signature(rows);
       if(stored&&sig===stored.sig){
         stored.at=PJ.at||metaAt;MEM[area]=stored;await idbPut(stored);
