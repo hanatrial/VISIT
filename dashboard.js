@@ -2005,7 +2005,7 @@ function spgMatrixData(){
   }
   const[Y,M]=mi.value.split('-').map(Number);
   const daysInMonth=new Date(Y,M,0).getDate();
-  const skipSun=document.getElementById('spg-matrix-skip-sun').checked;
+  const skipSun=true; // work week is Mon–Sat (6 days): Sunday is never counted as a missed report
   const area=(document.getElementById('f-area')?.value||'').toLowerCase();
   const mdsQ=(document.getElementById('f-mds')?.value||'').toLowerCase();
   const todayKey=_ymd(new Date());
@@ -2083,7 +2083,7 @@ function renderSpgMatrix(){
   const totalMissed=rows.reduce((s,p)=>s+p.missed.length,0);
   const chip=(t,c)=>`<span style="display:inline-block;margin:2px 4px 2px 0;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;background:var(--${c}-g);color:var(--${c})">${t}</span>`;
   if(sum){
-    let s=`<div style="font-size:11px;color:var(--t2);margin-bottom:6px">${rows.length} SPG · ${totalMissed} hari belum lapor (s/d kemarin)</div>`;
+    let s=`<div style="font-size:11px;color:var(--t2);margin-bottom:6px">${rows.length} SPG · ${totalMissed} hari belum lapor (s/d kemarin · Senin–Sabtu, Minggu tidak dihitung)</div>`;
     if(isCurrentMonth)s+=todayMissing.length
       ?`<div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:4px">Belum lapor hari ini (${todayMissing.length}):</div>`+todayMissing.map(p=>chip(p.name,'amber')).join('')
       :'<div style="font-size:11px;font-weight:700;color:var(--green)">✓ Semua SPG sudah lapor hari ini</div>';
