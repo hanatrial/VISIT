@@ -259,6 +259,7 @@
         <div class="sub-tab spg" id="stab-spg-store" onclick="switchSubTab('spg','store')">🏪 Per Toko</div>
         <div class="sub-tab spg" id="stab-spg-rank" onclick="switchSubTab('spg','rank')">🏆 Ranking Jualan</div>
         <div class="sub-tab spg" id="stab-spg-indogrosir" onclick="switchSubTab('spg','indogrosir')">🛒 Indogrosir</div>
+        <div class="sub-tab spg" id="stab-spg-matrix" onclick="switchSubTab('spg','matrix')">📅 Rekap Harian</div>
       </div>
       <div id="spg-log-wrap">
         <div class="panel-shell"><div class="panel-body">
@@ -283,6 +284,19 @@
       <div id="spg-rank-wrap" style="display:none">
         <div id="spg-rank-body"></div>
       </div>
+      <div id="spg-matrix-wrap" style="display:none">
+        <div class="panel-shell"><div class="panel-body">
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:12px">
+            <span class="fl">Bulan</span>
+            <input type="month" class="fi" id="spg-matrix-month" style="width:150px" oninput="renderSpgMatrix()">
+            <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);cursor:pointer"><input type="checkbox" id="spg-matrix-skip-sun" onchange="renderSpgMatrix()"> Abaikan hari Minggu</label>
+            <button class="exp-btn" onclick="reloadSpgMatrix()">↻ Muat ulang</button>
+            <button class="exp-btn" onclick="exportSpgMatrixCSV()">↓ Export CSV</button>
+          </div>
+          <div id="spg-matrix-summary" style="margin-bottom:12px"></div>
+          <div id="spg-matrix-body" style="overflow-x:auto"></div>
+        </div></div>
+      </div>
       <div id="spg-indogrosir-wrap" style="display:none">
         <div id="spg-indogrosir-rank-body"></div>
         <div class="panel-shell"><div class="panel-body">
@@ -304,6 +318,6 @@
   </div></div>
 </div>
 
-<script src="dashboard.js?v=57"></script>
+<script src="dashboard.js?v=59"></script>
 </body>
 </html>

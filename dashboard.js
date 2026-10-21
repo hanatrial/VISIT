@@ -1431,7 +1431,8 @@ function switchSubTab(main,sub){
     ['log','urgent'].forEach(s=>{const el=document.getElementById('stab-ned-'+s);if(el)el.classList.toggle('on',s===sub);});
   }else if(main==='spg'){
     SUBTAB_SPG=sub;
-    ['log','report','store','rank','indogrosir'].forEach(s=>{const el=document.getElementById('stab-spg-'+s);if(el)el.classList.toggle('on',s===sub);});
+    ['log','report','store','rank','indogrosir','matrix'].forEach(s=>{const el=document.getElementById('stab-spg-'+s);if(el)el.classList.toggle('on',s===sub);});
+    const mxw=document.getElementById('spg-matrix-wrap');if(mxw)mxw.style.display=sub==='matrix'?'block':'none';
     const lw=document.getElementById('spg-log-wrap');if(lw)lw.style.display=sub==='log'?'block':'none';
     const rw=document.getElementById('spg-report-wrap');if(rw)rw.style.display=sub==='report'?'block':'none';
     const stw=document.getElementById('spg-store-wrap');if(stw)stw.style.display=sub==='store'?'block':'none';
@@ -1513,6 +1514,7 @@ function render(){
     else if(SUBTAB_SPG==='report')renderSpgReport(spgF);
     else if(SUBTAB_SPG==='store')renderSpgPerStore(spgF);
     else if(SUBTAB_SPG==='indogrosir')renderSpgIndogrosir(spgF);
+    else if(SUBTAB_SPG==='matrix')renderSpgMatrix();
     else renderSpgRank(spgF);
   }else if(TAB==='wow'){
     if(SUBTAB_WOW==='unvisited')renderWowUnvisited();
@@ -1944,6 +1946,191 @@ function onSpgReportSearch(v){
   renderSpgReport(filteredSpg());
   const inp=document.getElementById('spg-report-search');
   if(inp&&document.activeElement!==inp){inp.focus();inp.selectionStart=inp.selectionEnd=inp.value.length;}
+}
+/* ── Rekap Harian: SPG × tanggal grid, so it's obvious who hasn't reported ──
+   Uses SPG_ALL directly (not the global Periode/Bulan filter) because the grid has its
+   own month picker; the Area / MDS name filters still apply. Rows come from the SPG roster
+   (app_data/spg_names, same list the field app's picker uses) plus anyone who has ever
+   reported, so an SPG with zero reports this month still shows up as a blank row. */
+const SPG_ROSTER_SEED={
+  'Makassar':['Amel','Ike Putri Magfirah','Kamalia','Lilis Suriani','Muliani','Nadia','Natasya','Resky Audina','Rhiby Aliyah Pratiwi','Salsa Syabilla Zahra','Sujar Event','Yuninda Natasya Amey'],
+  'Kendari':['Andi Sriwahyuni','Nabila Febriani','Nur Alvina Azizah Buburanda','Yuliana']
+};
+let SPG_ROSTER=JSON.parse(JSON.stringify(SPG_ROSTER_SEED)), _spgRosterLoaded=false;
+function loadSpgRoster(){
+  if(_spgRosterLoaded)return;
+  _spgRosterLoaded=true;
+  try{
+    db.collection('app_data').doc('spg_names').get().then(doc=>{
+      if(!doc.exists)return;
+      Object.entries(doc.data()).forEach(([a,v])=>{
+        if(!Array.isArray(v))return;
+        SPG_ROSTER[a]=SPG_ROSTER[a]||[];
+        v.forEach(n=>{if(n&&!SPG_ROSTER[a].some(x=>_spgKey(x)===_spgKey(n)))SPG_ROSTER[a].push(n);});
+      });
+      if(TAB==='spg'&&SUBTAB_SPG==='matrix')renderSpgMatrix();
+    }).catch(e=>console.warn('spg roster load failed',e));
+  }catch(e){console.warn('spg roster load failed',e);}
+}
+function _ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+let _SPG_MATRIX_EXPORT=null;
+/* SPG_ALL is loaded with limit(2000) and the collection is already bigger than that, so the
+   newest reports can be missing from it — fatal for a "who didn't report" view. This fetches
+   just the chosen month straight from Firestore instead. */
+let _spgMonthKey='', _spgMonthRows=[], _spgMonthLoading=false;
+function loadSpgMonth(force){
+  const mi=document.getElementById('spg-matrix-month');
+  if(!mi||!mi.value)return;
+  if(!force&&(_spgMonthKey===mi.value||_spgMonthLoading))return;
+  const key=mi.value, [Y,M]=key.split('-').map(Number);
+  _spgMonthLoading=true;
+  db.collection('spg_daily_logs')
+    .where('timestamp','>=',new Date(Y,M-1,1)).where('timestamp','<',new Date(Y,M,1)).get()
+    .then(s=>{
+      _spgMonthRows=[];
+      s.forEach(d=>{const v=d.data();if(v.timestamp)_spgMonthRows.push({...v,timestamp:v.timestamp.toDate()});});
+      _spgMonthKey=key;
+    })
+    .catch(e=>{console.error('spg month load FAILED',e.code,e.message);_spgMonthRows=[];_spgMonthKey=key;})
+    .then(()=>{_spgMonthLoading=false;if(TAB==='spg'&&SUBTAB_SPG==='matrix')renderSpgMatrix();});
+}
+function reloadSpgMatrix(){_spgMonthKey='';renderSpgMatrix();}
+function spgMatrixData(){
+  const mi=document.getElementById('spg-matrix-month');
+  if(!mi)return null;
+  if(!mi.value){
+    if(!SPG_ALL.length)return null;
+    const latest=SPG_ALL.reduce((m,r)=>r.timestamp>m?r.timestamp:m,new Date(0));
+    mi.value=latest.getFullYear()+'-'+String(latest.getMonth()+1).padStart(2,'0');
+  }
+  const[Y,M]=mi.value.split('-').map(Number);
+  const daysInMonth=new Date(Y,M,0).getDate();
+  const skipSun=document.getElementById('spg-matrix-skip-sun').checked;
+  const area=(document.getElementById('f-area')?.value||'').toLowerCase();
+  const mdsQ=(document.getElementById('f-mds')?.value||'').toLowerCase();
+  const todayKey=_ymd(new Date());
+
+  const people={}; // _spgKey → {key,name,spellings,areas,days:{ymd:{omzet,cnt}}}
+  const person=(n,a)=>{
+    const k=_spgKey(n);
+    if(!people[k])people[k]={key:k,name:n,spellings:{},areas:{},days:{}};
+    people[k].spellings[n]=(people[k].spellings[n]||0)+1;
+    if(a)people[k].areas[a]=(people[k].areas[a]||0)+1;
+    return people[k];
+  };
+  Object.entries(SPG_ROSTER).forEach(([a,names])=>names.forEach(n=>person(n,a)));
+  // identity/area from everything already loaded (so past reporters appear even with a blank month)
+  SPG_ALL.forEach(r=>{const n=(r.nama||'').trim(); if(n)person(n,r.area||'');});
+  // the reports themselves come from the month-scoped fetch, which isn't capped like SPG_ALL
+  _spgMonthRows.forEach(r=>{
+    const n=(r.nama||'').trim(); if(!n)return;
+    const p=person(n,r.area||'');
+    const dk=_ymd(r.timestamp);
+    const d=p.days[dk]||(p.days[dk]={omzet:0,cnt:0});
+    d.omzet+=(r.totalOmzet||0); d.cnt++;
+  });
+
+  const days=[];
+  for(let d=1;d<=daysInMonth;d++){
+    const dt=new Date(Y,M-1,d);
+    days.push({d,key:_ymd(dt),dow:dt.getDay(),label:dt.toLocaleDateString('id-ID',{weekday:'short'})});
+  }
+  const monLabel=new Date(Y,M-1,1).toLocaleDateString('id-ID',{month:'short'});
+
+  const rows=Object.values(people).map(p=>{
+    // display the most-used spelling; area = most-used area
+    p.name=Object.entries(p.spellings).sort((a,b)=>b[1]-a[1])[0][0];
+    p.area=(Object.entries(p.areas).sort((a,b)=>b[1]-a[1])[0]||['',0])[0];
+    return p;
+  }).filter(p=>{
+    if(area&&!(p.area||'').toLowerCase().includes(area))return false;
+    if(mdsQ&&!p.name.toLowerCase().includes(mdsQ))return false;
+    return true;
+  }).sort((a,b)=>(a.area||'~').localeCompare(b.area||'~')||a.name.localeCompare(b.name));
+
+  rows.forEach(p=>{
+    p.total=0; p.reported=0; p.missed=[]; p.todayMissing=false;
+    days.forEach(dy=>{
+      const c=p.days[dy.key];
+      if(c){p.total+=c.omzet; p.reported++;}
+      const counted=!(skipSun&&dy.dow===0);
+      if(!c&&counted){
+        if(dy.key<todayKey)p.missed.push(dy.d);
+        else if(dy.key===todayKey)p.todayMissing=true;
+      }
+    });
+  });
+  return{Y,M,days,monLabel,rows,todayKey,skipSun};
+}
+function renderSpgMatrix(){
+  loadSpgRoster();
+  const host=document.getElementById('spg-matrix-body');
+  const sum=document.getElementById('spg-matrix-summary');
+  if(!host)return;
+  const mi=document.getElementById('spg-matrix-month');
+  if(mi&&!mi.value&&SPG_ALL.length){
+    const latest=SPG_ALL.reduce((m,r)=>r.timestamp>m?r.timestamp:m,new Date(0));
+    mi.value=latest.getFullYear()+'-'+String(latest.getMonth()+1).padStart(2,'0');
+  }
+  loadSpgMonth();
+  if(!mi||!mi.value||_spgMonthKey!==mi.value){host.innerHTML='<div class="empty-state">Memuat data laporan SPG…</div>';if(sum)sum.innerHTML='';_SPG_MATRIX_EXPORT=null;return;}
+  const data=spgMatrixData();
+  if(!data){host.innerHTML='<div class="empty-state">Memuat data laporan SPG…</div>';if(sum)sum.innerHTML='';_SPG_MATRIX_EXPORT=null;return;}
+  _SPG_MATRIX_EXPORT=data;
+  const{days,monLabel,rows,todayKey,skipSun}=data;
+  const isCurrentMonth=days.some(d=>d.key===todayKey);
+  const todayMissing=rows.filter(p=>p.todayMissing);
+  const totalMissed=rows.reduce((s,p)=>s+p.missed.length,0);
+  const chip=(t,c)=>`<span style="display:inline-block;margin:2px 4px 2px 0;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;background:var(--${c}-g);color:var(--${c})">${t}</span>`;
+  if(sum){
+    let s=`<div style="font-size:11px;color:var(--t2);margin-bottom:6px">${rows.length} SPG · ${totalMissed} hari belum lapor (s/d kemarin)</div>`;
+    if(isCurrentMonth)s+=todayMissing.length
+      ?`<div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:4px">Belum lapor hari ini (${todayMissing.length}):</div>`+todayMissing.map(p=>chip(p.name,'amber')).join('')
+      :'<div style="font-size:11px;font-weight:700;color:var(--green)">✓ Semua SPG sudah lapor hari ini</div>';
+    sum.innerHTML=s;
+  }
+  if(!rows.length){host.innerHTML='<div class="empty-state">Belum ada SPG untuk filter ini.</div>';return;}
+
+  const th='padding:4px 6px;font-size:10px;text-align:center;white-space:nowrap';
+  const stickyName='position:sticky;left:0;z-index:1;background:var(--bg2)';
+  let html='<table style="border-collapse:collapse;min-width:100%"><thead><tr>'+
+    `<th style="${th};text-align:left;${stickyName}">Nama SPG</th>`+
+    days.map(dy=>`<th style="${th};${dy.dow===0?'color:var(--red)':''}">${dy.label}<br>${dy.d}</th>`).join('')+
+    `<th style="${th}">Total Omzet</th><th style="${th}">Hari Lapor</th><th style="${th};text-align:left">Belum Lapor (tgl)</th></tr></thead><tbody>`;
+  html+=rows.map(p=>{
+    const cells=days.map(dy=>{
+      const c=p.days[dy.key];
+      const base='padding:4px 6px;font-size:10px;text-align:center;white-space:nowrap;border-top:1px solid var(--border)';
+      if(c)return`<td style="${base};color:var(--green);font-weight:700;background:var(--green-g)">${Math.round(c.omzet).toLocaleString('id-ID')}</td>`;
+      if(skipSun&&dy.dow===0)return`<td style="${base};color:var(--t3)">·</td>`;
+      if(dy.key<todayKey)return`<td style="${base};color:var(--red);background:var(--red-g)">—</td>`;
+      if(dy.key===todayKey)return`<td style="${base};color:var(--amber);background:var(--amber-g)">?</td>`;
+      return`<td style="${base}"></td>`;
+    }).join('');
+    const missed=p.missed.length?p.missed.join(', ')+' '+monLabel:'—';
+    return`<tr><td style="padding:4px 8px;font-size:11px;font-weight:700;white-space:nowrap;border-top:1px solid var(--border);${stickyName}">${p.name}${p.area?` <span style="color:var(--t3);font-weight:500;font-size:9px">${p.area}</span>`:''}</td>${cells}`+
+      `<td style="padding:4px 8px;font-size:11px;font-weight:700;color:var(--green);text-align:right;white-space:nowrap;border-top:1px solid var(--border)">${p.total?rp(p.total):'—'}</td>`+
+      `<td style="padding:4px 8px;font-size:11px;text-align:center;border-top:1px solid var(--border)">${p.reported}</td>`+
+      `<td style="padding:4px 8px;font-size:10px;color:${p.missed.length?'var(--red)':'var(--t3)'};border-top:1px solid var(--border);min-width:120px">${missed}</td></tr>`;
+  }).join('');
+  html+='</tbody></table>';
+  host.innerHTML=html;
+}
+function exportSpgMatrixCSV(){
+  const data=_SPG_MATRIX_EXPORT||spgMatrixData();
+  if(!data||!data.rows.length){alert('Tidak ada data untuk diexport.');return;}
+  const{days,monLabel,rows}=data;
+  const esc=v=>'"'+String(v).replace(/"/g,'""')+'"';
+  const head=['Nama SPG','Area',...days.map(d=>d.label+' '+d.d+' '+monLabel),'Total Omzet','Hari Lapor','Belum Lapor (tgl)'];
+  const lines=[head.map(esc).join(',')];
+  rows.forEach(p=>{
+    lines.push([p.name,p.area,...days.map(d=>p.days[d.key]?Math.round(p.days[d.key].omzet):''),Math.round(p.total),p.reported,p.missed.join(' ')].map(esc).join(','));
+  });
+  const blob=new Blob(['﻿'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='Rekap Harian SPG '+document.getElementById('spg-matrix-month').value+'.csv';
+  document.body.appendChild(a);a.click();a.remove();
 }
 function renderSpgReport(spgF){
   // identity is the lowercased name so older spellings ("Lilis suriani") and the
