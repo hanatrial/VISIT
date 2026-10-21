@@ -156,13 +156,7 @@
           <select class="f-input sel" id="rka-mds-sel" onchange="rkaCheck(0)">
             <option value="">— Pilih MDS —</option>
           </select>
-        </div>
-        <div class="add-trigger" onclick="toggleBox('rka-mds-box')"><span>+</span> Tambah MDS baru</div>
-        <div class="add-box" id="rka-mds-box">
-          <div class="field" style="margin-bottom:0">
-            <label class="f-label">Nama MDS Baru</label>
-            <input type="text" class="f-input" id="rka-mds-new" placeholder="Ketik nama…" oninput="rkaCheck(0)">
-          </div>
+          <div style="font-size:11px;color:var(--t3);margin-top:6px">MDS harus dipilih dari daftar. Nama di luar daftar tidak bisa disubmit.</div>
         </div>
       </div>
 
@@ -310,13 +304,7 @@
           <select class="f-input sel" id="beli-mds-sel" onchange="beliCheck(0)">
             <option value="">— Pilih Area dulu —</option>
           </select>
-        </div>
-        <div class="add-trigger" onclick="toggleBox('beli-mds-box')"><span>+</span> Tambah MDS baru</div>
-        <div class="add-box" id="beli-mds-box">
-          <div class="field" style="margin-bottom:0">
-            <label class="f-label">Nama MDS Baru</label>
-            <input type="text" class="f-input" id="beli-mds-new" placeholder="Ketik nama…" oninput="beliCheck(0)">
-          </div>
+          <div style="font-size:11px;color:var(--t3);margin-top:6px">MDS harus dipilih dari daftar. Nama di luar daftar tidak bisa disubmit.</div>
         </div>
       </div>
 
@@ -453,8 +441,15 @@
             </label>
           </div>
         </div>
-        <div class="field" id="stock-nama-wrap">
-          <label class="f-label" id="stock-nama-label">Nama MDS</label>
+        <div class="field" id="stock-nama-mds-wrap">
+          <label class="f-label">Nama MDS</label>
+          <select class="f-input sel" id="stock-mds-sel" onchange="stockCheck(0)">
+            <option value="">— Pilih Area dulu —</option>
+          </select>
+          <div style="font-size:11px;color:var(--t3);margin-top:6px">MDS harus dipilih dari daftar. Nama di luar daftar tidak bisa disubmit.</div>
+        </div>
+        <div class="field" id="stock-nama-spg-wrap" style="display:none">
+          <label class="f-label">Nama SPG</label>
           <input type="text" class="f-input" id="stock-nama-input" placeholder="Ketik nama…" oninput="stockCheck(0)">
         </div>
         <div class="step-nav">
@@ -749,7 +744,7 @@
         <div class="s-sub">Area, status, dan nama petugas</div>
         <div class="field">
           <label class="f-label">Nama Area</label>
-          <select class="f-input sel" id="ned-area-sel" onchange="nedCheck(0)">
+          <select class="f-input sel" id="ned-area-sel" onchange="nedAreaChange()">
             <option value="">— Pilih Area —</option>
           </select>
         </div>
@@ -757,15 +752,22 @@
           <label class="f-label">Status</label>
           <div style="display:flex;gap:10px;margin-top:4px">
             <label style="flex:1;display:flex;align-items:center;gap:8px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;cursor:pointer">
-              <input type="radio" name="ned-status" value="MDS" id="ned-r-mds" onchange="nedCheck(0)" style="accent-color:var(--accent)"> MDS
+              <input type="radio" name="ned-status" value="MDS" id="ned-r-mds" onchange="nedStatusChange()" style="accent-color:var(--accent)"> MDS
             </label>
             <label style="flex:1;display:flex;align-items:center;gap:8px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;cursor:pointer">
-              <input type="radio" name="ned-status" value="SPG" id="ned-r-spg" onchange="nedCheck(0)" style="accent-color:var(--accent)"> SPG
+              <input type="radio" name="ned-status" value="SPG" id="ned-r-spg" onchange="nedStatusChange()" style="accent-color:var(--accent)"> SPG
             </label>
           </div>
         </div>
-        <div class="field">
-          <label class="f-label">Nama Petugas</label>
+        <div class="field" id="ned-nama-mds-wrap">
+          <label class="f-label">Nama MDS</label>
+          <select class="f-input sel" id="ned-mds-sel" onchange="nedCheck(0)">
+            <option value="">— Pilih Area dulu —</option>
+          </select>
+          <div style="font-size:11px;color:var(--t3);margin-top:6px">MDS harus dipilih dari daftar. Nama di luar daftar tidak bisa disubmit.</div>
+        </div>
+        <div class="field" id="ned-nama-spg-wrap" style="display:none">
+          <label class="f-label">Nama SPG</label>
           <input type="text" class="f-input" id="ned-nama-input" placeholder="Ketik nama…" oninput="nedCheck(0)">
         </div>
         <div class="step-nav">
@@ -1028,13 +1030,7 @@
           <select class="f-input sel" id="wow-mds-sel" onchange="wowCheck(0);wowFillStore()">
             <option value="">— Pilih Area dulu —</option>
           </select>
-        </div>
-        <div class="add-trigger" onclick="toggleBox('wow-mds-box')"><span>+</span> Tambah MDS baru</div>
-        <div class="add-box" id="wow-mds-box">
-          <div class="field" style="margin-bottom:0">
-            <label class="f-label">Nama MDS Baru</label>
-            <input type="text" class="f-input" id="wow-mds-new" placeholder="Ketik nama…" oninput="wowCheck(0)">
-          </div>
+          <div style="font-size:11px;color:var(--t3);margin-top:6px">MDS harus dipilih dari daftar. Nama di luar daftar tidak bisa disubmit.</div>
         </div>
         <div class="field">
           <label class="f-label">Tanggal Visit</label>
@@ -1130,7 +1126,7 @@
 </div><!-- #app -->
 
 <script src="wow_toko_master.js?v=8"></script>
-<script src="app.js?v=40"></script>
+<script src="app.js?v=41"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
