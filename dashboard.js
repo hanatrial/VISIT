@@ -3218,6 +3218,77 @@ function toggleWowDetail(tr,vid){
   if(caret)caret.textContent='▴';
 }
 
+// ── EXPORT VALIDASI WOW (Excel) ──────────────────────────────────────────────
+function wowValidasiLabel(v){
+  if(v===true)return'Sudah Valid';
+  if(v===false)return'Tidak Valid';
+  if(v==='perlu')return'Perlu Validasi';
+  return'Belum Divalidasi';
+}
+function wowValidasiRows(){
+  const picF=document.getElementById('wow-pic-filter')?.value||'';
+  let rows=filtered(WOW_ALL);
+  if(picF)rows=rows.filter(r=>picF==='none'?(r.picValidated==null):String(r.picValidated)===picF);
+  return rows;
+}
+async function exportWowValidasiExcel(){
+  const rows=wowValidasiRows();
+  if(!rows.length){alert('Tidak ada data Validasi Display WOW untuk filter ini.');return;}
+  try{await ensureXlsx();}catch(e){alert('Gagal memuat pustaka Excel (XLSX). Cek koneksi lalu coba lagi.');return;}
+  // Satu baris per toko: status = penandaan validasi terakhir yang tersimpan.
+  const byStore=new Map();
+  rows.slice().sort((a,b)=>a.timestamp-b.timestamp).forEach(r=>{
+    const area=(r.area||'').trim()||'—';
+    const store=(r.store||'').trim()||'—';
+    const key=area.toUpperCase()+'|'+store.toUpperCase();
+    const e=byStore.get(key)||{mds:(r.mds||'').trim()||'—',area,store,status:null};
+    if(r.mds)e.mds=r.mds.trim();
+    if(r.picValidated!=null)e.status=r.picValidated;
+    byStore.set(key,e);
+  });
+  const stores=[...byStore.values()].sort((a,b)=>a.area.localeCompare(b.area)||a.mds.localeCompare(b.mds)||a.store.localeCompare(b.store));
+  const ST=['Sudah Valid','Tidak Valid','Perlu Validasi','Belum Divalidasi'];
+
+  const aoaStore=[['MDS','Area','Toko','Keterangan Validasi']]
+    .concat(stores.map(s=>[s.mds,s.area,s.store,wowValidasiLabel(s.status)]));
+  const wsStore=XLSX.utils.aoa_to_sheet(aoaStore);
+  wsStore['!cols']=[{wch:26},{wch:14},{wch:52},{wch:18}];
+  wsStore['!autofilter']={ref:`A1:D${aoaStore.length}`};
+
+  const byArea=new Map();
+  stores.forEach(s=>{
+    const e=byArea.get(s.area)||{'Sudah Valid':0,'Tidak Valid':0,'Perlu Validasi':0,'Belum Divalidasi':0,n:0};
+    e[wowValidasiLabel(s.status)]++;e.n++;
+    byArea.set(s.area,e);
+  });
+  const aoaSum=[['Area'].concat(ST,['Total Toko','% Sudah Valid'])];
+  const tot={'Sudah Valid':0,'Tidak Valid':0,'Perlu Validasi':0,'Belum Divalidasi':0};
+  [...byArea.keys()].sort((a,b)=>a.localeCompare(b)).forEach(area=>{
+    const e=byArea.get(area);
+    ST.forEach(s=>tot[s]+=e[s]);
+    aoaSum.push([area].concat(ST.map(s=>e[s]),[e.n,e.n?Math.round(e['Sudah Valid']/e.n*100):0]));
+  });
+  aoaSum.push(['TOTAL'].concat(ST.map(s=>tot[s]),[stores.length,stores.length?Math.round(tot['Sudah Valid']/stores.length*100):0]));
+  const wsSum=XLSX.utils.aoa_to_sheet(aoaSum);
+  wsSum['!cols']=[{wch:16},{wch:12},{wch:12},{wch:14},{wch:16},{wch:12},{wch:14}];
+
+  const aoaDetail=[['ID','Waktu','MDS','Area','Toko','Toko Pasangan','Keterangan Validasi','Keterangan Display']]
+    .concat(rows.slice().sort((a,b)=>a.timestamp-b.timestamp).map(r=>[
+      r.id||'',
+      r.timestamp.toLocaleString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}),
+      r.mds||'',r.area||'',r.store||'',r.storePasangan||'',wowValidasiLabel(r.picValidated),r.keterangan||''
+    ]));
+  const wsDetail=XLSX.utils.aoa_to_sheet(aoaDetail);
+  wsDetail['!cols']=[{wch:12},{wch:18},{wch:26},{wch:14},{wch:52},{wch:40},{wch:18},{wch:18}];
+
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,wsStore,'Validasi per Toko');
+  XLSX.utils.book_append_sheet(wb,wsSum,'Ringkasan Area');
+  XLSX.utils.book_append_sheet(wb,wsDetail,'Detail Kunjungan');
+  const period=MF?monthLabel(MF):(DF||'semua periode');
+  XLSX.writeFile(wb,`Validasi_Display_WOW_${String(period).replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
 // ── TAB: Beli Barang ────────────────────────────────────────────────────────
 function renderBeli(beliF){
   document.getElementById('beli-area-cards').style.display='none';
