@@ -2060,6 +2060,8 @@ function spgMatrixData(){
       }
     });
   });
+  // SPGs with no report at all this month sink to the bottom (area/name order kept within each group)
+  rows.sort((a,b)=>(a.reported===0)-(b.reported===0));
   return{Y,M,days,monLabel,rows,todayKey,skipSun};
 }
 function renderSpgMatrix(){
@@ -2097,7 +2099,14 @@ function renderSpgMatrix(){
     `<th style="${th};text-align:left;${stickyName}">Nama SPG</th>`+
     days.map(dy=>`<th style="${th};${dy.dow===0?'color:var(--red)':''}">${dy.label}<br>${dy.d}</th>`).join('')+
     `<th style="${th}">Total Omzet</th><th style="${th}">Hari Lapor</th><th style="${th};text-align:left">Belum Lapor (tgl)</th></tr></thead><tbody>`;
+  let _noRepHdr=false;
   html+=rows.map(p=>{
+    let sep='';
+    if(p.reported===0&&!_noRepHdr){
+      _noRepHdr=true;
+      const n=rows.filter(x=>x.reported===0).length;
+      sep=`<tr><td colspan="${days.length+4}" style="padding:8px;font-size:10px;font-weight:700;color:var(--red);border-top:2px solid var(--border2);${stickyName}">Belum ada laporan sama sekali bulan ini (${n} SPG)</td></tr>`;
+    }
     const cells=days.map(dy=>{
       const c=p.days[dy.key];
       const base='padding:4px 6px;font-size:10px;text-align:center;white-space:nowrap;border-top:1px solid var(--border)';
@@ -2108,7 +2117,7 @@ function renderSpgMatrix(){
       return`<td style="${base}"></td>`;
     }).join('');
     const missed=p.missed.length?p.missed.join(', ')+' '+monLabel:'—';
-    return`<tr><td style="padding:4px 8px;font-size:11px;font-weight:700;white-space:nowrap;border-top:1px solid var(--border);${stickyName}">${p.name}${p.area?` <span style="color:var(--t3);font-weight:500;font-size:9px">${p.area}</span>`:''}</td>${cells}`+
+    return sep+`<tr><td style="padding:4px 8px;font-size:11px;font-weight:700;white-space:nowrap;border-top:1px solid var(--border);${stickyName}">${p.name}${p.area?` <span style="color:var(--t3);font-weight:500;font-size:9px">${p.area}</span>`:''}</td>${cells}`+
       `<td style="padding:4px 8px;font-size:11px;font-weight:700;color:var(--green);text-align:right;white-space:nowrap;border-top:1px solid var(--border)">${p.total?rp(p.total):'—'}</td>`+
       `<td style="padding:4px 8px;font-size:11px;text-align:center;border-top:1px solid var(--border)">${p.reported}</td>`+
       `<td style="padding:4px 8px;font-size:10px;color:${p.missed.length?'var(--red)':'var(--t3)'};border-top:1px solid var(--border);min-width:120px">${missed}</td></tr>`;
