@@ -23332,9 +23332,11 @@ function canonicalStore(area,name){
   const all=[...(STORES_BY_AREA[area]||[]),...(BELI_STORES_BY_AREA[area]||[])];
   return all.find(s=>_sameName(s,n))||n;
 }
-function canonicalMds(area,name){
-  const n=String(name).trim();
-  return (MDS_BY_AREA[area]||[]).find(m=>_sameName(m,n))||n;
+// MDS wajib berasal dari roster MDS_BY_AREA — nama bebas (ketik sendiri) ditolak.
+function mdsInRoster(area,name){
+  const n=String(name||'').trim();
+  if(!n)return false;
+  return (MDS_BY_AREA[area]||[]).some(m=>_sameName(m,n));
 }
 function _mergeStores(area,stores){
   if(!Array.isArray(stores))return;
@@ -23655,9 +23657,7 @@ function rkaCheck(step){
   if(step===0){
     const area=document.getElementById('rka-area-sel').value;
     const sel=document.getElementById('rka-mds-sel').value;
-    const box=document.getElementById('rka-mds-box');
-    const nw=document.getElementById('rka-mds-new').value.trim();
-    ok=area!==''&&(sel!==''||(box.classList.contains('open')&&nw!==''));
+    ok=area!==''&&sel!=='';
   } else if(step===1){
     const sel=document.getElementById('rka-store-sel').value;
     const box=document.getElementById('rka-store-box');
@@ -23678,14 +23678,10 @@ function rkaCheck(step){
 
 function rkaNext(){
   if(R.step===0){
-    R.area=document.getElementById('rka-area-sel').value;
-    const sel=document.getElementById('rka-mds-sel').value;
-    const nw=canonicalMds(R.area,document.getElementById('rka-mds-new').value);
-    R.mds=sel||nw;
-    if(nw&&!sel){
-      if(!MDS_BY_AREA[R.area]) MDS_BY_AREA[R.area]=[];
-      if(!MDS_BY_AREA[R.area].some(m=>_sameName(m,nw))) MDS_BY_AREA[R.area].push(nw);
-    }
+    const area=document.getElementById('rka-area-sel').value;
+    const mds=document.getElementById('rka-mds-sel').value;
+    if(!mdsInRoster(area,mds)){ alert('Pilih nama MDS dari daftar (tidak bisa mengetik nama sendiri).'); return; }
+    R.area=area; R.mds=mds;
   }
   if(R.step===1){
     const sel=document.getElementById('rka-store-sel').value;
@@ -23802,11 +23798,9 @@ function resetRka(){
   // reset fields
   document.getElementById('rka-area-sel').value='';
   document.getElementById('rka-mds-sel').value='';
-  document.getElementById('rka-mds-new').value='';
   document.getElementById('rka-store-sel').value='';
 
   document.getElementById('rka-store-new').value='';
-  document.getElementById('rka-mds-box').classList.remove('open');
   document.getElementById('rka-store-box').classList.remove('open');
   // restore
   document.getElementById('rka-stepper').classList.remove('hidden');
@@ -24025,10 +24019,8 @@ function wowCheck(step){
   if(step===0){
     const area=document.getElementById('wow-area-sel').value;
     const sel=document.getElementById('wow-mds-sel').value;
-    const box=document.getElementById('wow-mds-box');
-    const nw=document.getElementById('wow-mds-new').value.trim();
     const date=document.getElementById('wow-date-input').value;
-    ok=area!==''&&(sel!==''||(box.classList.contains('open')&&nw!==''))&&date!=='';
+    ok=area!==''&&sel!==''&&date!=='';
   } else if(step===1){
     const val=document.getElementById('wow-store-input').value.trim();
     ok=val!=='';
@@ -24044,15 +24036,12 @@ function wowCheck(step){
 }
 function wowNext(){
   if(WOW.step===0){
-    WOW.area=document.getElementById('wow-area-sel').value;
+    const area=document.getElementById('wow-area-sel').value;
+    const mds=document.getElementById('wow-mds-sel').value;
+    if(!mdsInRoster(area,mds)){ alert('Pilih nama MDS dari daftar (tidak bisa mengetik nama sendiri).'); return; }
+    WOW.area=area;
     WOW.date=document.getElementById('wow-date-input').value;
-    const sel=document.getElementById('wow-mds-sel').value;
-    const nw=canonicalMds(WOW.area,document.getElementById('wow-mds-new').value);
-    WOW.mds=sel||nw;
-    if(nw&&!sel){
-      if(!MDS_BY_AREA[WOW.area]) MDS_BY_AREA[WOW.area]=[];
-      if(!MDS_BY_AREA[WOW.area].some(m=>_sameName(m,nw))) MDS_BY_AREA[WOW.area].push(nw);
-    }
+    WOW.mds=mds;
   }
   if(WOW.step===1){
     WOW.store=document.getElementById('wow-store-input').value.trim();
@@ -24181,12 +24170,10 @@ function resetWow(){
   document.getElementById('wow-dt').classList.add('hidden');
   document.getElementById('wow-area-sel').value='';
   document.getElementById('wow-mds-sel').value='';
-  document.getElementById('wow-mds-new').value='';
   document.getElementById('wow-store-input').value='';
   document.getElementById('wow-store-pasangan').value='';
   document.getElementById('wow-store-pasangan-wrap').classList.add('hidden');
   document.getElementById('wow-store-new').value='';
-  document.getElementById('wow-mds-box').classList.remove('open');
   document.getElementById('wow-store-box').classList.remove('open');
   document.getElementById('wow-stepper').classList.remove('hidden');
   document.getElementById('wow-wrap').classList.remove('hidden');
@@ -24215,7 +24202,6 @@ function initBeli(){
       if(last.mds){
         const ms=document.getElementById('beli-mds-sel');
         if([...ms.options].some(o=>o.value===last.mds)) ms.value=last.mds;
-        else{ document.getElementById('beli-mds-box').classList.add('open'); document.getElementById('beli-mds-new').value=last.mds; }
       }
       if(last.store){ beliFillStore(); const ss=document.getElementById('beli-store-sel'); if([...ss.options].some(o=>o.value===last.store)) ss.value=last.store; }
     }
@@ -24245,9 +24231,7 @@ function beliCheck(step){
   if(step===0){
     const area=document.getElementById('beli-area-sel').value;
     const sel=document.getElementById('beli-mds-sel').value;
-    const box=document.getElementById('beli-mds-box');
-    const nw=document.getElementById('beli-mds-new').value.trim();
-    ok=area!==''&&(sel!==''||(box.classList.contains('open')&&nw!==''));
+    ok=area!==''&&sel!=='';
   } else if(step===1){
     const sel=document.getElementById('beli-store-sel').value;
     const box=document.getElementById('beli-store-box');
@@ -24265,17 +24249,10 @@ function beliCheck(step){
 
 function beliNext(){
   if(B.step===0){
-    B.area=document.getElementById('beli-area-sel').value;
-    const sel=document.getElementById('beli-mds-sel').value;
-    const box=document.getElementById('beli-mds-box');
-    const nw=canonicalMds(B.area,document.getElementById('beli-mds-new').value);
-    if(box.classList.contains('open')&&nw){
-      B.mds=nw;
-      if(!MDS_BY_AREA[B.area]) MDS_BY_AREA[B.area]=[];
-      if(!MDS_BY_AREA[B.area].some(m=>_sameName(m,nw))) MDS_BY_AREA[B.area].push(nw);
-    } else {
-      B.mds=sel;
-    }
+    const area=document.getElementById('beli-area-sel').value;
+    const mds=document.getElementById('beli-mds-sel').value;
+    if(!mdsInRoster(area,mds)){ alert('Pilih nama MDS dari daftar (tidak bisa mengetik nama sendiri).'); return; }
+    B.area=area; B.mds=mds;
   }
   if(B.step===1){
     const sel=document.getElementById('beli-store-sel').value;
@@ -24367,11 +24344,9 @@ function resetBeli(){
   document.getElementById('beli-area-sel').value='';
   document.getElementById('beli-mds-sel').innerHTML='<option value="">— Pilih Area dulu —</option>';
   document.getElementById('beli-store-sel').value='';
-  document.getElementById('beli-mds-new').value='';
   document.getElementById('beli-store-new').value='';
 
   document.getElementById('beli-nominal').value='';
-  document.getElementById('beli-mds-box').classList.remove('open');
   document.getElementById('beli-store-box').classList.remove('open');
 
   document.getElementById('beli-stepper').classList.remove('hidden');
@@ -24574,6 +24549,7 @@ function initStock(){
   as.innerHTML='<option value="">— Pilih Area —</option>';
   AREAS.forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; as.appendChild(o); });
   document.getElementById('stock-nama-input').value='';
+  document.getElementById('stock-mds-sel').innerHTML='<option value="">— Pilih Area dulu —</option>';
   document.getElementById('stock-store-sel').innerHTML='<option value="">— Pilih Toko —</option>';
   document.getElementById('stock-store-new').value='';
   // reset radios
@@ -24600,8 +24576,10 @@ function stockAreaChange(){
 
 function stockStatusChange(){
   const isMds=document.getElementById('stock-r-mds').checked;
-  document.getElementById('stock-nama-label').textContent=isMds?'Nama MDS':'Nama SPG';
+  document.getElementById('stock-nama-mds-wrap').style.display=isMds?'block':'none';
+  document.getElementById('stock-nama-spg-wrap').style.display=isMds?'none':'block';
   document.getElementById('stock-nama-input').value='';
+  document.getElementById('stock-mds-sel').value='';
   stockCheck(0);
 }
 
@@ -24609,9 +24587,13 @@ function stockCheck(step){
   let ok=false;
   if(step===0){
     const area=document.getElementById('stock-area-sel').value;
-    const hasStatus=document.getElementById('stock-r-mds').checked||document.getElementById('stock-r-spg').checked;
-    const nama=document.getElementById('stock-nama-input').value.trim();
+    const isMds=document.getElementById('stock-r-mds').checked;
+    const hasStatus=isMds||document.getElementById('stock-r-spg').checked;
+    const nama=isMds
+      ? document.getElementById('stock-mds-sel').value
+      : document.getElementById('stock-nama-input').value.trim();
     ok=!!(area&&hasStatus&&nama);
+    if(ok&&isMds&&!mdsInRoster(area,nama)) ok=false;
     document.getElementById('stock-next-0').disabled=!ok;
   } else if(step===1){
     const store=document.getElementById('stock-store-sel').value||document.getElementById('stock-store-new').value.trim();
@@ -24624,9 +24606,15 @@ function stockCheck(step){
 function stockNext(step){
   if(step===0){
     if(!stockCheck(0)) return;
-    SK.area=document.getElementById('stock-area-sel').value;
-    SK.status=document.getElementById('stock-r-mds').checked?'MDS':'SPG';
-    SK.nama=canonicalMds(SK.area,document.getElementById('stock-nama-input').value);
+    const isMds=document.getElementById('stock-r-mds').checked;
+    const area=document.getElementById('stock-area-sel').value;
+    const nama=isMds
+      ? document.getElementById('stock-mds-sel').value
+      : document.getElementById('stock-nama-input').value.trim();
+    if(isMds&&!mdsInRoster(area,nama)){ alert('Pilih nama MDS dari daftar (tidak bisa mengetik nama sendiri).'); return; }
+    SK.area=area;
+    SK.status=isMds?'MDS':'SPG';
+    SK.nama=nama;
     // fill stores
     const ss=document.getElementById('stock-store-sel');
     ss.innerHTML='<option value="">— Pilih Toko —</option>';
@@ -25233,6 +25221,7 @@ function initNed(){
   as.innerHTML='<option value="">— Pilih Area —</option>';
   AREAS.forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; as.appendChild(o); });
   document.getElementById('ned-nama-input').value='';
+  document.getElementById('ned-mds-sel').innerHTML='<option value="">— Pilih Area dulu —</option>';
   document.getElementById('ned-store-sel').innerHTML='<option value="">— Pilih Toko —</option>';
   document.getElementById('ned-store-new').value='';
   document.getElementById('ned-r-mds').checked=false;
@@ -25242,13 +25231,34 @@ function initNed(){
   nedUpdateStepper();
   document.querySelectorAll('#s-ned .step-section').forEach((s,i)=>s.classList.toggle('active',i===0));
 }
+function nedAreaChange(){
+  const area=document.getElementById('ned-area-sel').value;
+  const mdsSel=document.getElementById('ned-mds-sel');
+  mdsSel.innerHTML='';
+  if(!area){ mdsSel.innerHTML='<option value="">— Pilih Area dulu —</option>'; nedCheck(0); return; }
+  mdsSel.innerHTML='<option value="">— Pilih MDS —</option>';
+  (MDS_BY_AREA[area]||[]).forEach(m=>{ const o=document.createElement('option'); o.value=m; o.textContent=m; mdsSel.appendChild(o); });
+  nedCheck(0);
+}
+function nedStatusChange(){
+  const isMds=document.getElementById('ned-r-mds').checked;
+  document.getElementById('ned-nama-mds-wrap').style.display=isMds?'block':'none';
+  document.getElementById('ned-nama-spg-wrap').style.display=isMds?'none':'block';
+  document.getElementById('ned-nama-input').value='';
+  document.getElementById('ned-mds-sel').value='';
+  nedCheck(0);
+}
 function nedCheck(step){
   let ok=false;
   if(step===0){
     const area=document.getElementById('ned-area-sel').value;
-    const hasStatus=document.getElementById('ned-r-mds').checked||document.getElementById('ned-r-spg').checked;
-    const nama=document.getElementById('ned-nama-input').value.trim();
+    const isMds=document.getElementById('ned-r-mds').checked;
+    const hasStatus=isMds||document.getElementById('ned-r-spg').checked;
+    const nama=isMds
+      ? document.getElementById('ned-mds-sel').value
+      : document.getElementById('ned-nama-input').value.trim();
     ok=!!(area&&hasStatus&&nama);
+    if(ok&&isMds&&!mdsInRoster(area,nama)) ok=false;
     document.getElementById('ned-next-0').disabled=!ok;
   } else if(step===1){
     const store=document.getElementById('ned-store-sel').value||document.getElementById('ned-store-new').value.trim();
@@ -25260,9 +25270,15 @@ function nedCheck(step){
 function nedNext(step){
   if(step===0){
     if(!nedCheck(0)) return;
-    ND.area=document.getElementById('ned-area-sel').value;
-    ND.status=document.getElementById('ned-r-mds').checked?'MDS':'SPG';
-    ND.nama=canonicalMds(ND.area,document.getElementById('ned-nama-input').value);
+    const isMds=document.getElementById('ned-r-mds').checked;
+    const area=document.getElementById('ned-area-sel').value;
+    const nama=isMds
+      ? document.getElementById('ned-mds-sel').value
+      : document.getElementById('ned-nama-input').value.trim();
+    if(isMds&&!mdsInRoster(area,nama)){ alert('Pilih nama MDS dari daftar (tidak bisa mengetik nama sendiri).'); return; }
+    ND.area=area;
+    ND.status=isMds?'MDS':'SPG';
+    ND.nama=nama;
     const ss=document.getElementById('ned-store-sel');
     ss.innerHTML='<option value="">— Pilih Toko —</option>';
     (BELI_STORES_BY_AREA[ND.area]||[]).forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; ss.appendChild(o); });
