@@ -175,7 +175,18 @@ function buildMap(pi){
 }
 buildMap(0);
 }
-fetch('insight-data.json',{cache:'no-cache'}).then(r=>r.json()).then(d=>{D=d;init();}).catch(e=>{document.getElementById('sub').textContent='Gagal memuat insight-data.json: '+e.message;});
+async function loadData(){
+  const base='https://firestore.googleapis.com/v1/projects/mds-sulawesi/databases/(default)/documents/pjmds_data',key='AIzaSyCA8Q8athqYIsY3By5wPxcU97GjDBR6DAs';
+  try{
+    const m=await(await fetch(base+'/insight_meta?key='+key)).json();
+    const n=Number(m.fields.chunkCount.integerValue);let s='';
+    for(let i=0;i<n;i++){const d=await(await fetch(base+'/insight_chunk_'+i+'?key='+key)).json();s+=d.fields.data.stringValue;}
+    return JSON.parse(s);
+  }catch(e){
+    return await(await fetch('insight-data.json',{cache:'no-cache'})).json();
+  }
+}
+loadData().then(d=>{D=d;init();}).catch(e=>{document.getElementById('sub').textContent='Gagal memuat data: '+e.message;});
 </script>
 </body>
 </html>

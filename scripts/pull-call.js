@@ -67,4 +67,14 @@ async function currentCounts(){
     callCount:{integerValue:String(call.length)},orderCount:{integerValue:String(order.length)}});
   for(let i=chunks.length;i<oldCount;i++)await fsDelete('chunk_'+i);
   console.log('Selesai: data tersimpan di Firestore.');
+
+  // Data halaman insight-mds.html (ikut tarikan yang sama; gagal di sini tidak boleh mengganggu scorecard).
+  try{
+    const {buildInsight,READ_SHEETS}=require('./build-insight.js');
+    const out=buildInsight(XLSX,XLSX.read(buf,{type:'buffer',sheets:READ_SHEETS}));
+    const js=JSON.stringify(out);const ic=[];for(let i=0;i<js.length;i+=PJ_CHUNK_SIZE)ic.push(js.slice(i,i+PJ_CHUNK_SIZE));
+    for(let i=0;i<ic.length;i++)await fsPatch('insight_chunk_'+i,{data:{stringValue:ic[i]}});
+    await fsPatch('insight_meta',{chunkCount:{integerValue:String(ic.length)},updatedAt:{stringValue:out.generatedAt}});
+    console.log('Insight: '+(js.length/1e6).toFixed(2)+' MB -> '+ic.length+' bagian, tersimpan.');
+  }catch(e){console.warn('Insight dilewati:',e.message);}
 })().catch(e=>{console.error('GAGAL:',e.message);process.exit(1);});

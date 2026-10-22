@@ -1,5 +1,5 @@
 /* Bekukan data halaman insight-mds.html dari Google Sheet Call (snapshot).
-   Dijalankan .github/workflows/insight-snapshot.yml (tanggal 3 tiap bulan + tombol Run workflow).
+   Dipanggil scripts/pull-call.js tiap tarikan Call (hasil ke Firestore insight_*), atau dijalankan langsung untuk berkas lokal.
    Bagian statis (batas kecamatan, penduduk, sekolah, titik keramaian OSM per kecamatan) ada di
    scripts/insight-static.json; script ini hanya menghitung ulang bagian yang berasal dari sheet.
    Pakai: node scripts/build-insight.js [--file path.xlsx]  (--file = pakai berkas lokal, tanpa unduh) */
@@ -20,16 +20,7 @@ const inRing=(x,y,r)=>{let c=false;for(let i=0,j=r.length-1;i<r.length;j=i++){co
 const inPoly=(x,y,p)=>inRing(x,y,p[0])&&!p.slice(1).some(h=>inRing(x,y,h));
 const pct=arr=>arr.map(v=>{const below=arr.filter(w=>w<v).length,eq=arr.filter(w=>w===v).length;return 100*(below+(eq-1)/2)/Math.max(arr.length-1,1);});
 
-(async()=>{
-  const fi=process.argv.indexOf('--file');
-  let buf;
-  if(fi>0)buf=fs.readFileSync(process.argv[fi+1]);
-  else{
-    const res=await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=xlsx`,{redirect:'follow'});
-    if(!res.ok)throw new Error('Unduh Google Sheet gagal: HTTP '+res.status);
-    buf=Buffer.from(await res.arrayBuffer());
-  }
-  const wb=XLSX.read(buf,{type:'buffer',sheets:['Call','Merchandise','Order']});
+function buildInsight(XLSX,wb){
   const rows=n=>XLSX.utils.sheet_to_json(wb.Sheets[n],{defval:null}).filter(r=>r.PIC===PIC);
   const call=rows('Call'),mer=rows('Merchandise'),ord=rows('Order');
   if(call.length<500)throw new Error('Baris call terlalu sedikit ('+call.length+'), dibatalkan.');
@@ -97,6 +88,22 @@ const pct=arr=>arr.map(v=>{const below=arr.filter(w=>w<v).length,eq=arr.filter(w
     out.prov[prov]=P;
     console.log(prov,'MDS',Object.keys(P.mds).length,'titik',P.titik.length,'kecamatan dicakup',U.length);
   }
+  return out;
+}
+
+module.exports={buildInsight,READ_SHEETS:['Call','Merchandise','Order']};
+
+if(require.main===module)(async()=>{
+  const fi=process.argv.indexOf('--file');
+  let buf;
+  if(fi>0)buf=fs.readFileSync(process.argv[fi+1]);
+  else{
+    const res=await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=xlsx`,{redirect:'follow'});
+    if(!res.ok)throw new Error('Unduh Google Sheet gagal: HTTP '+res.status);
+    buf=Buffer.from(await res.arrayBuffer());
+  }
+  const wb=XLSX.read(buf,{type:'buffer',sheets:module.exports.READ_SHEETS});
+  const out=buildInsight(XLSX,wb);
   fs.writeFileSync(path.join(__dirname,'..','insight-data.json'),JSON.stringify(out));
   console.log('insight-data.json ditulis,',(JSON.stringify(out).length/1e6).toFixed(2),'MB');
 })().catch(e=>{console.error('GAGAL:',e.message);process.exit(1);});
