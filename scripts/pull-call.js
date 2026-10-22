@@ -70,6 +70,8 @@ async function currentCounts(){
 
   // Data halaman insight-mds.html (ikut tarikan yang sama; gagal di sini tidak boleh mengganggu scorecard).
   try{
+    const lk=await fsGet('insight_lock');
+    if(lk&&lk.fields&&lk.fields.locked&&lk.fields.locked.booleanValue){console.log('Insight dibekukan (insight_lock), dilewati.');}else{
     const {buildInsight,READ_SHEETS}=require('./build-insight.js');
     const stat=JSON.parse(require('fs').readFileSync(require('path').join(__dirname,'insight-static.json'),'utf8'));
     const out=buildInsight(XLSX,XLSX.read(buf,{type:'buffer',sheets:READ_SHEETS}),stat);
@@ -77,5 +79,6 @@ async function currentCounts(){
     for(let i=0;i<ic.length;i++)await fsPatch('insight_chunk_'+i,{data:{stringValue:ic[i]}});
     await fsPatch('insight_meta',{chunkCount:{integerValue:String(ic.length)},updatedAt:{stringValue:out.generatedAt}});
     console.log('Insight: '+(js.length/1e6).toFixed(2)+' MB -> '+ic.length+' bagian, tersimpan.');
+    }
   }catch(e){console.warn('Insight dilewati:',e.message);}
 })().catch(e=>{console.error('GAGAL:',e.message);process.exit(1);});

@@ -174,6 +174,8 @@ async function run(){
     // Data halaman Insight MDS (insight-mds.html): dihitung dari workbook yang sama. Gagal di sini tidak membatalkan tarikan.
     setStep(4,'on','Menghitung…');
     try{
+      const lk=await fsGet('insight_lock');
+      if(lk&&lk.fields&&lk.fields.locked&&lk.fields.locked.booleanValue){setStep(4,'done','Dibekukan, tidak diubah');}else{
       await sleep(30);
       const stat=await(await fetch('scripts/insight-static.json?v=1')).json();
       const ins=InsightBuild.buildInsight(XLSX,wb,stat);
@@ -184,6 +186,7 @@ async function run(){
       for(let i=0;i<ic.length;i++)await fsPatch('insight_chunk_'+i,{data:{stringValue:ic[i]}});
       await fsPatch('insight_meta',{chunkCount:{integerValue:String(ic.length)},updatedAt:{stringValue:ins.generatedAt}});
       setStep(4,'done','Tersimpan ('+(js.length/1048576).toFixed(1)+' MB)');
+      }
     }catch(e){console.warn('Insight dilewati',e);setStep(4,'fail','Dilewati: '+String(e.message||e).slice(0,80));}
     bar(100);
     window.PJ_CACHE={call,order,at:nowIso};   // dipakai bagian gambar per area, tanpa unduh ulang

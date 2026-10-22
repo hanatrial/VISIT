@@ -45,12 +45,14 @@ table.hm{table-layout:fixed;min-width:820px;border-spacing:3px}.hm th.grp{backgr
 .tarik{margin-left:8px;display:inline-block;border:1px solid var(--accent);color:var(--accent);padding:2px 10px;border-radius:999px;font-size:12px;text-decoration:none}.tarik:hover{background:var(--accent);color:#fff}
 .pal{display:flex;flex-direction:column;gap:6px;padding-bottom:10px;margin-bottom:4px;border-bottom:1px solid var(--line);font-size:12px}.pal .bar{height:10px;border-radius:5px;border:1px solid var(--line);background:linear-gradient(90deg,rgba(232,130,26,.12),rgba(232,130,26,.92))}.pal .bl{display:flex;justify-content:space-between;color:var(--mute);font-size:11px}.pal .it{display:flex;gap:8px;align-items:flex-start;line-height:1.3}.pal .it i{flex:none;width:14px;height:14px;border-radius:3px;margin-top:1px}
 .bars{max-height:560px;overflow-y:auto;padding-right:6px}.brow{display:grid;grid-template-columns:200px 1fr 80px;gap:10px;align-items:center;padding:3px 0;font-size:12px}.bl2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.btrack{background:var(--bg);border-radius:4px;height:14px}.bfill{height:14px;border-radius:4px;min-width:2px}.bv{font-weight:600;font-variant-numeric:tabular-nums}@media(max-width:760px){.brow{grid-template-columns:120px 1fr 64px}}
+.lockbar{max-width:1200px;margin:6px auto 0;padding:0 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:13px}.tg{display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600}.tg input{position:absolute;opacity:0}.tgs{width:38px;height:22px;border-radius:11px;background:#9aa9a3;position:relative;transition:background .15s}.tgs::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .15s}.tg input:checked+.tgs{background:#2e7d32}.tg input:checked+.tgs::after{left:18px}.tg input:focus-visible+.tgs{outline:2px solid var(--accent);outline-offset:2px}.tg input:disabled+.tgs{opacity:.5}
 </style>
 </head>
 <body>
 <header>
 <h1>Insight MDS Visit - PIC Imadur</h1>
 <div class="sub" id="sub"></div>
+<div class="lockbar" id="lockbar"></div>
 </header>
 <div class="tabs" role="tablist" id="tabs"></div>
 <main id="main"></main>
@@ -175,8 +177,35 @@ function buildMap(pi){
 }
 buildMap(0);
 }
+const FS_BASE='https://firestore.googleapis.com/v1/projects/mds-sulawesi/databases/(default)/documents/pjmds_data',FS_KEY='AIzaSyCA8Q8athqYIsY3By5wPxcU97GjDBR6DAs';
+async function getLock(){
+  try{const r=await fetch(FS_BASE+'/insight_lock?key='+FS_KEY);if(r.status===404)return{locked:false};const f=(await r.json()).fields||{};return{locked:!!(f.locked&&f.locked.booleanValue),at:f.at&&f.at.stringValue};}
+  catch(e){return{locked:false};}
+}
+async function setLock(v){
+  const r=await fetch(FS_BASE+'/insight_lock?key='+FS_KEY,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields:{locked:{booleanValue:v},at:{stringValue:new Date().toISOString()}}})});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+}
+const witaFmt=iso=>new Date(iso).toLocaleString('id-ID',{timeZone:'Asia/Makassar',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})+' WITA';
+async function initLock(){
+  const box=document.getElementById('lockbar');
+  let st=await getLock();
+  box.innerHTML='<label class="tg"><input type="checkbox" id="lk"><span class="tgs"></span><span id="lkt"></span></label><span class="n" id="lkn"></span>';
+  const cb=document.getElementById('lk');
+  const paint=()=>{cb.checked=!st.locked;document.getElementById('lkt').textContent=st.locked?'Update otomatis MATI (data dibekukan)':'Update otomatis AKTIF';
+    document.getElementById('lkn').textContent=st.locked?(st.at?'Dibekukan sejak '+witaFmt(st.at)+'. Tarikan data tidak mengubah halaman ini.':''):'Data ikut diperbarui setiap tarikan Call.';};
+  paint();
+  cb.onchange=async()=>{
+    const want=!cb.checked; // checked = aktif, jadi locked = tidak dicentang
+    const msg=want?'Bekukan data Insight MDS? Tarikan data berikutnya tidak akan mengubah halaman ini sampai diaktifkan lagi.':'Aktifkan lagi update otomatis? Data akan diperbarui pada tarikan Call berikutnya.';
+    if(!confirm(msg)){cb.checked=!want;return;}
+    cb.disabled=true;
+    try{await setLock(want);st={locked:want,at:new Date().toISOString()};}catch(e){alert('Gagal mengubah: '+e.message);}
+    cb.disabled=false;paint();
+  };
+}
 async function loadData(){
-  const base='https://firestore.googleapis.com/v1/projects/mds-sulawesi/databases/(default)/documents/pjmds_data',key='AIzaSyCA8Q8athqYIsY3By5wPxcU97GjDBR6DAs';
+  const base=FS_BASE,key=FS_KEY;
   try{
     const m=await(await fetch(base+'/insight_meta?key='+key)).json();
     const n=Number(m.fields.chunkCount.integerValue);let s='';
@@ -186,7 +215,7 @@ async function loadData(){
     return await(await fetch('insight-data.json',{cache:'no-cache'})).json();
   }
 }
-loadData().then(d=>{D=d;init();}).catch(e=>{document.getElementById('sub').textContent='Gagal memuat data: '+e.message;});
+loadData().then(d=>{D=d;init();initLock();}).catch(e=>{document.getElementById('sub').textContent='Gagal memuat data: '+e.message;});
 </script>
 </body>
 </html>
