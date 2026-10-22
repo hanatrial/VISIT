@@ -91,11 +91,9 @@ function buildInsight(XLSX,wb,stat){
 
     // potensi (50% penduduk + 50% keramaian) vs jumlah toko ber-AV, hanya kabupaten yang dikunjungi
     const U=P.kec.filter(k=>k.cov);
-    const ker=U.map(k=>k.pasar*5+k.term*3+k.spbu+k.toko+(k.tm||0));
+    const ker=U.map(k=>k.pasar*5+k.term*3+k.spbu+k.toko);
     const pp=pct(U.map(k=>k.pend||0)),pk=pct(ker),pt=pct(U.map(k=>k.tx));
     U.forEach((k,i)=>{k.ker=ker[i];k.pot=Math.round(.5*pp[i]+.5*pk[i]);k.txs=Math.round(pt[i]);k.celah=k.pot-k.txs;});
-    // operator belum tergarap = toko/minimarket tercatat (OSM + mapping) dikurangi operator ber-AV; data tipis bila toko tercatat kosong atau lebih sedikit dari operator ber-AV
-    U.forEach(k=>{const u=k.toko+(k.tm||0);k.uni=u;k.bel=Math.max(0,u-k.tx);k.pen=u>0?Math.min(k.tx/u,9.99):null;k.tipis=(u===0||k.tx>u)?1:0;});
     const dom=P.kec.map(()=>({}));P.titik.forEach(t=>{if(t[8]>=0)dom[t[8]][t[2]]=(dom[t[8]][t[2]]||0)+1;});
     const withTx=P.kec.map((k,i)=>({k,i})).filter(x=>x.k.tx);
     P.kec.forEach((k,i)=>{
