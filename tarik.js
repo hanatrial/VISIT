@@ -132,7 +132,7 @@ async function run(){
   const btn=$('go');btn.disabled=true;$('goT').textContent='Sedang menarik…';
   $('res').className='result';$('res').innerHTML='';
   $('prog').style.display='block';bar(0);
-  ['s1','s2','s3'].forEach((id,i)=>{setStep(i+1,'',' ');});
+  ['s1','s2','s3','s4'].forEach((id,i)=>{setStep(i+1,'',' ');});
   setStep(1,'on','');
   try{wakeLock=await navigator.wakeLock.request('screen');}catch(e){wakeLock=null;}
   try{
@@ -143,7 +143,7 @@ async function run(){
     setStep(2,'on','Memuat pembaca Excel…');
     await ensureXlsx();await sleep(30);
     setStep(2,'on','Membaca sheet Call & Order…');await sleep(30);
-    const wb=XLSX.read(bytes,{type:'array',sheets:['Call','Order']});
+    const wb=XLSX.read(bytes,{type:'array',sheets:['Call','Merchandise','Order']});
     const {call,order}=SheetMap.mapSheet(XLSX,wb);
     setStep(2,'done',nf(call.length)+' call · '+nf(order.length)+' order');bar(50);
 
@@ -169,7 +169,23 @@ async function run(){
     await fsPatch('meta',{chunkCount:{integerValue:String(chunks.length)},updatedAt:{stringValue:nowIso},
       callCount:{integerValue:String(call.length)},orderCount:{integerValue:String(order.length)}});
     for(let i=chunks.length;i<oldCount;i++)await fsDelete('chunk_'+i);
-    setStep(3,'done','Tersimpan di cloud');bar(100);
+    setStep(3,'done','Tersimpan di cloud');bar(96);
+
+    // Data halaman Insight MDS (insight-mds.html): dihitung dari workbook yang sama. Gagal di sini tidak membatalkan tarikan.
+    setStep(4,'on','Menghitung…');
+    try{
+      await sleep(30);
+      const stat=await(await fetch('scripts/insight-static.json?v=1')).json();
+      const ins=InsightBuild.buildInsight(XLSX,wb,stat);
+      const js=JSON.stringify(ins);
+      let isz=PJ_CHUNK_SIZE,ic=[];
+      const ichunks=n=>{const a=[];for(let i=0;i<js.length;i+=n)a.push(js.slice(i,i+n));return a;};
+      ic=ichunks(isz);while(ic.some(c=>new Blob([c]).size>MAX_CHUNK_BYTES)){isz=Math.floor(isz*0.8);ic=ichunks(isz);}
+      for(let i=0;i<ic.length;i++)await fsPatch('insight_chunk_'+i,{data:{stringValue:ic[i]}});
+      await fsPatch('insight_meta',{chunkCount:{integerValue:String(ic.length)},updatedAt:{stringValue:ins.generatedAt}});
+      setStep(4,'done','Tersimpan ('+(js.length/1048576).toFixed(1)+' MB)');
+    }catch(e){console.warn('Insight dilewati',e);setStep(4,'fail','Dilewati: '+String(e.message||e).slice(0,80));}
+    bar(100);
     window.PJ_CACHE={call,order,at:nowIso};   // dipakai bagian gambar per area, tanpa unduh ulang
 
     const dCall=before&&before.call!=null?call.length-before.call:null;
@@ -184,7 +200,7 @@ async function run(){
     notify('✅ Data berhasil diupload',nf(call.length)+' call · '+nf(order.length)+' order'+(dCall!=null?' ('+sign(dCall)+' call baru)':'')+' · '+fmtWita(nowIso),'tarik-ok');
   }catch(e){
     console.error(e);
-    const cur=['s1','s2','s3'].find(id=>$(id).className==='on');
+    const cur=['s1','s2','s3','s4'].find(id=>$(id).className==='on');
     if(cur)setStep(Number(cur[1]),'fail');
     $('res').className='result err';
     $('res').innerHTML='<h2>❌ Gagal tarik data</h2><p>'+String(e.message||e).replace(/</g,'&lt;')+'</p><p>Data lama di dashboard tidak berubah (kecuali proses simpan sudah sebagian berjalan; ulangi saja).</p>';

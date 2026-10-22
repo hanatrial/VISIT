@@ -71,7 +71,8 @@ async function currentCounts(){
   // Data halaman insight-mds.html (ikut tarikan yang sama; gagal di sini tidak boleh mengganggu scorecard).
   try{
     const {buildInsight,READ_SHEETS}=require('./build-insight.js');
-    const out=buildInsight(XLSX,XLSX.read(buf,{type:'buffer',sheets:READ_SHEETS}));
+    const stat=JSON.parse(require('fs').readFileSync(require('path').join(__dirname,'insight-static.json'),'utf8'));
+    const out=buildInsight(XLSX,XLSX.read(buf,{type:'buffer',sheets:READ_SHEETS}),stat);
     const js=JSON.stringify(out);const ic=[];for(let i=0;i<js.length;i+=PJ_CHUNK_SIZE)ic.push(js.slice(i,i+PJ_CHUNK_SIZE));
     for(let i=0;i<ic.length;i++)await fsPatch('insight_chunk_'+i,{data:{stringValue:ic[i]}});
     await fsPatch('insight_meta',{chunkCount:{integerValue:String(ic.length)},updatedAt:{stringValue:out.generatedAt}});
