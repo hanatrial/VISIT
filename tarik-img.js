@@ -45,7 +45,8 @@
   }
 
   /* ── simpanan gambar (memori + IndexedDB) ───────────────────────────── */
-  const MEM={};   // area -> {area,sig,at,time,items:[{g,name,file,blob,w,h,fit}]}
+  const REC_V=2;   // naikkan bila tampilan gambar berubah, agar gambar lama dibuat ulang
+  const MEM={};   // area -> {area,sig,at,time,v,items:[{g,name,file,blob,w,h,fit}]}
   function idb(){
     return new Promise((res,rej)=>{
       if(!window.indexedDB)return rej(new Error('no idb'));
@@ -63,7 +64,7 @@
   async function loadStored(area){
     if(MEM[area])return MEM[area];
     const rec=await idbGet(area);
-    if(rec&&rec.items&&rec.items.length){MEM[area]=rec;return rec;}
+    if(rec&&rec.v===REC_V&&rec.items&&rec.items.length){MEM[area]=rec;return rec;}
     return null;
   }
   function groupsOf(rec){
@@ -73,7 +74,7 @@
   }
   // tanda isi: berubah hanya bila isi sekolah/item berubah (bukan sekadar waktu tarik)
   async function signature(rows){
-    const txt=(rows.latest||'')+(rows.prev||'')+JSON.stringify(rows.map(r=>[r.name,r.sek,r.hilo,r.tea,r.dHilo||0,r.dTea||0,r.ea,r.line,r.schools.map(s=>[s.nama,s.kab,s.baru,s.hilo,s.tea,s.item,(s.itemNames||[]).slice().sort()])]));
+    const txt=(rows.latest||'')+(rows.prev||'')+JSON.stringify(rows.map(r=>[r.name,r.sek,r.hilo,r.tea,r.dHilo||0,r.dTea||0,r.ea,r.line,r.dLineEa||0,r.schools.map(s=>[s.nama,s.kab,s.baru,s.hilo,s.tea,s.item,(s.itemNames||[]).slice().sort()])]));
     try{
       const h=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(txt));
       return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('');
@@ -131,13 +132,18 @@
     return{key:d.toISOString().slice(0,10),n};
   }
   window.__baselineKey=baselineKey;   // untuk pengujian
-  /* Hitungan terkini + selisih Hilo / NS Tea dibanding data sampai tanggal pembanding. */
+  /* Hitungan terkini + selisih Hilo / NS Tea / LINE/EA dibanding data sampai tanggal pembanding. */
   function computeAreaDelta(area){
     const rows=computeArea(area,null);
     let latest=null;PJ.call.forEach(r=>{const k=dkey(r.Tanggal);if(k&&(!latest||k>latest))latest=k;});
     const base=baselineKey(PJ.at);
     const old=computeArea(area,base.key);
-    rows.forEach(r=>{const o=old.find(x=>x.name===r.name)||{hilo:0,tea:0};r.dHilo=r.hilo-o.hilo;r.dTea=r.tea-o.tea;});
+    rows.forEach(r=>{
+      const o=old.find(x=>x.name===r.name)||{hilo:0,tea:0,ea:0,line:0,lineEa:0};
+      r.dHilo=r.hilo-o.hilo;r.dTea=r.tea-o.tea;
+      r.dEa=r.ea-o.ea;r.dLine=r.line-o.line;
+      r.dLineEa=(r.ea?r.lineEa:0)-(o.ea?o.lineEa:0);   // selisih rata-rata item unik per sekolah baru
+    });
     rows.latest=latest;rows.prev=base.key;rows.nHari=base.n;
     return{rows,latest,prev:base.key};
   }
@@ -176,24 +182,32 @@
   }
   const head=(title,sub)=>'<div style="font-size:22px;font-weight:800;margin-bottom:4px">'+title+'</div><div style="font-size:12px;color:'+MUT+';margin-bottom:14px">'+sub+'</div>';
 
-  /* Gambar ringkasan dibuat RAMPING (lebar 560) supaya muat tanpa geser di layar HP:
-     nama MDS terbaca jelas, kolom angka dipadatkan. */
   /* Gambar ringkasan dibuat RAMPING (lebar 560) supaya muat tanpa geser di layar HP.
-     Hilo / NS Tea diberi catatan (+n) = tambahan dibanding data sampai hari sebelumnya. */
+     Hilo / NS Tea diberi catatan (+n) = tambahan dibanding data sampai hari sebelumnya.
+     LINE/EA juga diberi (+n), n = selisih rata-rata item unik per sekolah baru (2 angka di belakang koma). */
   const dBadge=n=>!n?'':'<span style="font-size:12px;font-weight:800;margin-left:4px;color:'+(n>0?'#1f9d63':'#c0392b')+'">('+(n>0?'+':'')+n+')</span>';
+  /* Badge khusus LINE/EA: nilainya pecahan, dibulatkan 2 angka lalu nol di belakang dihapus (+0.30 -> +0.3). */
+  const dBadge1=n=>{
+    const v=Math.round((n||0)*100)/100;
+    if(!isFinite(v)||!v)return '';
+    const txt=v.toFixed(2).replace(/0$/,'');
+    return '<span style="font-size:12px;font-weight:800;margin-left:4px;color:'+(v>0?'#1f9d63':'#c0392b')+'">('+(v>0?'+':'')+txt+')</span>';
+  };
   function elMain(area,rows){
     const sum=k=>rows.reduce((s,r)=>s+(r[k]||0),0);
     const P='padding:11px 4px;border-bottom:1px solid '+LINE+';vertical-align:middle';
-    const body=rows.map(r=>'<tr><td style="'+P+';font-size:17px;font-weight:600;line-height:1.25">'+esc(r.name)+'</td><td style="'+P+';text-align:center;font-weight:800;font-size:18px">'+r.sek+'</td><td style="'+P+';text-align:center;font-size:17px;white-space:nowrap">'+r.hilo+dBadge(r.dHilo)+'</td><td style="'+P+';text-align:center;font-size:17px;white-space:nowrap">'+r.tea+dBadge(r.dTea)+'</td><td style="'+P+';text-align:center;font-size:17px">'+(r.ea?r.lineEa.toFixed(1):'-')+'</td></tr>').join('');
+    const body=rows.map(r=>'<tr><td style="'+P+';font-size:17px;font-weight:600;line-height:1.25">'+esc(r.name)+'</td><td style="'+P+';text-align:center;font-weight:800;font-size:18px">'+r.sek+'</td><td style="'+P+';text-align:center;font-size:17px;white-space:nowrap">'+r.hilo+dBadge(r.dHilo)+'</td><td style="'+P+';text-align:center;font-size:17px;white-space:nowrap">'+r.tea+dBadge(r.dTea)+'</td><td style="'+P+';text-align:center;font-size:17px;white-space:nowrap">'+(r.ea?r.lineEa.toFixed(1):'-')+dBadge1(r.dLineEa)+'</td></tr>').join('');
     const T='padding:12px 4px;font-weight:800;font-size:17px';
-    const tot='<tr><td style="'+T+'">Total</td><td style="'+T+';text-align:center;font-size:18px">'+sum('sek')+'</td><td style="'+T+';text-align:center;white-space:nowrap">'+sum('hilo')+dBadge(sum('dHilo'))+'</td><td style="'+T+';text-align:center;white-space:nowrap">'+sum('tea')+dBadge(sum('dTea'))+'</td><td style="'+T+';text-align:center">'+(sum('ea')?(sum('line')/sum('ea')).toFixed(1):'-')+'</td></tr>';
+    const ratio=(line,ea)=>ea?line/ea:0;
+    const dTot=ratio(sum('line'),sum('ea'))-ratio(sum('line')-sum('dLine'),sum('ea')-sum('dEa'));
+    const tot='<tr><td style="'+T+'">Total</td><td style="'+T+';text-align:center;font-size:18px">'+sum('sek')+'</td><td style="'+T+';text-align:center;white-space:nowrap">'+sum('hilo')+dBadge(sum('dHilo'))+'</td><td style="'+T+';text-align:center;white-space:nowrap">'+sum('tea')+dBadge(sum('dTea'))+'</td><td style="'+T+';text-align:center;white-space:nowrap">'+(sum('ea')?ratio(sum('line'),sum('ea')).toFixed(1):'-')+dBadge1(dTot)+'</td></tr>';
     const H='text-align:center;padding:9px 4px;font-size:11.5px;letter-spacing:.03em;color:'+MUT+';line-height:1.2';
     const note=rows.prev?'<b style="color:#1f9d63">(+n)</b> = tambahan dibanding data s.d. '+esc(fmtKey(rows.prev))+' ('+rows.nHari+' hari lalu, Minggu tidak dihitung) · ':'';
     return shell(560,'<div style="font-size:24px;font-weight:800;margin-bottom:4px">🆕 Sekolah Baru — '+esc(area)+'</div>'+
       '<div style="font-size:12.5px;color:'+MUT+';margin-bottom:12px;line-height:1.4">'+(rows.latest?'Data sampai '+esc(fmtKey(rows.latest)):(PJ.at?'Data per '+esc(fmtWita(PJ.at)):''))+'</div>'+
-      '<table style="width:100%;border-collapse:collapse;table-layout:fixed"><colgroup><col style="width:33%"><col style="width:14%"><col style="width:18%"><col style="width:19%"><col style="width:16%"></colgroup>'+
+      '<table style="width:100%;border-collapse:collapse;table-layout:fixed"><colgroup><col style="width:31%"><col style="width:13%"><col style="width:17%"><col style="width:18%"><col style="width:21%"></colgroup>'+
       '<thead><tr style="background:rgba(120,110,90,.12)"><th style="'+H+';text-align:left">MDS</th><th style="'+H+'">SEKOLAH</th><th style="'+H+'">HILO</th><th style="'+H+'">NS TEA</th><th style="'+H+'">LINE/EA</th></tr></thead><tbody>'+body+tot+'</tbody></table>'+
-      '<div style="font-size:11.5px;color:'+MUT+';margin-top:12px;line-height:1.45">'+note+'<b>Sekolah</b> = sudah transaksi (baru + lama) · <b>Hilo / NS Tea</b> = sekolah baru yang order · <b>LINE/EA</b> = item unik per sekolah baru</div>');
+      '<div style="font-size:11.5px;color:'+MUT+';margin-top:12px;line-height:1.45">'+note+'<b>Sekolah</b> = sudah transaksi (baru + lama) · <b>Hilo / NS Tea</b> = sekolah baru yang order · <b>LINE/EA</b> = item unik per sekolah baru ÷ yang order · pada LINE/EA, (+n) = selisih rata-rata (bisa turun walau item bertambah)</div>');
   }
   function elDetail(r,from,to,part){
     const nb=r.schools.filter(s=>s.baru).length;
@@ -339,7 +353,7 @@
       }
       await ensureH2C();
       const items=await generate(area,rows);
-      const rec={area,sig,at:PJ.at||metaAt,time:new Date().toISOString(),items};
+      const rec={area,v:REC_V,sig,at:PJ.at||metaAt,time:new Date().toISOString(),items};
       MEM[area]=rec;await idbPut(rec);
       $('imgProg').style.display='none';
       showRec(area,rec,'Gambar baru dibuat '+fmtWita(rec.time)+(stored?' karena data berubah.':'.'));
