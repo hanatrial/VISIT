@@ -1,0 +1,17 @@
+{
+  "id": "insight-mds",
+  "name": "Insight MDS Visit",
+  "short_name": "Insight MDS",
+  "description": "Heatmap item, peta kecamatan, dan peluang operator untuk PIC Imadur.",
+  "lang": "id",
+  "start_url": "insight-mds.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0B2B26",
+  "theme_color": "#0B2B26",
+  "icons": [
+    { "src": "insight-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "insight-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "insight-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

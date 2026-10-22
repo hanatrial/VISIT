@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Insight MDS Visit - PIC Imadur</title>
+<meta name="theme-color" content="#0B2B26">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Insight MDS">
+<link rel="manifest" href="insight.webmanifest">
+<link rel="icon" type="image/svg+xml" href="insight-icon.svg">
+<link rel="apple-touch-icon" href="insight-icon-180.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 <style>
 :root{--bg:#f6f8f6;--card:#fff;--ink:#0b2b26;--mute:#5d6f69;--line:#dbe4df;--accent:#235347}
@@ -215,6 +222,7 @@ async function loadData(){
     return await(await fetch('insight-data.json',{cache:'no-cache'})).json();
   }
 }
+if('serviceWorker' in navigator)navigator.serviceWorker.register('insight-sw.js').catch(()=>{});
 loadData().then(d=>{D=d;init();initLock();}).catch(e=>{document.getElementById('sub').textContent='Gagal memuat data: '+e.message;});
 </script>
 </body>
