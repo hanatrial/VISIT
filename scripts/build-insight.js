@@ -35,7 +35,8 @@ function buildInsight(XLSX,wb,stat){
   for(const r of ord){
     if(!(r.Value>0)||r.Brand==='BONUS')continue;
     const nm=String(r['Nama Item']||'').toUpperCase();
-    const h=heat[r['ID Call']]||(heat[r['ID Call']]={mds:r['Nama MDS'],prov:r.Provinsi,g:new Set()});
+    const h=heat[r['ID Call']]||(heat[r['ID Call']]={mds:r['Nama MDS'],prov:r.Provinsi,g:new Set(),xy:null});
+    if(!h.xy)h.xy=r['Koordinat Call'];
     PATS.forEach((p,gi)=>{if(typeof p==='function'?p(nm):p.test(nm))h.g.add(gi);});
   }
   const covered={};call.forEach(r=>{(covered[r.Provinsi]=covered[r.Provinsi]||{})[kabKey(r.Kabupaten)]=1;});
@@ -68,6 +69,15 @@ function buildInsight(XLSX,wb,stat){
       k.cov=(covered[prov]||{})[kabKey(k.kab)]||(kabKey(k.kab)==='pangkajenedankepulauan'&&(covered[prov]||{}).pangkajenekepulauan)?1:0;
     });
     const skus=Object.values(tx).map(x=>x.sku);
+    // heatmap per kecamatan untuk tiap MDS (dipakai saat filter satu MDS): [jumlah visit transaksi, ...jumlah per kelompok item]
+    P.hk={};
+    for(const c of Object.values(heat)){
+      if(c.prov!==prov||!P.mds[c.mds])continue;
+      const p=parse(c.xy);let idx=-1;
+      if(p)for(let i=0;i<P.kec.length&&idx<0;i++){const k=P.kec[i];if(p[1]<k.bb[0]||p[1]>k.bb[2]||p[0]<k.bb[1]||p[0]>k.bb[3])continue;if(k.g.some(g=>inPoly(p[1],p[0],g)))idx=i;}
+      const o=P.hk[c.mds]||(P.hk[c.mds]={});const a=o[idx]||(o[idx]=[0].concat(FOKUS.map(()=>0)));
+      a[0]++;c.g.forEach(gi=>a[gi+1]++);
+    }
     P.titik.forEach((t,ti)=>{
       let idx=-1;
       for(let i=0;i<P.kec.length&&idx<0;i++){const k=P.kec[i];if(t[1]<k.bb[0]||t[1]>k.bb[2]||t[0]<k.bb[1]||t[0]>k.bb[3])continue;if(k.g.some(p=>inPoly(t[1],t[0],p)))idx=i;}
