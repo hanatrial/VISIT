@@ -44,6 +44,7 @@ table.hm{table-layout:fixed;min-width:820px;border-spacing:3px}.hm th.grp{backgr
 @media(max-width:760px){.mapwrap{grid-template-columns:1fr}.map{height:420px}}
 .tarik{margin-left:8px;display:inline-block;border:1px solid var(--accent);color:var(--accent);padding:2px 10px;border-radius:999px;font-size:12px;text-decoration:none}.tarik:hover{background:var(--accent);color:#fff}
 .pal{display:flex;flex-direction:column;gap:6px;padding-bottom:10px;margin-bottom:4px;border-bottom:1px solid var(--line);font-size:12px}.pal .bar{height:10px;border-radius:5px;border:1px solid var(--line);background:linear-gradient(90deg,rgba(232,130,26,.12),rgba(232,130,26,.92))}.pal .bl{display:flex;justify-content:space-between;color:var(--mute);font-size:11px}.pal .it{display:flex;gap:8px;align-items:flex-start;line-height:1.3}.pal .it i{flex:none;width:14px;height:14px;border-radius:3px;margin-top:1px}
+.bars{max-height:560px;overflow-y:auto;padding-right:6px}.brow{display:grid;grid-template-columns:200px 1fr 80px;gap:10px;align-items:center;padding:3px 0;font-size:12px}.bl2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.btrack{background:var(--bg);border-radius:4px;height:14px}.bfill{height:14px;border-radius:4px;min-width:2px}.bv{font-weight:600;font-variant-numeric:tabular-nums}@media(max-width:760px){.brow{grid-template-columns:120px 1fr 64px}}
 </style>
 </head>
 <body>
@@ -78,13 +79,14 @@ Object.keys(D.prov).forEach((prov,pi)=>{
    '<section><h2>1. Heatmap item utama per MDS (dari penjualan)</h2><p class="note">% visit transaksi yang menjual item itu (ada nominal penjualan di sheet Order, bonus tidak dihitung) (minimal 1 rasa dalam kelompok itu). NS Tea = semua rasa tea digabung (Lemon, Lychee, Blackcurrant, Peach, Orange, Apple), School = semua rasa HI LO School, Anggur = Anggur + Anggur Hijau. Angka dalam kurung = jumlah visit transaksi.</p><div class="scroll" id="hm'+pi+'"></div><div class="hleg"><span style="background:#EDB09B">&lt;10%</span><span style="background:#F6E2A0">10-19%</span><span style="background:#EEF2EE">20-29%</span><span style="background:#A9CDB4">30-39%</span><span style="background:#4E8A6B;color:#fff">&ge;40%</span></div></section>'+
    '<section><h2>2. Peta vektor per kecamatan</h2><div class="minfo" id="mi'+pi+'"></div><p class="note">Warna kecamatan = besar celah antara potensi dan jumlah toko ber-AV (lihat keterangan warna di samping peta). Satu titik = satu toko unik yang pernah diinput AV-nya, di lokasi check-in terbaru. Lingkaran = radius 100 m sebenarnya (terlihat saat zoom dekat). Warna = MDS; klik nama untuk tampil/sembunyi.</p><div class="mapwrap"><div class="map" id="m'+pi+'"></div><div class="legend"><div class="pal"><b>Warna kecamatan</b><div class="bar"></div><div class="bl"><span>celah kecil</span><span>celah besar</span></div><div class="it"><i style="background:#fff;border:1px solid #b9c4bf"></i>Tidak ada celah (toko ber-AV sudah sebanding potensi)</div><div class="it"><i style="background:rgba(154,169,163,.4)"></i>Di luar kabupaten yang dikunjungi</div><div class="note" style="margin:6px 0 0">Celah = skor potensi (penduduk + keramaian) dikurangi skor jumlah toko ber-AV. Oranye pekat = potensi tinggi tapi tokonya masih sedikit.</div></div><b>Titik toko per MDS</b>'+leg+'<div class="note" style="margin-top:8px">Total '+P.titik.length+' toko</div></div></div></section>'+
    '<section><h2>3. Kecamatan peluang teratas</h2><p class="note">Hanya kabupaten/kota yang sudah pernah dikunjungi MDS-mu, potensi minimal 50. Urut dari celah terbesar: skor potensi dikurangi skor toko ber-AV (keduanya peringkat persentil 0-100 di antara kecamatan yang dicakup). "MDS terdekat" = MDS dengan toko ber-AV terbanyak di kecamatan itu, atau di kecamatan ber-AV terdekat bila masih kosong.</p><div id="tt'+pi+'"></div></section>'+
+   '<section><h2>4. AV per titik (total SKU) per kecamatan</h2><p class="note">Rata-rata jumlah SKU yang ada (Total SKU hasil input AV) per titik toko, per kecamatan. Memakai input AV terbaru tiap toko; hanya kecamatan dengan minimal 3 titik. Angka di kanan batang = rata-rata SKU dan jumlah titik. Ikut filter MDS di atas.</p><div class="bars" id="bc'+pi+'"></div></section>'+
    '<section><h2>Cara hitung</h2><p class="note" style="margin:0"><b>Skor potensi</b> = 50% persentil <b>penduduk</b> + 50% persentil <b>keramaian</b>. Penduduk: jumlah penduduk kabupaten/kota 2024 (file Jumlah_Penduduk_Sulawesi_2024_Full) dibagi ke kecamatan sebanding (jumlah sekolah + 1), jadi hanya estimasi karena data kecamatan belum ada. Keramaian: titik OpenStreetMap berbobot, pasar x5, terminal/pelabuhan x3, SPBU x1, toko/minimarket/kios/supermarket x1 (kelengkapan OSM tidak merata di daerah kecil). Sekolah dari daftar sekolahmu (Sekolah_Sulawesi_Selatan / Sekolah_Gorontalo) hanya dipakai sebagai pembobot penduduk dan ditampilkan sebagai info. Toko ber-AV = jumlah toko unik yang pernah diinput AV-nya (sheet Merchandise). Heatmap saja yang dibatasi pada visit transaksi.</p></section>';
   main.appendChild(sec);
   const tb=document.createElement('button');tb.className='tab';tb.setAttribute('role','tab');tb.textContent=prov;tb.setAttribute('aria-selected',pi===0);
   tb.onclick=()=>{[...tabs.children].forEach((b,j)=>{b.setAttribute('aria-selected',j===pi);document.getElementById('p'+j).hidden=j!==pi;});buildMap(pi);maps[pi].map.invalidateSize();refit(pi);};
   tabs.appendChild(tb);
   maps[pi]={P,prov,warnaMds,names,map:null,sel:null};
-  initChips(pi);renderHeat(pi);fillTop(pi);
+  initChips(pi);renderHeat(pi);fillTop(pi);renderBars(pi);
 });
 function hc(p){const b=HB.find(x=>p<x[0]);return 'background:'+b[1]+';color:'+b[2];}
 function renderHeat(pi){
@@ -93,6 +95,16 @@ function renderHeat(pi){
   names.forEach(n=>{const m=P.mds[n];h+='<tr><th class="r">'+esc(n.toUpperCase())+' <span class="n">('+m.n+')</span></th>'+m.ada.map((a,i)=>{const p=a/m.n;return '<td style="'+hc(p)+'" title="'+esc(D.fokus[i])+': '+a+' dari '+m.n+' visit">'+Math.round(p*100)+'%</td>';}).join('')+'</tr>';});
   if(!M.sel){const N=names.reduce((a,n)=>a+P.mds[n].n,0);h+='<tr class="tot"><th class="r">'+esc(M.prov.toUpperCase())+'</th>'+D.fokus.map((_,i)=>'<td class="t">'+Math.round(100*names.reduce((a,n)=>a+P.mds[n].ada[i],0)/N)+'%</td>').join('')+'</tr>';}
   document.getElementById('hm'+pi).innerHTML=h+'</tbody></table>';
+}
+function renderBars(pi){
+  const M=maps[pi],g={};
+  M.P.titik.forEach(t=>{if(t[8]<0||(M.sel&&t[2]!==M.sel))return;const o=g[t[8]]||(g[t[8]]={s:0,n:0,m:{}});o.s+=t[9];o.n++;o.m[t[2]]=(o.m[t[2]]||0)+1;});
+  const rows=Object.entries(g).filter(([,o])=>o.n>=3).map(([i,o])=>({k:M.P.kec[i],avg:o.s/o.n,n:o.n,mds:Object.entries(o.m).sort((a,b)=>b[1]-a[1])[0][0]})).sort((a,b)=>b.avg-a.avg);
+  const box=document.getElementById('bc'+pi);
+  if(!rows.length){box.innerHTML='<div class="note">Belum ada kecamatan dengan minimal 3 titik.</div>';return;}
+  const mx=Math.max(...rows.map(r=>r.avg));
+  const all=Object.values(g).reduce((a,o)=>a+o.s,0)/Object.values(g).reduce((a,o)=>a+o.n,0);
+  box.innerHTML='<div class="note" style="margin:0 0 8px">Rata-rata seluruh titik: <b>'+all.toFixed(1)+' SKU</b></div>'+rows.map(r=>'<div class="brow"><div class="bl2" title="'+esc(r.k.n+' ('+r.k.kab+')')+'">'+esc(r.k.n)+' <span class="n">'+esc(r.k.kab)+'</span></div><div class="btrack"><div class="bfill" style="width:'+(100*r.avg/mx).toFixed(1)+'%;background:'+M.warnaMds[r.mds]+'"></div></div><div class="bv">'+r.avg.toFixed(1)+' <span class="n">('+r.n+')</span></div></div>').join('');
 }
 function fillTop(pi){
   const M=maps[pi],P=M.P;
@@ -109,7 +121,7 @@ function initChips(pi){
 function setSel(pi,name){
   const M=maps[pi];M.sel=name;
   document.querySelectorAll('#fl'+pi+' .chip').forEach(b=>b.setAttribute('aria-pressed',(b.dataset.m||null)===name));
-  renderHeat(pi);fillTop(pi);
+  renderHeat(pi);fillTop(pi);renderBars(pi);
   document.querySelectorAll('#p'+pi+' .legend input').forEach(cb=>{const want=!name||cb.dataset.m===name;if(cb.checked!==want){cb.checked=want;if(cb.onchange)cb.onchange();}});
   refit(pi);
 }

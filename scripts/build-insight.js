@@ -63,7 +63,7 @@ const pct=arr=>arr.map(v=>{const below=arr.filter(w=>w<v).length,eq=arr.filter(w
       const p=parse(r['Koordinat Call']),b=BB[prov];
       if(!p||p[0]<b[0]||p[0]>b[1]||p[1]<b[2]||p[1]>b[3])continue;
       const k=r['Kode Customer'],t=(r.Tanggal||0)+(r['Check In']||0);
-      if(!tx[k]||t>tx[k].t)tx[k]={t,p,mds:r['Nama MDS'],nama:r['Nama Customer'],kab:r.Kabupaten,tipe:r['Tipe Customer'],tgl:iso(r.Tanggal)};
+      if(!tx[k]||t>tx[k].t)tx[k]={t,p,mds:r['Nama MDS'],nama:r['Nama Customer'],kab:r.Kabupaten,tipe:r['Tipe Customer'],tgl:iso(r.Tanggal),sku:Number(r['Total SKU'])||0};
     }
     P.titik=Object.values(tx).map(x=>[+x.p[0].toFixed(6),+x.p[1].toFixed(6),x.mds,x.nama,x.kab,x.tipe,x.tgl,1]);
 
@@ -74,10 +74,11 @@ const pct=arr=>arr.map(v=>{const below=arr.filter(w=>w<v).length,eq=arr.filter(w
       k.cx=r.reduce((a,c)=>a+c[0],0)/r.length;k.cy=r.reduce((a,c)=>a+c[1],0)/r.length;k.tx=0;
       k.cov=(covered[prov]||{})[kabKey(k.kab)]||(kabKey(k.kab)==='pangkajenedankepulauan'&&(covered[prov]||{}).pangkajenekepulauan)?1:0;
     });
-    P.titik.forEach(t=>{
+    const skus=Object.values(tx).map(x=>x.sku);
+    P.titik.forEach((t,ti)=>{
       let idx=-1;
       for(let i=0;i<P.kec.length&&idx<0;i++){const k=P.kec[i];if(t[1]<k.bb[0]||t[1]>k.bb[2]||t[0]<k.bb[1]||t[0]>k.bb[3])continue;if(k.g.some(p=>inPoly(t[1],t[0],p)))idx=i;}
-      t.push(idx);if(idx>=0)P.kec[idx].tx++;
+      t.push(idx);t.push(skus[ti]);if(idx>=0)P.kec[idx].tx++;
     });
 
     // potensi (50% penduduk + 50% keramaian) vs jumlah toko ber-AV, hanya kabupaten yang dikunjungi
