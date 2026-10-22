@@ -10,8 +10,9 @@
 const SHEET_ID='18659aHA0dQiBW-dRd616uOuujYoABeo7l1d2AeUXvsU';
 const PIC='Muhammad Imadur';
 const BB={'Sulawesi Selatan':[-8,-1.5,117,122.5],'Gorontalo':[0,1.6,121,124.5]};
-const GR=[['NutriSari',['Jeruk Peras','American Sweet Orange','Anggur','Nipis','Mango','Manis','NS Tea']],['HI LO',['Matcha','Swiss','School','Coklat','Chocomalt']]];
-const PATS=[/JERUK PERAS/,/\bASO\b/,/ANGGUR/,s=>/JERUK NIPIS/.test(s)&&!/JAHE/.test(s),/SWEET MANGO/,/JERUK \(EX\) MANIS|JERUK MANIS/,/^NS .*(LEMON|LYCHEE|BLACKCURRANT|PEACH|ORANGE|APPLE) TEA/,/CREAMY MATCHA/,/SWISS CHOCOLATE/,/HI ?LO SCHOOL/,/^HI ?LO CHOCOLATE PLS/,/CHOCO MALT/];
+const GR=[['NutriSari',['Jeruk Peras','NS Tea','ASO','Mango','Nipis','Anggur','NS Lainnya']],['HI LO',['Matcha','Coklat','Swiss','Thai Tea','White','School','Hilo Lainnya']]];
+const PATS=[/JERUK PERAS/,/^NS .*(LEMON|LYCHEE|BLACKCURRANT|PEACH|ORANGE|APPLE) TEA/,/\bASO\b/,/SWEET MANGO/,s=>/JERUK NIPIS/.test(s)&&!/JAHE/.test(s),/ANGGUR/,null,/CREAMY MATCHA/,/^HI ?LO CHOCOLATE PLS/,/SWISS CHOCOLATE/,/THAI TEA/,/WHITE CHOCOLATE/,/HI ?LO SCHOOL/,null];
+const OTHER={NUTRISARI:6,'HI LO':13};
 const FOKUS=GR.flatMap(g=>g[1]);
 
 const iso=v=>new Date(Date.UTC(1899,11,30)+v*864e5).toISOString().slice(0,10);
@@ -37,7 +38,9 @@ function buildInsight(XLSX,wb,stat){
     const nm=String(r['Nama Item']||'').toUpperCase();
     const h=heat[r['ID Call']]||(heat[r['ID Call']]={mds:r['Nama MDS'],prov:r.Provinsi,g:new Set(),xy:null});
     if(!h.xy)h.xy=r['Koordinat Call'];
-    PATS.forEach((p,gi)=>{if(typeof p==='function'?p(nm):p.test(nm))h.g.add(gi);});
+    let hit=false;
+    PATS.forEach((p,gi)=>{if(p&&(typeof p==='function'?p(nm):p.test(nm))){h.g.add(gi);hit=true;}});
+    if(!hit&&OTHER[r.Brand]!==undefined)h.g.add(OTHER[r.Brand]);
   }
   const covered={};call.forEach(r=>{(covered[r.Provinsi]=covered[r.Provinsi]||{})[kabKey(r.Kabupaten)]=1;});
 
