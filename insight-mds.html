@@ -85,7 +85,7 @@ Object.keys(D.prov).forEach((prov,pi)=>{
   const sec=document.createElement('div');sec.id='p'+pi;sec.hidden=pi>0;
   sec.innerHTML=
    '<div class="chips" id="fl'+pi+'"></div>'+
-   '<section><h2>1. Heatmap item utama per MDS (dari penjualan)</h2><p class="note">% visit transaksi yang menjual item itu (ada nominal penjualan di sheet Order, bonus tidak dihitung) (minimal 1 rasa dalam kelompok itu). NS Tea = semua rasa tea digabung (Lemon, Lychee, Blackcurrant, Peach, Orange, Apple), School = semua rasa HI LO School, Anggur = Anggur + Anggur Hijau, NS Lainnya dan Hilo Lainnya = semua item lain di brand itu. Angka dalam kurung = jumlah visit transaksi. Saat memilih satu MDS, baris berubah menjadi per kecamatan (minimal 3 visit).</p><div class="scroll" id="hm'+pi+'"></div><div class="hleg"><span style="background:#EDB09B">&lt;10%</span><span style="background:#F6E2A0">10-19%</span><span style="background:#EEF2EE">20-29%</span><span style="background:#A9CDB4">30-39%</span><span style="background:#4E8A6B;color:#fff">&ge;40%</span><span style="background:transparent;color:var(--mute)">Kolom Jeruk Peras dibalik: persen tinggi = merah</span></div></section>'+
+   '<section><h2>1. Heatmap item utama per MDS (dari penjualan)</h2><p class="note">% visit transaksi yang menjual item itu (ada nominal penjualan di sheet Order, bonus tidak dihitung) (minimal 1 rasa dalam kelompok itu). NS Tea = semua rasa tea digabung (Lemon, Lychee, Blackcurrant, Peach, Orange, Apple), School = semua rasa HI LO School, Anggur = Anggur + Anggur Hijau, NS Lainnya dan Hilo Lainnya = semua item lain di brand itu. Di Gorontalo, Jeruk Peras dan ASO digabung jadi satu kolom (Peras + ASO). Angka dalam kurung = jumlah visit transaksi. Saat memilih satu MDS, baris berubah menjadi per kecamatan (minimal 3 visit).</p><div class="scroll" id="hm'+pi+'"></div><div class="hleg"><span style="background:#EDB09B">&lt;10%</span><span style="background:#F6E2A0">10-19%</span><span style="background:#EEF2EE">20-29%</span><span style="background:#A9CDB4">30-39%</span><span style="background:#4E8A6B;color:#fff">&ge;40%</span><span style="background:transparent;color:var(--mute)">Kolom Jeruk Peras dibalik: persen tinggi = merah</span></div></section>'+
    '<section><h2>2. Peta vektor per kecamatan</h2><div class="minfo" id="mi'+pi+'"></div><p class="note">Warna kecamatan = besar celah antara potensi dan jumlah operator ber-AV (lihat keterangan warna di samping peta). Satu titik = satu operator unik yang pernah diinput AV-nya, di lokasi check-in terbaru. Lingkaran = radius 100 m sebenarnya (terlihat saat zoom dekat). Warna = MDS; klik nama untuk tampil/sembunyi.</p><div class="mapwrap"><div class="map" id="m'+pi+'"></div><div class="legend"><div class="pal"><b>Warna kecamatan</b><div class="bar"></div><div class="bl"><span>celah kecil</span><span>celah besar</span></div><div class="it"><i style="background:#fff;border:1px solid #b9c4bf"></i>Tidak ada celah (operator ber-AV sudah sebanding potensi)</div><div class="it"><i style="background:rgba(154,169,163,.4)"></i>Di luar kabupaten yang dikunjungi</div><div class="note" style="margin:6px 0 0">Celah = skor potensi (penduduk + keramaian) dikurangi skor jumlah operator ber-AV. Oranye pekat = potensi tinggi tapi operatornya masih sedikit.</div></div><b>Titik operator per MDS</b>'+leg+'<div class="note" style="margin-top:8px">Total '+P.titik.length+' operator</div></div></div></section>'+
    '<section><h2>3. Kecamatan peluang teratas</h2><p class="note">Hanya kabupaten/kota yang sudah pernah dikunjungi MDS-mu, potensi minimal 50. Urut dari celah terbesar: skor potensi dikurangi skor operator ber-AV (keduanya peringkat persentil 0-100 di antara kecamatan yang dicakup). "MDS terdekat" = MDS dengan operator ber-AV terbanyak di kecamatan itu, atau di kecamatan ber-AV terdekat bila masih kosong.</p><div id="tt'+pi+'"></div></section>'+
    '<section><h2>4. AV per titik (total SKU) per kecamatan</h2><p class="note">Rata-rata jumlah SKU yang ada (Total SKU hasil input AV) per titik operator, per kecamatan. Memakai input AV terbaru tiap operator; hanya kecamatan dengan minimal 3 titik. Angka di kanan batang = rata-rata SKU dan jumlah titik. Ikut filter MDS di atas.</p><div class="bars" id="bc'+pi+'"></div></section>';
@@ -98,28 +98,31 @@ Object.keys(D.prov).forEach((prov,pi)=>{
   initChips(pi);renderHeat(pi);fillTop(pi);renderBars(pi);
 });
 function hc(p,i){let k=HB.findIndex(x=>p<x[0]);if(i===0)k=HB.length-1-k;const b=HB[k];return 'background:'+b[1]+';color:'+b[2];}
+function colsOf(M){return M.prov==='Gorontalo'?[14,1,3,4,5,6,7,8,9,10,11,12,13]:[0,1,2,3,4,5,6,7,8,9,10,11,12,13];}
+function grpHead(cols){const ns=cols.filter(i=>i<=6||i===14).length;return '<th></th><th class="grp gn" colspan="'+ns+'">NutriSari</th><th class="grp gh" colspan="'+(cols.length-ns)+'">HI LO</th>';}
 function renderHeat(pi){
   const M=maps[pi],P=M.P,names=M.sel?[M.sel]:M.names;
   if(M.sel){renderHeatKec(pi);return;}
-  let h='<table class="hm"><colgroup><col style="width:165px"></colgroup><thead><tr><th></th>'+D.groups.map(g=>'<th class="grp '+(g.b==='HI LO'?'gh':'gn')+'" colspan="'+g.n+'">'+esc(g.b)+'</th>').join('')+'</tr><tr><th class="r2">MDS</th>'+D.fokus.map(f=>'<th class="c2">'+esc(f)+'</th>').join('')+'</tr></thead><tbody>';
-  names.forEach(n=>{const m=P.mds[n];h+='<tr><th class="r">'+esc(n.toUpperCase())+' <span class="n">('+m.n+')</span></th>'+m.ada.map((a,i)=>{const p=a/m.n;return '<td style="'+hc(p,i)+'" title="'+esc(D.fokus[i])+': '+a+' dari '+m.n+' visit">'+Math.round(p*100)+'%</td>';}).join('')+'</tr>';});
-  if(!M.sel){const N=names.reduce((a,n)=>a+P.mds[n].n,0);h+='<tr class="tot"><th class="r">'+esc(M.prov.toUpperCase())+'</th>'+D.fokus.map((_,i)=>'<td class="t">'+Math.round(100*names.reduce((a,n)=>a+P.mds[n].ada[i],0)/N)+'%</td>').join('')+'</tr>';}
+  const cols=colsOf(M);
+  let h='<table class="hm"><colgroup><col style="width:165px"></colgroup><thead><tr>'+grpHead(cols)+'</tr><tr><th class="r2">MDS</th>'+cols.map(i=>'<th class="c2">'+esc(D.fokus[i])+'</th>').join('')+'</tr></thead><tbody>';
+  names.forEach(n=>{const m=P.mds[n];h+='<tr><th class="r">'+esc(n.toUpperCase())+' <span class="n">('+m.n+')</span></th>'+cols.map(i=>{const a=m.ada[i],p=a/m.n;return '<td style="'+hc(p,i)+'" title="'+esc(D.fokus[i])+': '+a+' dari '+m.n+' visit">'+Math.round(p*100)+'%</td>';}).join('')+'</tr>';});
+  if(!M.sel){const N=names.reduce((a,n)=>a+P.mds[n].n,0);h+='<tr class="tot"><th class="r">'+esc(M.prov.toUpperCase())+'</th>'+cols.map(i=>'<td class="t">'+Math.round(100*names.reduce((a,n)=>a+P.mds[n].ada[i],0)/N)+'%</td>').join('')+'</tr>';}
   document.getElementById('hm'+pi).innerHTML=h+'</tbody></table>';
 }
 function renderHeatKec(pi){
-  const M=maps[pi],P=M.P,hk=P.hk&&P.hk[M.sel]||{},NF=D.fokus.length;
+  const M=maps[pi],P=M.P,hk=P.hk&&P.hk[M.sel]||{},cols=colsOf(M);
   const rows=[],rest=[0].concat(D.fokus.map(()=>0));
   Object.entries(hk).forEach(([i,a])=>{
     if(i!=='-1'&&a[0]>=3)rows.push({k:P.kec[i],a});
     else a.forEach((v,j)=>rest[j]+=v);
   });
   rows.sort((x,y)=>y.a[0]-x.a[0]);
-  const cell=(a,n,nm)=>a.map((v,i)=>{const p=v/n;return '<td style="'+hc(p,i)+'" title="'+esc(D.fokus[i])+': '+v+' dari '+n+' visit'+(nm?' ('+esc(nm)+')':'')+'">'+Math.round(p*100)+'%</td>';}).join('');
-  let h='<table class="hm"><colgroup><col style="width:165px"></colgroup><thead><tr><th></th>'+D.groups.map(g=>'<th class="grp '+(g.b==='HI LO'?'gh':'gn')+'" colspan="'+g.n+'">'+esc(g.b)+'</th>').join('')+'</tr><tr><th class="r2">KECAMATAN</th>'+D.fokus.map(f=>'<th class="c2">'+esc(f)+'</th>').join('')+'</tr></thead><tbody>';
+  const cell=(a,n,nm)=>cols.map(i=>{const v=a[i],p=v/n;return '<td style="'+hc(p,i)+'" title="'+esc(D.fokus[i])+': '+v+' dari '+n+' visit'+(nm?' ('+esc(nm)+')':'')+'">'+Math.round(p*100)+'%</td>';}).join('');
+  let h='<table class="hm"><colgroup><col style="width:165px"></colgroup><thead><tr>'+grpHead(cols)+'</tr><tr><th class="r2">KECAMATAN</th>'+cols.map(i=>'<th class="c2">'+esc(D.fokus[i])+'</th>').join('')+'</tr></thead><tbody>';
   rows.forEach(r=>{h+='<tr><th class="r">'+esc(r.k.n.toUpperCase())+' <span class="n">'+esc(r.k.kab)+' ('+r.a[0]+')</span></th>'+cell(r.a.slice(1),r.a[0],r.k.n)+'</tr>';});
   if(rest[0])h+='<tr><th class="r">LAINNYA <span class="n">(kecamatan &lt;3 visit / tanpa lokasi) ('+rest[0]+')</span></th>'+cell(rest.slice(1),rest[0],'lainnya')+'</tr>';
   const m=P.mds[M.sel];
-  h+='<tr class="tot"><th class="r">'+esc(M.sel.toUpperCase())+' <span class="n">('+m.n+')</span></th>'+m.ada.map(a=>'<td class="t">'+Math.round(100*a/m.n)+'%</td>').join('')+'</tr>';
+  h+='<tr class="tot"><th class="r">'+esc(M.sel.toUpperCase())+' <span class="n">('+m.n+')</span></th>'+cols.map(i=>'<td class="t">'+Math.round(100*m.ada[i]/m.n)+'%</td>').join('')+'</tr>';
   document.getElementById('hm'+pi).innerHTML=h+'</tbody></table>';
 }
 function renderBars(pi){

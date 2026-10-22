@@ -14,6 +14,7 @@ const GR=[['NutriSari',['Jeruk Peras','NS Tea','ASO','Mango','Nipis','Anggur','N
 const PATS=[/JERUK PERAS/,/^NS .*(LEMON|LYCHEE|BLACKCURRANT|PEACH|ORANGE|APPLE) TEA/,/\bASO\b/,/SWEET MANGO/,s=>/JERUK NIPIS/.test(s)&&!/JAHE/.test(s),/ANGGUR/,null,/CREAMY MATCHA/,/^HI ?LO CHOCOLATE PLS/,/SWISS CHOCOLATE/,/THAI TEA/,/WHITE CHOCOLATE/,/HI ?LO SCHOOL/,null];
 const OTHER={NUTRISARI:6,'HI LO':13};
 const FOKUS=GR.flatMap(g=>g[1]);
+FOKUS.push('Peras + ASO'); // indeks 14: visit yang menjual Jeruk Peras atau ASO (dipakai Gorontalo)
 
 const iso=v=>new Date(Date.UTC(1899,11,30)+v*864e5).toISOString().slice(0,10);
 const parse=s=>{const m=/^(-?\d+\.\d+), ?(-?\d+\.\d+)$/.exec(s||'');return m?[+m[1],+m[2]]:null;};
@@ -41,6 +42,7 @@ function buildInsight(XLSX,wb,stat){
     let hit=false;
     PATS.forEach((p,gi)=>{if(p&&(typeof p==='function'?p(nm):p.test(nm))){h.g.add(gi);hit=true;}});
     if(!hit&&OTHER[r.Brand]!==undefined)h.g.add(OTHER[r.Brand]);
+    if(h.g.has(0)||h.g.has(2))h.g.add(14);
   }
   const covered={};call.forEach(r=>{(covered[r.Provinsi]=covered[r.Provinsi]||{})[kabKey(r.Kabupaten)]=1;});
 
