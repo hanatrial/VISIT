@@ -58,7 +58,7 @@ let D;
 const PALET=['#e6194b','#3cb44b','#4363d8','#f58231','#911eb4','#008080','#9a6324','#f032e6'];
 const fmt=d=>new Date(d+'T00:00').toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});
 function init(){
-document.getElementById('sub').innerHTML='Data Call Google Sheet, kunjungan '+fmt(D.periode[0])+' - '+fmt(D.periode[1])+' <span class="n">| dibekukan per '+new Date(D.generatedAt).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})+', diperbarui otomatis tiap tanggal 3</span> <a class="tarik" href="https://github.com/hanatrial/VISIT/actions/workflows/insight-snapshot.yml" target="_blank" rel="noopener">Tarik ulang data</a>';
+document.getElementById('sub').innerHTML='Data Call Google Sheet, kunjungan '+fmt(D.periode[0])+' - '+fmt(D.periode[1])+' <span class="n">| dibekukan per '+new Date(D.generatedAt).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})+' (data tidak otomatis berubah)</span>';
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function warna(p){const a=[238,246,240],b=[35,83,71];const t=Math.pow(p,.8);return 'rgb('+a.map((x,i)=>Math.round(x+(b[i]-x)*t)).join(',')+')';}
 const tabs=document.getElementById('tabs'),main=document.getElementById('main');
