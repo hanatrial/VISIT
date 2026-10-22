@@ -91,7 +91,7 @@ function buildInsight(XLSX,wb,stat){
 
     // potensi (50% penduduk + 50% keramaian) vs jumlah toko ber-AV, hanya kabupaten yang dikunjungi
     const U=P.kec.filter(k=>k.cov);
-    const ker=U.map(k=>k.pasar*5+k.term*3+k.spbu+k.toko);
+    const ker=U.map(k=>k.pasar*5+k.term*3+k.spbu+k.toko+(k.tm||0));
     const pp=pct(U.map(k=>k.pend||0)),pk=pct(ker),pt=pct(U.map(k=>k.tx));
     U.forEach((k,i)=>{k.ker=ker[i];k.pot=Math.round(.5*pp[i]+.5*pk[i]);k.txs=Math.round(pt[i]);k.celah=k.pot-k.txs;});
     const dom=P.kec.map(()=>({}));P.titik.forEach(t=>{if(t[8]>=0)dom[t[8]][t[2]]=(dom[t[8]][t[2]]||0)+1;});

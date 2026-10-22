@@ -177,7 +177,7 @@ async function run(){
       const lk=await fsGet('insight_lock');
       if(lk&&lk.fields&&lk.fields.locked&&lk.fields.locked.booleanValue){setStep(4,'done','Dibekukan, tidak diubah');}else{
       await sleep(30);
-      const stat=await(await fetch('scripts/insight-static.json?v=1')).json();
+      const stat=await(await fetch('scripts/insight-static.json?v=2')).json();
       const ins=InsightBuild.buildInsight(XLSX,wb,stat);
       const js=JSON.stringify(ins);
       let isz=PJ_CHUNK_SIZE,ic=[];

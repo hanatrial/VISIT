@@ -139,8 +139,8 @@ function fillTop(pi){
   const M=maps[pi],P=M.P;
   const top=P.kec.filter(k=>k.cov&&k.pot>=50&&(!M.sel||k.mds===M.sel)).sort((a,b)=>b.celah-a.celah).slice(0,15);
   const fm=n=>n==null?'-':n.toLocaleString('id-ID');
-  document.getElementById('tt'+pi).innerHTML='<div class="scroll"><table class="top"><thead><tr><th class="l">Kecamatan</th><th class="l">Kabupaten/Kota</th><th class="l">MDS terdekat</th><th>Penduduk (est.)</th><th>Sekolah</th><th>Pasar</th><th>Terminal / pelabuhan</th><th>Toko / minimarket OSM</th><th>SPBU</th><th>Skor potensi</th><th>Operator ber-AV</th><th>Celah</th></tr></thead><tbody>'+
-    (top.length?top.map(k=>'<tr><td class="l"><b>'+esc(k.n)+'</b></td><td class="l">'+esc(k.kab)+'</td><td class="l">'+esc(k.mds||'-')+'</td><td>'+fm(k.pend)+'</td><td>'+k.sek+'</td><td>'+k.pasar+'</td><td>'+k.term+'</td><td>'+k.toko+'</td><td>'+k.spbu+'</td><td>'+k.pot+'</td><td>'+k.tx+'</td><td class="cel">+'+k.celah+'</td></tr>').join(''):'<tr><td class="l" colspan="12">Belum ada kecamatan dengan potensi minimal 50 untuk MDS ini.</td></tr>')+'</tbody></table></div>';
+  document.getElementById('tt'+pi).innerHTML='<div class="scroll"><table class="top"><thead><tr><th class="l">Kecamatan</th><th class="l">Kabupaten/Kota</th><th class="l">MDS terdekat</th><th>Penduduk (est.)</th><th>Sekolah</th><th>Pasar</th><th>Terminal / pelabuhan</th><th>Toko / minimarket</th><th>SPBU</th><th>Skor potensi</th><th>Operator ber-AV</th><th>Celah</th></tr></thead><tbody>'+
+    (top.length?top.map(k=>'<tr><td class="l"><b>'+esc(k.n)+'</b></td><td class="l">'+esc(k.kab)+'</td><td class="l">'+esc(k.mds||'-')+'</td><td>'+fm(k.pend)+'</td><td>'+k.sek+'</td><td>'+k.pasar+'</td><td>'+k.term+'</td><td>'+(k.toko+(k.tm||0))+'</td><td>'+k.spbu+'</td><td>'+k.pot+'</td><td>'+k.tx+'</td><td class="cel">+'+k.celah+'</td></tr>').join(''):'<tr><td class="l" colspan="12">Belum ada kecamatan dengan potensi minimal 50 untuk MDS ini.</td></tr>')+'</tbody></table></div>';
 }
 function initChips(pi){
   const M=maps[pi],box=document.getElementById('fl'+pi);
@@ -192,7 +192,7 @@ function buildMap(pi){
       else st={color:'#6b4a1f',weight:.6,fillColor:'#e8821a',fillOpacity:k.celah>0?Math.min(.12+.8*k.celah/70,.92):0};
       p.L.setStyle(st);
       let tip='<b>'+esc(k.n)+'</b> ('+esc(k.kab)+')';
-      if(k.cov)tip+='<br>Skor potensi '+k.pot+' | operator ber-AV '+k.tx+' | celah '+(k.celah>0?'+':'')+k.celah+'<br>Penduduk est. '+(k.pend==null?'-':k.pend.toLocaleString('id-ID'))+' | sekolah '+k.sek+'<br>Pasar '+k.pasar+', terminal/pelabuhan '+k.term+', toko OSM '+k.toko+', SPBU '+k.spbu;
+      if(k.cov)tip+='<br>Skor potensi '+k.pot+' | operator ber-AV '+k.tx+' | celah '+(k.celah>0?'+':'')+k.celah+'<br>Penduduk est. '+(k.pend==null?'-':k.pend.toLocaleString('id-ID'))+' | sekolah '+k.sek+'<br>Pasar '+k.pasar+', terminal/pelabuhan '+k.term+', toko/minimarket '+(k.toko+(k.tm||0))+' (OSM '+k.toko+', mapping '+(k.tm||0)+'), SPBU '+k.spbu;
       else tip+='<br>Di luar kabupaten yang dikunjungi';
       if(M.tot[i])tip+='<br>'+Object.entries(M.kecCnt[i]).sort((a,b)=>b[1]-a[1]).map(x=>esc(x[0])+': '+x[1]).join('<br>');
       p.L.unbindTooltip();p.L.bindTooltip(tip,{sticky:true});});
