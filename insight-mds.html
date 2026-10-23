@@ -107,7 +107,7 @@ Object.keys(D.prov).forEach((prov,pi)=>{
 
   main.appendChild(sec);
   const tb=document.createElement('button');tb.className='tab';tb.setAttribute('role','tab');tb.textContent=prov;tb.setAttribute('aria-selected',pi===0);
-  tb.onclick=()=>{[...tabs.children].forEach((b,j)=>{b.setAttribute('aria-selected',j===pi);document.getElementById('p'+j).hidden=j!==pi;});buildCmp(pi);if(maps[pi].cmp&&maps[pi].cmp.m0){maps[pi].cmp.m0.invalidateSize();maps[pi].cmp.m1.invalidateSize();}refit(pi);};
+  tb.onclick=async()=>{if(prov===PWD_AREA&&!pwdOk()){if(!(await askPwd(PWD_AREA)))return;}[...tabs.children].forEach((b,j)=>{b.setAttribute('aria-selected',j===pi);document.getElementById('p'+j).hidden=j!==pi;});buildCmp(pi);if(maps[pi].cmp&&maps[pi].cmp.m0){maps[pi].cmp.m0.invalidateSize();maps[pi].cmp.m1.invalidateSize();}refit(pi);};
   tabs.appendChild(tb);
   maps[pi]={P,prov,warnaMds,names,map:null,sel:null,hidden:new Set()};
   initChips(pi);renderHeat(pi);fillTop(pi);renderBars(pi);renderRo(pi);
@@ -279,6 +279,21 @@ async function setLock(v){
   if(!r.ok)throw new Error('HTTP '+r.status);
 }
 const witaFmt=iso=>new Date(iso).toLocaleString('id-ID',{timeZone:'Asia/Makassar',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})+' WITA';
+/* Tab Gorontalo dikunci kata sandi (sekadar penghalang tampilan: data tetap ikut termuat di halaman) */
+const PWD_HASH='2a92d6440514fe73097c06fdb85aca7dd1e016133744cc1cfeb99b182b6bb28a',PWD_AREA='Gorontalo';
+const pwdOk=()=>{try{return sessionStorage.getItem('insight_pw')==='1';}catch(e){return false;}};
+async function sha256(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+function askPwd(area){
+  return new Promise(res=>{
+    const ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML='<form style="background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:18px;max-width:320px;width:100%;font-size:14px"><b>Area '+area+' dikunci</b><div class="n" style="margin:4px 0 10px">Masukkan kata sandi untuk membuka.</div><input type="password" autocomplete="off" inputmode="numeric" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit" aria-label="Kata sandi"><div id="pwe" style="color:#c62828;font-size:12px;min-height:18px;margin-top:6px"></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px"><button type="button" id="pwc" class="chip">Batal</button><button type="submit" class="chip" aria-pressed="true">Buka</button></div></form>';
+    document.body.appendChild(ov);const f=ov.querySelector('form'),inp=ov.querySelector('input');inp.focus();
+    const done=v=>{ov.remove();res(v);};
+    ov.querySelector('#pwc').onclick=()=>done(false);
+    f.onsubmit=async e=>{e.preventDefault();let h='';try{h=await sha256(inp.value);}catch(x){}
+      if(h===PWD_HASH){try{sessionStorage.setItem('insight_pw','1');}catch(x){}done(true);}else{ov.querySelector('#pwe').textContent='Kata sandi salah.';inp.value='';inp.focus();}};
+  });
+}
 async function getState(){
   try{const r=await fetch(FS_BASE+'/insight_state?key='+FS_KEY);if(!r.ok)return null;const f=(await r.json()).fields||{};const g=k=>f[k]&&f[k].stringValue||'';return{month:g('month'),approveMonth:g('approveMonth'),pendingMonth:g('pendingMonth')};}
   catch(e){return null;}
