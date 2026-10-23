@@ -141,7 +141,9 @@ async function runInsight(env){
     const old=await fsGet('insight_db_meta');const oldCount=old&&old.fields&&old.fields.chunkCount?Number(old.fields.chunkCount.integerValue):0;
     await saveDb(db,fsPatch,fsDelete,oldCount);
   }
-  const out=buildInsight(XLSX,wb,stat,db,{month,pending:d.pending});
+  // Menunggu persetujuan bulan baru: data insight TIDAK diperbarui sama sekali (hanya cadangan database dan penanda di insight_state)
+  if(d.mode==='pause')return{out:null,info};
+  const out=buildInsight(XLSX,wb,stat,db,{month});
   return{out,info};
 }
 

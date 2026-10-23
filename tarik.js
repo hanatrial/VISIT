@@ -180,6 +180,7 @@ async function run(){
       const stat=await(await fetch('scripts/insight-static.json?v=2')).json();
       const R=await InsightBuild.runInsight({XLSX,wb,stat,fsGet,fsPatch,fsDelete});
       const ins=R.out;
+      if(!ins){setStep(4,'done','Menunggu persetujuan bulan baru; insight tidak diperbarui');}else{
       if(R.info.mode==='pause')setStep(4,'on','Bulan baru terdeteksi, menunggu persetujuan…');
       if(R.info.mode==='advance')setStep(4,'on','Menutup bulan dan memperbarui…');
       const js=JSON.stringify(ins);
@@ -189,6 +190,7 @@ async function run(){
       for(let i=0;i<ic.length;i++)await fsPatch('insight_chunk_'+i,{data:{stringValue:ic[i]}});
       await fsPatch('insight_meta',{chunkCount:{integerValue:String(ic.length)},updatedAt:{stringValue:ins.generatedAt}});
       setStep(4,'done',R.info.mode==='pause'?'Berhenti di '+R.info.approved+' (menunggu persetujuan bulan baru)':R.info.mode==='advance'?'Bulan ditutup, data bulan baru tersimpan':'Tersimpan ('+(js.length/1048576).toFixed(1)+' MB)');
+      }
       }
     }catch(e){console.warn('Insight dilewati',e);setStep(4,'fail','Dilewati: '+String(e.message||e).slice(0,80));}
     bar(100);

@@ -76,10 +76,12 @@ async function currentCounts(){
     const stat=JSON.parse(require('fs').readFileSync(require('path').join(__dirname,'insight-static.json'),'utf8'));
     const {out,info}=await BI.runInsight({XLSX,wb:XLSX.read(buf,{type:'buffer',sheets:BI.READ_SHEETS}),stat,fsGet,fsPatch,fsDelete});
     console.log('Insight mode:',info.mode,'| bulan sheet:',info.cm,'| bulan disetujui:',info.approved,info.closed?'| bulan ditutup: '+JSON.stringify(info.closed):'');
+    if(!out){console.log('Insight menunggu persetujuan bulan baru: data insight tidak diperbarui.');}else{
     const js=JSON.stringify(out);const ic=[];for(let i=0;i<js.length;i+=PJ_CHUNK_SIZE)ic.push(js.slice(i,i+PJ_CHUNK_SIZE));
     for(let i=0;i<ic.length;i++)await fsPatch('insight_chunk_'+i,{data:{stringValue:ic[i]}});
     await fsPatch('insight_meta',{chunkCount:{integerValue:String(ic.length)},updatedAt:{stringValue:out.generatedAt}});
     console.log('Insight: '+(js.length/1e6).toFixed(2)+' MB -> '+ic.length+' bagian, tersimpan.');
+    }
     }
   }catch(e){console.warn('Insight dilewati:',e.message);}
 })().catch(e=>{console.error('GAGAL:',e.message);process.exit(1);});

@@ -97,7 +97,7 @@ Object.keys(D.prov).forEach((prov,pi)=>{
    '<div class="chips" id="fl'+pi+'"></div>'+
    '<section><h2>1. Heatmap item utama per MDS (dari penjualan)</h2><p class="note">% visit transaksi yang menjual item itu (ada nominal penjualan di sheet Order, bonus tidak dihitung) (minimal 1 rasa dalam kelompok itu). NS Tea = semua rasa tea digabung (Lemon, Lychee, Blackcurrant, Peach, Orange, Apple), School = semua rasa HI LO School, Anggur = Anggur + Anggur Hijau, NS Lainnya dan Hilo Lainnya = semua item lain di brand itu. Di Gorontalo, Jeruk Peras dan ASO digabung jadi satu kolom (Peras + ASO). Angka dalam kurung = jumlah visit transaksi. Saat memilih satu MDS, baris berubah menjadi per kecamatan (minimal 3 visit).</p><div class="scroll" id="hm'+pi+'"></div><div class="hleg"><span style="background:#EDB09B">&lt;10%</span><span style="background:#F6E2A0">10-19%</span><span style="background:#EEF2EE">20-29%</span><span style="background:#A9CDB4">30-39%</span><span style="background:#4E8A6B;color:#fff">&ge;40%</span><span style="background:transparent;color:var(--mute)">Kolom Jeruk Peras dibalik: persen tinggi = merah</span></div></section>'+
    '<section><h2>2. Peta vektor per kecamatan</h2><div class="minfo" id="mi'+pi+'"></div><p class="note">Warna kecamatan = besar celah antara potensi dan jumlah operator ber-AV (lihat keterangan warna di samping peta). Satu titik = satu operator unik yang pernah diinput AV-nya, di lokasi check-in terbaru. Lingkaran = radius 100 m sebenarnya (terlihat saat zoom dekat). Warna = MDS; klik nama untuk tampil/sembunyi.</p><div class="mapwrap"><div class="map" id="m'+pi+'"></div><div class="legend"><div class="pal"><b>Warna kecamatan</b><div class="bar"></div><div class="bl"><span>celah kecil</span><span>celah besar</span></div><div class="it"><i style="background:#fff;border:1px solid #b9c4bf"></i>Tidak ada celah (operator ber-AV sudah sebanding potensi)</div><div class="it"><i style="background:rgba(154,169,163,.4)"></i>Di luar kabupaten yang dikunjungi</div><div class="note" style="margin:6px 0 0">Celah = skor potensi (penduduk + keramaian) dikurangi skor jumlah operator ber-AV. Oranye pekat = potensi tinggi tapi operatornya masih sedikit.</div></div><b>Titik operator per MDS</b>'+leg+'<div class="note" style="margin-top:8px">Total '+P.titik.length+' operator</div></div></div>'+
-   '<div class="cmphead"><b>Perubahan area: bulan lalu vs bulan berjalan</b><div class="modes" id="cmm'+pi+'"><label><input type="radio" name="cmode'+pi+'" value="jumlah" checked> Jumlah operator</label><label><input type="radio" name="cmode'+pi+'" value="ubah"> Perubahan (peta kanan)</label></div></div><p class="note" id="cmn'+pi+'"></p><div class="cmpgrid"><div><div class="cmplbl" id="cl0_'+pi+'"></div><div class="cmap" id="cm0_'+pi+'"></div></div><div><div class="cmplbl" id="cl1_'+pi+'"></div><div class="cmap" id="cm1_'+pi+'"></div></div></div><div class="cmpleg" id="cmg'+pi+'"></div><div id="cmt'+pi+'"></div></section>'+
+   '<div class="cmphead"><b>Perubahan area: bulan lalu vs bulan berjalan</b></div><p class="note" id="cmn'+pi+'"></p><div class="cmpgrid"><div><div class="cmplbl" id="cl0_'+pi+'"></div><div class="cmap" id="cm0_'+pi+'"></div></div><div><div class="cmplbl" id="cl1_'+pi+'"></div><div class="cmap" id="cm1_'+pi+'"></div></div></div><div class="cmpleg" id="cmg'+pi+'"></div><div id="cmt'+pi+'"></div></section>'+
    '<section><h2>3. Kecamatan peluang teratas</h2><p class="note">Hanya kabupaten/kota yang sudah pernah dikunjungi MDS-mu, potensi minimal 50. Urut dari celah terbesar: skor potensi dikurangi skor operator ber-AV (keduanya peringkat persentil 0-100 di antara kecamatan yang dicakup). "MDS terdekat" = MDS dengan operator ber-AV terbanyak di kecamatan itu, atau di kecamatan ber-AV terdekat bila masih kosong.</p><div id="tt'+pi+'"></div></section>'+
    '<section><h2>4. AV per titik (total SKU) per kecamatan: bulan lalu vs bulan berjalan</h2><p class="note">Rata-rata jumlah SKU yang ada (Total SKU hasil input AV) per titik operator, per kecamatan. Dua batang per baris: abu-abu = bulan lalu (dari database), berwarna = bulan berjalan (dari sheet). Memakai input AV terbaru tiap operator di bulannya. Filter <b>Semua MDS</b>: satu baris per MDS. Pilih satu MDS di atas untuk melihat per kecamatan (minimal 3 titik di bulan berjalan). Angka di kanan = rata-rata SKU dan jumlah titik.</p><div class="bars" id="bc'+pi+'"></div></section>';
 
@@ -185,19 +185,19 @@ function renderCmp(pi){
   const f=t=>!M.sel||t[2]===M.sel,N=i=>({p:A.p[i]?A.p[i].n:0,c:A.c[i]?A.c[i].n:0});
   document.getElementById('cl0_'+pi).textContent=mlab(C.pm)+' (bulan lalu): '+C.prev.filter(f).length+' operator';
   document.getElementById('cl1_'+pi).textContent=mlab(C.cm)+' (bulan berjalan): '+C.cur.filter(f).length+' operator';
-  document.getElementById('cmn'+pi).textContent=C.prev.length?'Dua peta berdampingan dan bergerak bersama. Warna hijau = jumlah operator ber-AV di kecamatan itu (skala sama di kedua peta). Garis tebal hijau = kecamatan yang naik minimal 3 operator, garis tebal merah = turun minimal 3. Arahkan kursor untuk angkanya.':'Belum ada database bulan lalu, jadi hanya bulan berjalan yang tampil.';
-  let mx=1;M.P.kec.forEach((k,i)=>{const n=N(i);mx=Math.max(mx,n.p,n.c);});
-  let mxd=1;M.P.kec.forEach((k,i)=>{const n=N(i);mxd=Math.max(mxd,Math.abs(n.c-n.p));});
+  document.getElementById('cmn'+pi).textContent=C.prev.length?'Dua peta berdampingan dan bergerak bersama. Warna oranye = celah peluang tiap bulan (skor potensi dikurangi peringkat operator ber-AV bulan itu), seperti peta di atas. Garis tebal hijau = kecamatan yang operator ber-AV-nya naik minimal 3, garis tebal merah = turun minimal 3. Arahkan kursor untuk angkanya.':'Belum ada database bulan lalu, jadi hanya bulan berjalan yang tampil.';
+  // celah per bulan = skor potensi dikurangi peringkat jumlah operator ber-AV bulan itu (di antara kecamatan yang dikunjungi); potensi tetap, hanya AV yang berubah
+  const pctl=arr=>arr.map(v=>{const lo=arr.filter(w=>w<v).length,eq=arr.filter(w=>w===v).length;return 100*(lo+(eq-1)/2)/Math.max(arr.length-1,1);});
+  const covIdx=[];M.P.kec.forEach((k,i)=>{if(k.cov)covIdx.push(i);});
+  const celahOf=key=>{const r=pctl(covIdx.map(i=>N(i)[key])),o={};covIdx.forEach((i,j)=>{o[i]=M.P.kec[i].pot-Math.round(r[j]);});return o;};
+  const CP=celahOf('p'),CC=celahOf('c');
   const kb=[];
   M.P.kec.forEach((k,i)=>{
     const n=N(i),d=n.c-n.p,sk=o=>o&&o.n?(o.s/o.n).toFixed(1):'-';
-    const tip='<b>'+esc(k.n)+'</b> ('+esc(k.kab)+')<br>'+esc(mlab(C.pm))+': '+n.p+' operator, rata-rata '+sk(A.p[i])+' SKU<br>'+esc(mlab(C.cm))+': '+n.c+' operator, rata-rata '+sk(A.c[i])+' SKU<br><b>'+(d>=0?'+':'')+d+'</b> operator';
-    const base={color:'#9aa9a3',weight:.5};
-    const cnt=v=>({...base,fillColor:'#2e7d32',fillOpacity:v?Math.min(.12+.75*v/mx,.9):0});
-    X.polys[0][i].setStyle(cnt(n.p));
-    let s1;
-    if(mode==='ubah')s1=d===0?{...base,fillOpacity:0}:{...base,fillColor:d>0?'#2e7d32':'#c62828',fillOpacity:Math.min(.2+.7*Math.abs(d)/mxd,.9)};
-    else s1=cnt(n.c);
+    const tip='<b>'+esc(k.n)+'</b> ('+esc(k.kab)+')<br>'+(k.cov?'Skor potensi '+k.pot+'<br>':'<i>Di luar kabupaten yang dikunjungi</i><br>')+esc(mlab(C.pm))+': '+n.p+' operator ber-AV'+(k.cov?', celah '+(CP[i]>0?'+':'')+CP[i]:'')+', rata-rata '+sk(A.p[i])+' SKU<br>'+esc(mlab(C.cm))+': '+n.c+' operator ber-AV'+(k.cov?', celah '+(CC[i]>0?'+':'')+CC[i]:'')+', rata-rata '+sk(A.c[i])+' SKU<br><b>'+(d>=0?'+':'')+d+'</b> operator ber-AV';
+    const og=c=>!k.cov?{color:'#b9c4bf',weight:.5,fillColor:'#9aa9a3',fillOpacity:.18}:{color:'#6b4a1f',weight:.5,fillColor:'#e8821a',fillOpacity:c>0?Math.min(.12+.8*c/70,.92):0};
+    X.polys[0][i].setStyle(og(CP[i]));
+    let s1=og(CC[i]);
     if(d>=3)s1={...s1,color:'#1b7f3b',weight:3};else if(d<=-3)s1={...s1,color:'#c62828',weight:3};
     X.polys[1][i].setStyle(s1);
     X.polys[0][i].unbindTooltip();X.polys[0][i].bindTooltip(tip,{sticky:true});X.polys[1][i].unbindTooltip();X.polys[1][i].bindTooltip(tip,{sticky:true});
@@ -207,7 +207,7 @@ function renderCmp(pi){
     X.dots[j].clearLayers();
     C[lab].filter(f).forEach(t=>{L.circleMarker([t[0],t[1]],{radius:2.2,weight:.5,color:'#fff',fillColor:M.warnaMds[t[2]]||'#333',fillOpacity:.95,interactive:false}).addTo(X.dots[j]);});
   });
-  document.getElementById('cmg'+pi).innerHTML=mode==='ubah'?'<span><i style="background:#2e7d32"></i>naik (peta kanan)</span><span><i style="background:#c62828"></i>turun (peta kanan)</span><span><i style="background:#fff;border:1px solid #9aa9a3"></i>tidak berubah</span>':'<span><i style="background:rgba(46,125,50,.2)"></i>sedikit</span><span><i style="background:rgba(46,125,50,.85)"></i>banyak operator ber-AV</span><span><i style="background:#fff;border:3px solid #1b7f3b"></i>naik ≥3</span><span><i style="background:#fff;border:3px solid #c62828"></i>turun ≥3</span>';
+  document.getElementById('cmg'+pi).innerHTML='<span><i style="background:rgba(232,130,26,.2)"></i>celah kecil</span><span><i style="background:rgba(232,130,26,.9)"></i>celah besar (potensi tinggi, operator ber-AV sedikit)</span><span><i style="background:#fff;border:3px solid #1b7f3b"></i>operator ber-AV naik ≥3</span><span><i style="background:#fff;border:3px solid #c62828"></i>operator ber-AV turun ≥3</span><span><i style="background:rgba(154,169,163,.4)"></i>di luar kabupaten yang dikunjungi</span>';
   const ch=M.P.kec.map((k,i)=>({k,i,...N(i)})).map(r=>({...r,d:r.c-r.p})).filter(r=>r.d!==0);
   const tbl=(arr,lab,cls)=>'<div><h3 style="font-size:13px;margin:12px 0 4px">'+lab+'</h3><table class="chg"><thead><tr><th class="l">Kecamatan</th><th>'+esc(mlab(C.pm))+'</th><th>'+esc(mlab(C.cm))+'</th><th>Selisih</th></tr></thead><tbody>'+(arr.length?arr.map(r=>'<tr><td class="l"><b>'+esc(r.k.n)+'</b> <span class="n">'+esc(r.k.kab)+'</span></td><td>'+r.p+'</td><td>'+r.c+'</td><td class="'+cls+'">'+(r.d>0?'+':'')+r.d+'</td></tr>').join(''):'<tr><td class="l" colspan="4">Tidak ada.</td></tr>')+'</tbody></table></div>';
   document.getElementById('cmt'+pi).innerHTML='<div class="chgwrap">'+tbl(ch.filter(r=>r.d>0).sort((a,b)=>b.d-a.d).slice(0,8),'Kecamatan yang naik','up')+tbl(ch.filter(r=>r.d<0).sort((a,b)=>a.d-b.d).slice(0,8),'Kecamatan yang turun','dn')+'</div><p class="note" style="margin:8px 0 0">Catatan: bulan lalu dihitung dari database (ada hari yang kosong bila export tidak lengkap), bulan berjalan dari sheet sampai tarikan terakhir. Selisih bisa sebagian karena bulan berjalan belum selesai.</p>';
@@ -305,17 +305,20 @@ async function initPending(){
   const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const mlab=m=>{if(!m)return '-';const p=m.split('-');return ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][+p[1]-1]+' '+p[0];};
   const box=document.getElementById('pend');box.className='pend';box.innerHTML='';
-  if(!D.pending)return;
+  // Status dibaca langsung dari insight_state: selama menunggu persetujuan, data insight tidak ditulis ulang oleh tarikan apa pun
   const st=await getState();
-  const keys=[...new Set([...(D.dbMonths||[]),D.pending])].sort(),drop=keys.slice(0,Math.max(0,keys.length-4));
-  const done=st&&st.approveMonth&&st.approveMonth>=D.pending;
-  const info='Bulan baru terdeteksi di sheet: <b>'+esc(mlab(D.pending))+'</b>. Data insight berhenti di <b>'+esc(mlab(D.month))+'</b> (final); penarikan data otomatis tidak dilanjutkan ke bulan baru tanpa persetujuanmu.';
+  const pending=st&&st.pendingMonth&&st.month&&st.pendingMonth>st.month?st.pendingMonth:null;
+  if(!pending)return;
+  const cur=st.month;
+  const keys=[...new Set([...(D.dbMonths||[]),pending])].sort(),drop=keys.slice(0,Math.max(0,keys.length-4));
+  const done=st&&st.approveMonth&&st.approveMonth>=pending;
+  const info='Bulan baru terdeteksi di sheet: <b>'+esc(mlab(pending))+'</b>. Data insight berhenti di <b>'+esc(mlab(cur))+'</b> (final); penarikan data otomatis tidak dilanjutkan ke bulan baru tanpa persetujuanmu.';
   if(done){box.innerHTML='<div class="box ok">'+info+'<br><b>Sudah disetujui.</b> Data bulan baru masuk pada tarikan berikutnya (otomatis, atau tekan <a href="tarik.html">Tarik Data</a>).</div>';return;}
-  box.innerHTML='<div class="box">'+info+'<br>Jika disetujui: '+esc(mlab(D.month))+' tetap di database'+(drop.length?', bulan tertua (<b>'+drop.map(esc).map(x=>mlab(x)).join(', ')+'</b>) dihapus dari database':'')+', lalu <b>seluruh data dan gambar insight diganti dengan data '+esc(mlab(D.pending))+'</b>.<br><button id="apv">Setujui &amp; lanjut ke '+esc(mlab(D.pending))+'</button></div>';
+  box.innerHTML='<div class="box">'+info+'<br>Jika disetujui: '+esc(mlab(cur))+' tetap di database'+(drop.length?', bulan tertua (<b>'+drop.map(esc).map(x=>mlab(x)).join(', ')+'</b>) dihapus dari database':'')+', lalu <b>seluruh data dan gambar insight diganti dengan data '+esc(mlab(pending))+'</b>.<br><button id="apv">Setujui &amp; lanjut ke '+esc(mlab(pending))+'</button></div>';
   document.getElementById('apv').onclick=async()=>{
-    if(!confirm('Setujui pergantian ke '+mlab(D.pending)+'?\n\n'+(drop.length?mlab(drop[0])+' akan dihapus dari database. ':'')+'Data dan gambar insight akan diganti dengan data bulan baru pada tarikan berikutnya. Tindakan ini tidak bisa dibatalkan.'))return;
+    if(!confirm('Setujui pergantian ke '+mlab(pending)+'?\n\n'+(drop.length?mlab(drop[0])+' akan dihapus dari database. ':'')+'Data dan gambar insight akan diganti dengan data bulan baru pada tarikan berikutnya. Tindakan ini tidak bisa dibatalkan.'))return;
     const b=document.getElementById('apv');b.disabled=true;
-    try{await setApprove(D.pending);initPending();}catch(e){alert('Gagal menyimpan persetujuan: '+e.message);b.disabled=false;}
+    try{await setApprove(pending);initPending();}catch(e){alert('Gagal menyimpan persetujuan: '+e.message);b.disabled=false;}
   };
 }
 async function initLock(){
