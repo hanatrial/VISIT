@@ -72,9 +72,10 @@ async function currentCounts(){
   try{
     const lk=await fsGet('insight_lock');
     if(lk&&lk.fields&&lk.fields.locked&&lk.fields.locked.booleanValue){console.log('Insight dibekukan (insight_lock), dilewati.');}else{
-    const {buildInsight,READ_SHEETS}=require('./build-insight.js');
+    const BI=require('./build-insight.js');
     const stat=JSON.parse(require('fs').readFileSync(require('path').join(__dirname,'insight-static.json'),'utf8'));
-    const out=buildInsight(XLSX,XLSX.read(buf,{type:'buffer',sheets:READ_SHEETS}),stat);
+    const {out,info}=await BI.runInsight({XLSX,wb:XLSX.read(buf,{type:'buffer',sheets:BI.READ_SHEETS}),stat,fsGet,fsPatch,fsDelete});
+    console.log('Insight mode:',info.mode,'| bulan sheet:',info.cm,'| bulan disetujui:',info.approved,info.closed?'| bulan ditutup: '+JSON.stringify(info.closed):'');
     const js=JSON.stringify(out);const ic=[];for(let i=0;i<js.length;i+=PJ_CHUNK_SIZE)ic.push(js.slice(i,i+PJ_CHUNK_SIZE));
     for(let i=0;i<ic.length;i++)await fsPatch('insight_chunk_'+i,{data:{stringValue:ic[i]}});
     await fsPatch('insight_meta',{chunkCount:{integerValue:String(ic.length)},updatedAt:{stringValue:out.generatedAt}});

@@ -178,14 +178,17 @@ async function run(){
       if(lk&&lk.fields&&lk.fields.locked&&lk.fields.locked.booleanValue){setStep(4,'done','Dibekukan, tidak diubah');}else{
       await sleep(30);
       const stat=await(await fetch('scripts/insight-static.json?v=2')).json();
-      const ins=InsightBuild.buildInsight(XLSX,wb,stat);
+      const R=await InsightBuild.runInsight({XLSX,wb,stat,fsGet,fsPatch,fsDelete});
+      const ins=R.out;
+      if(R.info.mode==='pause')setStep(4,'on','Bulan baru terdeteksi, menunggu persetujuan…');
+      if(R.info.mode==='advance')setStep(4,'on','Menutup bulan dan memperbarui…');
       const js=JSON.stringify(ins);
       let isz=PJ_CHUNK_SIZE,ic=[];
       const ichunks=n=>{const a=[];for(let i=0;i<js.length;i+=n)a.push(js.slice(i,i+n));return a;};
       ic=ichunks(isz);while(ic.some(c=>new Blob([c]).size>MAX_CHUNK_BYTES)){isz=Math.floor(isz*0.8);ic=ichunks(isz);}
       for(let i=0;i<ic.length;i++)await fsPatch('insight_chunk_'+i,{data:{stringValue:ic[i]}});
       await fsPatch('insight_meta',{chunkCount:{integerValue:String(ic.length)},updatedAt:{stringValue:ins.generatedAt}});
-      setStep(4,'done','Tersimpan ('+(js.length/1048576).toFixed(1)+' MB)');
+      setStep(4,'done',R.info.mode==='pause'?'Berhenti di '+R.info.approved+' (menunggu persetujuan bulan baru)':R.info.mode==='advance'?'Bulan ditutup, data bulan baru tersimpan':'Tersimpan ('+(js.length/1048576).toFixed(1)+' MB)');
       }
     }catch(e){console.warn('Insight dilewati',e);setStep(4,'fail','Dilewati: '+String(e.message||e).slice(0,80));}
     bar(100);
