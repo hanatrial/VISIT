@@ -63,6 +63,7 @@ table.chg td{min-width:0;padding:5px 8px;text-align:right;background:transparent
 @media (prefers-color-scheme:dark){.pend .box{background:#3a2f14;color:#f2d49a}.pend .box.ok{background:#12301a;color:#b7e4c0}}
 .cmpside{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:12px 0 4px}.cmpside .legend{max-width:none}.cmpside .pal{border-bottom:0;margin:0;padding:0}@media(max-width:760px){.cmpside{grid-template-columns:1fr}}
 .rrow{display:grid;grid-template-columns:200px 1fr 170px;gap:10px;align-items:center;padding:5px 0;font-size:12px}.rtrack{display:flex;height:14px;background:var(--bg);border-radius:4px;overflow:hidden}.rtrack .b{background:#9fb8ac}.rtrack .a{background:#e8821a}.rsum{display:flex;gap:18px;flex-wrap:wrap;margin:0 0 10px;font-size:13px}.rsum b{font-size:18px}.rsum .add b{color:#b45309}.rleg{display:flex;gap:14px;font-size:12px;color:var(--mute);margin:0 0 6px}.rleg i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-2px}table.rl td{min-width:0;padding:5px 8px;text-align:left;background:transparent;border-bottom:1px solid var(--line);border-radius:0}table.rl th{padding:4px 8px;text-align:left;white-space:nowrap}@media(max-width:760px){.rrow{grid-template-columns:110px 1fr 120px}}
+.rrow.rt{grid-template-columns:200px 1fr 170px 160px}.tgt{background:var(--bg);height:8px;border-radius:4px;overflow:hidden}.tgt>div{height:8px;border-radius:4px}.tg2 span{font-size:11px;color:var(--mute);font-variant-numeric:tabular-nums}.tg2 .ok{color:#1b7f3b;font-weight:600}@media(max-width:760px){.rrow.rt{grid-template-columns:110px 1fr 120px}.rrow.rt .tg2{grid-column:1/-1}}
 </style>
 </head>
 <body>
@@ -86,6 +87,7 @@ function warna(p){const a=[238,246,240],b=[35,83,71];const t=Math.pow(p,.8);retu
 const tabs=document.getElementById('tabs'),main=document.getElementById('main');
 const HB=[[0.1,'#EDB09B','#3b2a22'],[0.2,'#F6E2A0','#4a3f1d'],[0.3,'#EEF2EE','#0b2b26'],[0.4,'#A9CDB4','#0b2b26'],[9,'#4E8A6B','#fff']];
 const BLN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+const RO_TARGET=50;
 const maps={};
 Object.keys(D.prov).forEach((prov,pi)=>{
   const P=D.prov[prov];
@@ -230,7 +232,7 @@ function initChips(pi){
 function renderRo(pi){
   const M=maps[pi],R=M.P.ro3,meta=D.ro3,box=document.getElementById('ro'+pi),note=document.getElementById('rn'+pi);
   if(!R||!meta){note.textContent='Data RO 3 Varian belum tersedia (tarik data lagi dari halaman Tarik Data).';box.innerHTML='';return;}
-  note.textContent='RO 3 Varian = kedai dengan transaksi minimal '+meta.min+' varian NutriSari atau HI LO dalam satu bulan, tidak termasuk Jeruk Peras dan ASO (bonus tidak dihitung). Database = kedai yang sudah mencapainya di '+(meta.baseMonths.length?meta.baseMonths.map(mlab).join(', '):'bulan sebelumnya')+'. Penambahan = kedai yang mencapainya di '+mlab(meta.month)+' dan belum ada di database (+1 tiap kedai). Semua MDS: tampil per MDS. Pilih satu MDS di atas untuk melihat per kecamatan.';
+  note.textContent='RO 3 Varian = kedai dengan transaksi minimal '+meta.min+' varian NutriSari atau HI LO dalam satu bulan, tidak termasuk Jeruk Peras dan ASO (bonus tidak dihitung). Database = kedai yang sudah mencapainya di '+(meta.baseMonths.length?meta.baseMonths.map(mlab).join(', '):'bulan sebelumnya')+'. Penambahan = kedai yang mencapainya di '+mlab(meta.month)+' dan belum ada di database (+1 tiap kedai). Target penambahan: minimal '+RO_TARGET+' kedai per MDS per bulan (bulan berjalan belum selesai, jadi angkanya masih bertambah). Semua MDS: tampil per MDS. Pilih satu MDS di atas untuk melihat per kecamatan.';
   let rows,labelOf;
   if(!M.sel){
     rows=Object.entries(R.m).filter(([k])=>M.warnaMds[k]).map(([k,v])=>({k,b:v[0],a:v[1]}));
@@ -242,9 +244,10 @@ function renderRo(pi){
   }
   rows.sort((x,y)=>y.a-x.a||(y.b+y.a)-(x.b+x.a));
   const tb=rows.reduce((s,r)=>s+r.b,0),ta=rows.reduce((s,r)=>s+r.a,0),mx=Math.max(1,...rows.map(r=>r.b+r.a));
-  let h='<div class="rsum"><div>Database RO 3 Varian<br><b>'+tb+'</b> kedai</div><div class="add">Penambahan '+esc(mlab(meta.month))+'<br><b>+'+ta+'</b> kedai</div><div>Total sekarang<br><b>'+(tb+ta)+'</b> kedai</div></div>';
+  const capai=rows.filter(r=>r.a>=RO_TARGET).length;
+  let h='<div class="rsum"><div>Database RO 3 Varian<br><b>'+tb+'</b> kedai</div><div class="add">Penambahan '+esc(mlab(meta.month))+'<br><b>+'+ta+'</b> kedai</div><div>Total sekarang<br><b>'+(tb+ta)+'</b> kedai</div><div>Target penambahan<br><b>'+RO_TARGET+'</b> per MDS'+(M.sel?'<br><span class="'+(ta>=RO_TARGET?'ok':'n')+'">'+ta+'/'+RO_TARGET+' ('+Math.round(100*ta/RO_TARGET)+'%)'+(ta>=RO_TARGET?' tercapai':'')+'</span>':'<br><span class="n">'+capai+' dari '+rows.length+' MDS tercapai</span>')+'</div></div>';
   h+='<div class="rleg"><span><i style="background:#9fb8ac"></i>database ('+(meta.baseMonths.length?meta.baseMonths.map(mlab).join(', '):'-')+')</span><span><i style="background:#e8821a"></i>penambahan '+esc(mlab(meta.month))+'</span></div>';
-  h+=rows.map(r=>'<div class="rrow"><div class="bl2">'+labelOf(r)+'</div><div class="rtrack"><div class="b" style="width:'+(100*r.b/mx).toFixed(1)+'%"></div><div class="a" style="width:'+(100*r.a/mx).toFixed(1)+'%"></div></div><div class="bv2">database <b>'+r.b+'</b> &middot; <span class="up" style="color:#b45309">+'+r.a+'</span> &middot; total <b>'+(r.b+r.a)+'</b></div></div>').join('')||'<div class="note">Belum ada data.</div>';
+  h+=rows.map(r=>'<div class="rrow'+(M.sel?'':' rt')+'"><div class="bl2">'+labelOf(r)+'</div><div class="rtrack"><div class="b" style="width:'+(100*r.b/mx).toFixed(1)+'%"></div><div class="a" style="width:'+(100*r.a/mx).toFixed(1)+'%"></div></div><div class="bv2">database <b>'+r.b+'</b> &middot; <span class="up" style="color:#b45309">+'+r.a+'</span> &middot; total <b>'+(r.b+r.a)+'</b></div>'+(M.sel?'':'<div class="tg2"><div class="tgt"><div style="width:'+Math.min(100,100*r.a/RO_TARGET).toFixed(0)+'%;background:'+(r.a>=RO_TARGET?'#2e7d32':'#e8821a')+'"></div></div><span class="'+(r.a>=RO_TARGET?'ok':'')+'">+'+r.a+' dari target '+RO_TARGET+' ('+Math.round(100*r.a/RO_TARGET)+'%)'+(r.a>=RO_TARGET?' ✓':'')+'</span></div>')+'</div>').join('')||'<div class="note">Belum ada data.</div>';
   if(M.sel){
     const list=(R.list||[]).filter(x=>x[0]===M.sel).sort((x,y)=>y[3]-x[3]);
     h+='<h3 style="font-size:13px;margin:16px 0 4px">Kedai penambahan '+esc(mlab(meta.month))+' ('+list.length+')</h3>'+(list.length?'<div class="scroll"><table class="rl"><thead><tr><th>Kedai</th><th>Kecamatan</th><th>Varian</th><th>Contoh varian</th></tr></thead><tbody>'+list.map(x=>'<tr><td><b>'+esc(x[2])+'</b></td><td>'+(x[1]<0?'-':esc(M.P.kec[x[1]].n)+' <span class="n">'+esc(M.P.kec[x[1]].kab)+'</span>')+'</td><td>'+x[3]+'</td><td>'+esc(x[4])+'</td></tr>').join('')+'</tbody></table></div>':'<div class="note">Belum ada penambahan.</div>');
