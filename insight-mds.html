@@ -61,6 +61,7 @@ table.chg td{min-width:0;padding:5px 8px;text-align:right;background:transparent
 @media(max-width:760px){.cmpgrid,.chgwrap{grid-template-columns:1fr}.cmap{height:340px}.brow2{grid-template-columns:110px 1fr 100px}}
 .pend .box{max-width:1168px;margin:12px auto 0;padding:12px 16px;border:1px solid #e0a43a;background:#fff7e6;color:#5a3d05;border-radius:8px;font-size:13px;line-height:1.5}.pend .box.ok{border-color:#2e7d32;background:#eaf6ec;color:#1b4d22}.pend button{margin-top:8px;border:0;background:#b45309;color:#fff;padding:7px 14px;border-radius:6px;font:inherit;font-weight:600;cursor:pointer}.pend button:disabled{opacity:.5;cursor:default}.pend a{color:inherit}
 @media (prefers-color-scheme:dark){.pend .box{background:#3a2f14;color:#f2d49a}.pend .box.ok{background:#12301a;color:#b7e4c0}}
+.cmpside{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:12px 0 4px}.cmpside .legend{max-width:none}.cmpside .pal{border-bottom:0;margin:0;padding:0}@media(max-width:760px){.cmpside{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -96,16 +97,15 @@ Object.keys(D.prov).forEach((prov,pi)=>{
   sec.innerHTML=
    '<div class="chips" id="fl'+pi+'"></div>'+
    '<section><h2>1. Heatmap item utama per MDS (dari penjualan)</h2><p class="note">% visit transaksi yang menjual item itu (ada nominal penjualan di sheet Order, bonus tidak dihitung) (minimal 1 rasa dalam kelompok itu). NS Tea = semua rasa tea digabung (Lemon, Lychee, Blackcurrant, Peach, Orange, Apple), School = semua rasa HI LO School, Anggur = Anggur + Anggur Hijau, NS Lainnya dan Hilo Lainnya = semua item lain di brand itu. Di Gorontalo, Jeruk Peras dan ASO digabung jadi satu kolom (Peras + ASO). Angka dalam kurung = jumlah visit transaksi. Saat memilih satu MDS, baris berubah menjadi per kecamatan (minimal 3 visit).</p><div class="scroll" id="hm'+pi+'"></div><div class="hleg"><span style="background:#EDB09B">&lt;10%</span><span style="background:#F6E2A0">10-19%</span><span style="background:#EEF2EE">20-29%</span><span style="background:#A9CDB4">30-39%</span><span style="background:#4E8A6B;color:#fff">&ge;40%</span><span style="background:transparent;color:var(--mute)">Kolom Jeruk Peras dibalik: persen tinggi = merah</span></div></section>'+
-   '<section><h2>2. Peta vektor per kecamatan</h2><div class="minfo" id="mi'+pi+'"></div><p class="note">Warna kecamatan = besar celah antara potensi dan jumlah operator ber-AV (lihat keterangan warna di samping peta). Satu titik = satu operator unik yang pernah diinput AV-nya, di lokasi check-in terbaru. Lingkaran = radius 100 m sebenarnya (terlihat saat zoom dekat). Warna = MDS; klik nama untuk tampil/sembunyi.</p><div class="mapwrap"><div class="map" id="m'+pi+'"></div><div class="legend"><div class="pal"><b>Warna kecamatan</b><div class="bar"></div><div class="bl"><span>celah kecil</span><span>celah besar</span></div><div class="it"><i style="background:#fff;border:1px solid #b9c4bf"></i>Tidak ada celah (operator ber-AV sudah sebanding potensi)</div><div class="it"><i style="background:rgba(154,169,163,.4)"></i>Di luar kabupaten yang dikunjungi</div><div class="note" style="margin:6px 0 0">Celah = skor potensi (penduduk + keramaian) dikurangi skor jumlah operator ber-AV. Oranye pekat = potensi tinggi tapi operatornya masih sedikit.</div></div><b>Titik operator per MDS</b>'+leg+'<div class="note" style="margin-top:8px">Total '+P.titik.length+' operator</div></div></div>'+
-   '<div class="cmphead"><b>Perubahan area: bulan lalu vs bulan berjalan</b></div><p class="note" id="cmn'+pi+'"></p><div class="cmpgrid"><div><div class="cmplbl" id="cl0_'+pi+'"></div><div class="cmap" id="cm0_'+pi+'"></div></div><div><div class="cmplbl" id="cl1_'+pi+'"></div><div class="cmap" id="cm1_'+pi+'"></div></div></div><div class="cmpleg" id="cmg'+pi+'"></div><div id="cmt'+pi+'"></div></section>'+
+   '<section><h2>2. Peta vektor per kecamatan: bulan lalu vs bulan berjalan</h2><p class="note" id="cmn'+pi+'"></p><div class="cmpgrid"><div><div class="cmplbl" id="cl0_'+pi+'"></div><div class="cmap" id="cm0_'+pi+'"></div></div><div><div class="cmplbl" id="cl1_'+pi+'"></div><div class="cmap" id="cm1_'+pi+'"></div></div></div><div class="cmpside"><div class="pal"><b>Warna kecamatan</b><div class="bar"></div><div class="bl"><span>celah kecil</span><span>celah besar</span></div><div class="it"><i style="background:#fff;border:1px solid #b9c4bf"></i>Tidak ada celah (operator ber-AV sudah sebanding potensi)</div><div class="it"><i style="background:rgba(154,169,163,.4)"></i>Di luar kabupaten yang dikunjungi</div><div class="note" style="margin:6px 0 0">Celah dihitung terpisah untuk tiap bulan: skor potensi (penduduk + keramaian) dikurangi peringkat jumlah operator ber-AV bulan itu. Oranye pekat = potensi tinggi tapi operator ber-AV masih sedikit.</div></div><div class="legend"><b>Titik operator per MDS</b>'+leg+'<div class="note" style="margin-top:8px">Total '+P.titik.length+' operator bulan berjalan</div></div></div><div id="cmt'+pi+'"></div></section>'+
    '<section><h2>3. Kecamatan peluang teratas</h2><p class="note">Hanya kabupaten/kota yang sudah pernah dikunjungi MDS-mu, potensi minimal 50. Urut dari celah terbesar: skor potensi dikurangi skor operator ber-AV (keduanya peringkat persentil 0-100 di antara kecamatan yang dicakup). "MDS terdekat" = MDS dengan operator ber-AV terbanyak di kecamatan itu, atau di kecamatan ber-AV terdekat bila masih kosong.</p><div id="tt'+pi+'"></div></section>'+
    '<section><h2>4. AV per titik (total SKU) per kecamatan: bulan lalu vs bulan berjalan</h2><p class="note">Rata-rata jumlah SKU yang ada (Total SKU hasil input AV) per titik operator, per kecamatan. Dua batang per baris: abu-abu = bulan lalu (dari database), berwarna = bulan berjalan (dari sheet). Memakai input AV terbaru tiap operator di bulannya. Filter <b>Semua MDS</b>: satu baris per MDS. Pilih satu MDS di atas untuk melihat per kecamatan (minimal 3 titik di bulan berjalan). Angka di kanan = rata-rata SKU dan jumlah titik.</p><div class="bars" id="bc'+pi+'"></div></section>';
 
   main.appendChild(sec);
   const tb=document.createElement('button');tb.className='tab';tb.setAttribute('role','tab');tb.textContent=prov;tb.setAttribute('aria-selected',pi===0);
-  tb.onclick=()=>{[...tabs.children].forEach((b,j)=>{b.setAttribute('aria-selected',j===pi);document.getElementById('p'+j).hidden=j!==pi;});buildMap(pi);buildCmp(pi);maps[pi].map.invalidateSize();if(maps[pi].cmp&&maps[pi].cmp.m0){maps[pi].cmp.m0.invalidateSize();maps[pi].cmp.m1.invalidateSize();}refit(pi);};
+  tb.onclick=()=>{[...tabs.children].forEach((b,j)=>{b.setAttribute('aria-selected',j===pi);document.getElementById('p'+j).hidden=j!==pi;});buildCmp(pi);if(maps[pi].cmp&&maps[pi].cmp.m0){maps[pi].cmp.m0.invalidateSize();maps[pi].cmp.m1.invalidateSize();}refit(pi);};
   tabs.appendChild(tb);
-  maps[pi]={P,prov,warnaMds,names,map:null,sel:null};
+  maps[pi]={P,prov,warnaMds,names,map:null,sel:null,hidden:new Set()};
   initChips(pi);renderHeat(pi);fillTop(pi);renderBars(pi);
 });
 function hc(p,i){let k=HB.findIndex(x=>p<x[0]);if(i===0)k=HB.length-1-k;const b=HB[k];return 'background:'+b[1]+';color:'+b[2];}
@@ -176,16 +176,16 @@ function buildCmp(pi){
   const polys=[mkpoly(m0),mkpoly(m1)],dots=[L.layerGroup().addTo(m0),L.layerGroup().addTo(m1)];
   let busy=false;const sync=(a,b)=>a.on('moveend',()=>{if(busy)return;busy=true;b.setView(a.getCenter(),a.getZoom(),{animate:false});busy=false;});sync(m0,m1);sync(m1,m0);
   M.cmp={m0,m1,polys,dots,fitted:false};
-  document.querySelectorAll('input[name=cmode'+pi+']').forEach(r=>r.onchange=()=>renderCmp(pi));
+  document.querySelectorAll('#p'+pi+' .legend input').forEach(cb=>cb.onchange=()=>{if(cb.checked)M.hidden.delete(cb.dataset.m);else M.hidden.add(cb.dataset.m);renderCmp(pi);});
   renderCmp(pi);
 }
 function renderCmp(pi){
   const M=maps[pi],X=M.cmp;if(!X||X.none)return;
   const C=M.P.cmp,A=cmpAgg(M),mode=(document.querySelector('input[name=cmode'+pi+']:checked')||{}).value||'jumlah';
-  const f=t=>!M.sel||t[2]===M.sel,N=i=>({p:A.p[i]?A.p[i].n:0,c:A.c[i]?A.c[i].n:0});
+  const f=t=>(!M.sel||t[2]===M.sel)&&!M.hidden.has(t[2]),N=i=>({p:A.p[i]?A.p[i].n:0,c:A.c[i]?A.c[i].n:0});
   document.getElementById('cl0_'+pi).textContent=mlab(C.pm)+' (bulan lalu): '+C.prev.filter(f).length+' operator';
   document.getElementById('cl1_'+pi).textContent=mlab(C.cm)+' (bulan berjalan): '+C.cur.filter(f).length+' operator';
-  document.getElementById('cmn'+pi).textContent=C.prev.length?'Dua peta berdampingan dan bergerak bersama. Warna oranye = celah peluang tiap bulan (skor potensi dikurangi peringkat operator ber-AV bulan itu), seperti peta di atas. Garis tebal hijau = kecamatan yang operator ber-AV-nya naik minimal 3, garis tebal merah = turun minimal 3. Arahkan kursor untuk angkanya.':'Belum ada database bulan lalu, jadi hanya bulan berjalan yang tampil.';
+  document.getElementById('cmn'+pi).textContent=C.prev.length?'Dua peta berdampingan dan bergerak bersama. Warna oranye = celah peluang tiap bulan (skor potensi dikurangi peringkat operator ber-AV bulan itu). Satu titik = satu operator unik yang pernah diinput AV-nya di bulan itu, warna titik = MDS (klik nama MDS di bawah untuk tampil/sembunyi). Arahkan kursor ke kecamatan untuk angkanya; daftar kecamatan yang naik dan turun ada di bawah peta.':'Belum ada database bulan lalu, jadi hanya bulan berjalan yang tampil.';
   // celah per bulan = skor potensi dikurangi peringkat jumlah operator ber-AV bulan itu (di antara kecamatan yang dikunjungi); potensi tetap, hanya AV yang berubah
   const pctl=arr=>arr.map(v=>{const lo=arr.filter(w=>w<v).length,eq=arr.filter(w=>w===v).length;return 100*(lo+(eq-1)/2)/Math.max(arr.length-1,1);});
   const covIdx=[];M.P.kec.forEach((k,i)=>{if(k.cov)covIdx.push(i);});
@@ -198,7 +198,6 @@ function renderCmp(pi){
     const og=c=>!k.cov?{color:'#b9c4bf',weight:.5,fillColor:'#9aa9a3',fillOpacity:.18}:{color:'#6b4a1f',weight:.5,fillColor:'#e8821a',fillOpacity:c>0?Math.min(.12+.8*c/70,.92):0};
     X.polys[0][i].setStyle(og(CP[i]));
     let s1=og(CC[i]);
-    if(d>=3)s1={...s1,color:'#1b7f3b',weight:3};else if(d<=-3)s1={...s1,color:'#c62828',weight:3};
     X.polys[1][i].setStyle(s1);
     X.polys[0][i].unbindTooltip();X.polys[0][i].bindTooltip(tip,{sticky:true});X.polys[1][i].unbindTooltip();X.polys[1][i].bindTooltip(tip,{sticky:true});
     if(n.p||n.c)k.g.forEach(p=>p[0].forEach(c=>kb.push([c[1],c[0]])));
@@ -207,11 +206,11 @@ function renderCmp(pi){
     X.dots[j].clearLayers();
     C[lab].filter(f).forEach(t=>{L.circleMarker([t[0],t[1]],{radius:2.2,weight:.5,color:'#fff',fillColor:M.warnaMds[t[2]]||'#333',fillOpacity:.95,interactive:false}).addTo(X.dots[j]);});
   });
-  document.getElementById('cmg'+pi).innerHTML='<span><i style="background:rgba(232,130,26,.2)"></i>celah kecil</span><span><i style="background:rgba(232,130,26,.9)"></i>celah besar (potensi tinggi, operator ber-AV sedikit)</span><span><i style="background:#fff;border:3px solid #1b7f3b"></i>operator ber-AV naik ≥3</span><span><i style="background:#fff;border:3px solid #c62828"></i>operator ber-AV turun ≥3</span><span><i style="background:rgba(154,169,163,.4)"></i>di luar kabupaten yang dikunjungi</span>';
+  const cmg=document.getElementById('cmg'+pi);if(cmg)cmg.innerHTML='';
   const ch=M.P.kec.map((k,i)=>({k,i,...N(i)})).map(r=>({...r,d:r.c-r.p})).filter(r=>r.d!==0);
   const tbl=(arr,lab,cls)=>'<div><h3 style="font-size:13px;margin:12px 0 4px">'+lab+'</h3><table class="chg"><thead><tr><th class="l">Kecamatan</th><th>'+esc(mlab(C.pm))+'</th><th>'+esc(mlab(C.cm))+'</th><th>Selisih</th></tr></thead><tbody>'+(arr.length?arr.map(r=>'<tr><td class="l"><b>'+esc(r.k.n)+'</b> <span class="n">'+esc(r.k.kab)+'</span></td><td>'+r.p+'</td><td>'+r.c+'</td><td class="'+cls+'">'+(r.d>0?'+':'')+r.d+'</td></tr>').join(''):'<tr><td class="l" colspan="4">Tidak ada.</td></tr>')+'</tbody></table></div>';
   document.getElementById('cmt'+pi).innerHTML='<div class="chgwrap">'+tbl(ch.filter(r=>r.d>0).sort((a,b)=>b.d-a.d).slice(0,8),'Kecamatan yang naik','up')+tbl(ch.filter(r=>r.d<0).sort((a,b)=>a.d-b.d).slice(0,8),'Kecamatan yang turun','dn')+'</div><p class="note" style="margin:8px 0 0">Catatan: bulan lalu dihitung dari database (ada hari yang kosong bila export tidak lengkap), bulan berjalan dari sheet sampai tarikan terakhir. Selisih bisa sebagian karena bulan berjalan belum selesai.</p>';
-  if(!X.fitted&&kb.length){X.fitted=true;const bd=L.latLngBounds(kb).pad(.05);const fit=()=>{X.m0.invalidateSize();X.m1.invalidateSize();X.m0.fitBounds(bd);};fit();setTimeout(fit,300);}
+  if(!X.fitted&&kb.length){X.fitted=true;const bd=L.latLngBounds(kb).pad(.05);X.bd=bd;const fit=()=>{X.m0.invalidateSize();X.m1.invalidateSize();X.m0.fitBounds(bd);};fit();setTimeout(fit,300);}
 }
 
 function fillTop(pi){
@@ -234,54 +233,12 @@ function setSel(pi,name){
   refit(pi);
 }
 function refit(pi){
-  const M=maps[pi];if(!M.map)return;M.map.invalidateSize();
-  const q=M.sel?M.P.titik.filter(t=>t[2]===M.sel).map(t=>[t[0],t[1]]):[];
-  if(q.length)M.map.fitBounds(L.latLngBounds(q).pad(.1));else M.fit();
+  const M=maps[pi],X=M.cmp;if(!X||!X.m0)return;X.m0.invalidateSize();X.m1.invalidateSize();
+  const C=M.P.cmp,q=M.sel?C.prev.concat(C.cur).filter(t=>t[2]===M.sel).map(t=>[t[0],t[1]]):[];
+  if(q.length)X.m0.fitBounds(L.latLngBounds(q).pad(.1));else if(X.bd)X.m0.fitBounds(X.bd);
 }
-function buildMap(pi){
-  const M=maps[pi];if(M.map)return;
-  const map=L.map('m'+pi,{zoomSnap:.25});
-  const kecCnt=M.P.kec.map(()=>({}));
-  M.P.titik.forEach(t=>{if(t[8]>=0){const o=kecCnt[t[8]];o[t[2]]=(o[t[2]]||0)+1;}});
-  const tot=kecCnt.map(o=>Object.values(o).reduce((a,b)=>a+b,0)),mx=Math.max(...tot,1);
-  const kb=[];M.polys=[];
-  M.P.kec.forEach((k,i)=>{
-    const ll=k.g.map(p=>p.map(r=>r.map(c=>[c[1],c[0]])));
-    if(tot[i])kb.push(...ll.flat(2));
-    M.polys.push({k,i,ll,L:L.polygon(ll,{weight:.6}).addTo(map)});
-  });
-  M.kecCnt=kecCnt;M.tot=tot;M.mx=mx;
-  M.kb=kb;
-  const grup={};M.names.forEach(n=>grup[n]=L.layerGroup().addTo(map));
-  const pts=[];
-  M.P.titik.forEach(t=>{
-    const c=M.warnaMds[t[2]];if(!grup[t[2]])return;
-    const pop='<b>'+esc(t[3])+'</b><br>'+esc(t[5])+' - '+esc(t[4])+'<br>MDS: '+esc(t[2])+'<br>Transaksi terakhir: '+fmt(t[6]);
-    L.circle([t[0],t[1]],{radius:100,color:c,weight:1,opacity:.7,fillColor:c,fillOpacity:.12,interactive:false}).addTo(grup[t[2]]);
-    L.circleMarker([t[0],t[1]],{radius:3,color:'#fff',weight:.8,fillColor:c,fillOpacity:1}).bindPopup(pop).addTo(grup[t[2]]);
-    pts.push([t[0],t[1]]);
-  });
-  M.apply=function(mode){
-    const info={celah:'Oranye pekat = potensi tinggi tapi operator ber-AV masih sedikit (peluang terbesar). Abu-abu = di luar kabupaten yang dikunjungi.',pot:'Hijau pekat = skor potensi tinggi (penduduk + keramaian). Abu-abu = di luar kabupaten yang dikunjungi.',mds:'Warna = MDS dengan operator ber-AV terbanyak di kecamatan; makin pekat = makin banyak operator.'};
-    document.getElementById('mi'+pi).textContent=info[mode];
-    M.polys.forEach(p=>{const k=p.k,i=p.i;let st;
-      if(mode==='mds'){st=M.tot[i]?{color:'#44564f',weight:.8,fillColor:M.warnaMds[Object.entries(M.kecCnt[i]).sort((a,b)=>b[1]-a[1])[0][0]],fillOpacity:.25+.55*M.tot[i]/M.mx}:{color:'#9aa9a3',weight:.6,fillColor:'#000',fillOpacity:0};}
-      else if(!k.cov)st={color:'#b9c4bf',weight:.5,fillColor:'#9aa9a3',fillOpacity:.18};
-      else if(mode==='pot')st={color:'#44564f',weight:.6,fillColor:warna(k.pot/100),fillOpacity:.9};
-      else st={color:'#6b4a1f',weight:.6,fillColor:'#e8821a',fillOpacity:k.celah>0?Math.min(.12+.8*k.celah/70,.92):0};
-      p.L.setStyle(st);
-      let tip='<b>'+esc(k.n)+'</b> ('+esc(k.kab)+')';
-      if(k.cov)tip+='<br>Skor potensi '+k.pot+' | operator ber-AV '+k.tx+' | celah '+(k.celah>0?'+':'')+k.celah+'<br>Penduduk est. '+(k.pend==null?'-':k.pend.toLocaleString('id-ID'))+' | sekolah '+k.sek+'<br>Pasar '+k.pasar+', terminal/pelabuhan '+k.term+', toko OSM '+k.toko+', SPBU '+k.spbu;
-      else tip+='<br>Di luar kabupaten yang dikunjungi';
-      if(M.tot[i])tip+='<br>'+Object.entries(M.kecCnt[i]).sort((a,b)=>b[1]-a[1]).map(x=>esc(x[0])+': '+x[1]).join('<br>');
-      p.L.unbindTooltip();p.L.bindTooltip(tip,{sticky:true});});
-  };
-  document.querySelectorAll('input[name=mode'+pi+']').forEach(r=>r.onchange=()=>M.apply(r.value));
-  M.fit=function(){const q=M.kb.length?M.kb:pts;if(q.length)map.fitBounds(L.latLngBounds(q).pad(.05));};
-  M.map=map;M.fit();M.apply('celah');
-  document.querySelectorAll('#p'+pi+' .legend input').forEach(cb=>cb.onchange=()=>{const g=grup[cb.dataset.m];if(cb.checked)g.addTo(map);else map.removeLayer(g);});
-}
-buildMap(0);buildCmp(0);
+
+buildCmp(0);
 }
 const FS_BASE='https://firestore.googleapis.com/v1/projects/mds-sulawesi/databases/(default)/documents/pjmds_data',FS_KEY='AIzaSyCA8Q8athqYIsY3By5wPxcU97GjDBR6DAs';
 async function getLock(){
