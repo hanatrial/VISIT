@@ -62,6 +62,7 @@ table.chg td{min-width:0;padding:5px 8px;text-align:right;background:transparent
 .pend .box{max-width:1168px;margin:12px auto 0;padding:12px 16px;border:1px solid #e0a43a;background:#fff7e6;color:#5a3d05;border-radius:8px;font-size:13px;line-height:1.5}.pend .box.ok{border-color:#2e7d32;background:#eaf6ec;color:#1b4d22}.pend button{margin-top:8px;border:0;background:#b45309;color:#fff;padding:7px 14px;border-radius:6px;font:inherit;font-weight:600;cursor:pointer}.pend button:disabled{opacity:.5;cursor:default}.pend a{color:inherit}
 @media (prefers-color-scheme:dark){.pend .box{background:#3a2f14;color:#f2d49a}.pend .box.ok{background:#12301a;color:#b7e4c0}}
 .cmpside{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:12px 0 4px}.cmpside .legend{max-width:none}.cmpside .pal{border-bottom:0;margin:0;padding:0}@media(max-width:760px){.cmpside{grid-template-columns:1fr}}
+.rrow{display:grid;grid-template-columns:200px 1fr 170px;gap:10px;align-items:center;padding:5px 0;font-size:12px}.rtrack{display:flex;height:14px;background:var(--bg);border-radius:4px;overflow:hidden}.rtrack .b{background:#9fb8ac}.rtrack .a{background:#e8821a}.rsum{display:flex;gap:18px;flex-wrap:wrap;margin:0 0 10px;font-size:13px}.rsum b{font-size:18px}.rsum .add b{color:#b45309}.rleg{display:flex;gap:14px;font-size:12px;color:var(--mute);margin:0 0 6px}.rleg i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-2px}table.rl td{min-width:0;padding:5px 8px;text-align:left;background:transparent;border-bottom:1px solid var(--line);border-radius:0}table.rl th{padding:4px 8px;text-align:left;white-space:nowrap}@media(max-width:760px){.rrow{grid-template-columns:110px 1fr 120px}}
 </style>
 </head>
 <body>
@@ -99,14 +100,15 @@ Object.keys(D.prov).forEach((prov,pi)=>{
    '<section><h2>1. Heatmap item utama per MDS (dari penjualan)</h2><p class="note">% visit transaksi yang menjual item itu (ada nominal penjualan di sheet Order, bonus tidak dihitung) (minimal 1 rasa dalam kelompok itu). NS Tea = semua rasa tea digabung (Lemon, Lychee, Blackcurrant, Peach, Orange, Apple), School = semua rasa HI LO School, Anggur = Anggur + Anggur Hijau, NS Lainnya dan Hilo Lainnya = semua item lain di brand itu. Di Gorontalo, Jeruk Peras dan ASO digabung jadi satu kolom (Peras + ASO). Angka dalam kurung = jumlah visit transaksi. Saat memilih satu MDS, baris berubah menjadi per kecamatan (minimal 3 visit).</p><div class="scroll" id="hm'+pi+'"></div><div class="hleg"><span style="background:#EDB09B">&lt;10%</span><span style="background:#F6E2A0">10-19%</span><span style="background:#EEF2EE">20-29%</span><span style="background:#A9CDB4">30-39%</span><span style="background:#4E8A6B;color:#fff">&ge;40%</span><span style="background:transparent;color:var(--mute)">Kolom Jeruk Peras dibalik: persen tinggi = merah</span></div></section>'+
    '<section><h2>2. Peta vektor per kecamatan: bulan lalu vs bulan berjalan</h2><p class="note" id="cmn'+pi+'"></p><div class="cmpgrid"><div><div class="cmplbl" id="cl0_'+pi+'"></div><div class="cmap" id="cm0_'+pi+'"></div></div><div><div class="cmplbl" id="cl1_'+pi+'"></div><div class="cmap" id="cm1_'+pi+'"></div></div></div><div class="cmpside"><div class="pal"><b>Warna kecamatan</b><div class="bar"></div><div class="bl"><span>celah kecil</span><span>celah besar</span></div><div class="it"><i style="background:#fff;border:1px solid #b9c4bf"></i>Tidak ada celah (operator ber-AV sudah sebanding potensi)</div><div class="it"><i style="background:rgba(154,169,163,.4)"></i>Di luar kabupaten yang dikunjungi</div><div class="note" style="margin:6px 0 0">Celah dihitung terpisah untuk tiap bulan: skor potensi (penduduk + keramaian) dikurangi peringkat jumlah operator ber-AV bulan itu. Oranye pekat = potensi tinggi tapi operator ber-AV masih sedikit.</div></div><div class="legend"><b>Titik operator per MDS</b>'+leg+'<div class="note" style="margin-top:8px">Total '+P.titik.length+' operator bulan berjalan</div></div></div><div id="cmt'+pi+'"></div></section>'+
    '<section><h2>3. Kecamatan peluang teratas</h2><p class="note">Hanya kabupaten/kota yang sudah pernah dikunjungi MDS-mu, potensi minimal 50. Urut dari celah terbesar: skor potensi dikurangi skor operator ber-AV (keduanya peringkat persentil 0-100 di antara kecamatan yang dicakup). "MDS terdekat" = MDS dengan operator ber-AV terbanyak di kecamatan itu, atau di kecamatan ber-AV terdekat bila masih kosong.</p><div id="tt'+pi+'"></div></section>'+
-   '<section><h2>4. AV per titik (total SKU) per kecamatan: bulan lalu vs bulan berjalan</h2><p class="note">Rata-rata jumlah SKU yang ada (Total SKU hasil input AV) per titik operator, per kecamatan. Dua batang per baris: abu-abu = bulan lalu (dari database), berwarna = bulan berjalan (dari sheet). Memakai input AV terbaru tiap operator di bulannya. Filter <b>Semua MDS</b>: satu baris per MDS. Pilih satu MDS di atas untuk melihat per kecamatan (minimal 3 titik di bulan berjalan). Angka di kanan = rata-rata SKU dan jumlah titik.</p><div class="bars" id="bc'+pi+'"></div></section>';
+   '<section><h2>4. AV per titik (total SKU) per kecamatan: bulan lalu vs bulan berjalan</h2><p class="note">Rata-rata jumlah SKU yang ada (Total SKU hasil input AV) per titik operator, per kecamatan. Dua batang per baris: abu-abu = bulan lalu (dari database), berwarna = bulan berjalan (dari sheet). Memakai input AV terbaru tiap operator di bulannya. Filter <b>Semua MDS</b>: satu baris per MDS. Pilih satu MDS di atas untuk melihat per kecamatan (minimal 3 titik di bulan berjalan). Angka di kanan = rata-rata SKU dan jumlah titik.</p><div class="bars" id="bc'+pi+'"></div></section>'+
+   '<section><h2>5. Penambahan RO 3 Varian</h2><p class="note" id="rn'+pi+'"></p><div id="ro'+pi+'"></div></section>';
 
   main.appendChild(sec);
   const tb=document.createElement('button');tb.className='tab';tb.setAttribute('role','tab');tb.textContent=prov;tb.setAttribute('aria-selected',pi===0);
   tb.onclick=()=>{[...tabs.children].forEach((b,j)=>{b.setAttribute('aria-selected',j===pi);document.getElementById('p'+j).hidden=j!==pi;});buildCmp(pi);if(maps[pi].cmp&&maps[pi].cmp.m0){maps[pi].cmp.m0.invalidateSize();maps[pi].cmp.m1.invalidateSize();}refit(pi);};
   tabs.appendChild(tb);
   maps[pi]={P,prov,warnaMds,names,map:null,sel:null,hidden:new Set()};
-  initChips(pi);renderHeat(pi);fillTop(pi);renderBars(pi);
+  initChips(pi);renderHeat(pi);fillTop(pi);renderBars(pi);renderRo(pi);
 });
 function hc(p,i){let k=HB.findIndex(x=>p<x[0]);if(i===0)k=HB.length-1-k;const b=HB[k];return 'background:'+b[1]+';color:'+b[2];}
 function colsOf(M){return M.prov==='Gorontalo'?[14,1,3,4,5,6,7,8,9,10,11,12,13]:[0,1,2,3,4,5,6,7,8,9,10,11,12,13];}
@@ -225,10 +227,34 @@ function initChips(pi){
   box.innerHTML='<span class="n">Filter MDS:</span><button class="chip" aria-pressed="true" data-m="">Semua MDS</button>'+M.names.map(n=>'<button class="chip" aria-pressed="false" data-m="'+esc(n)+'"><span class="sw" style="background:'+M.warnaMds[n]+';width:9px;height:9px;display:inline-block;margin-right:6px"></span>'+esc(n)+'</button>').join('');
   box.querySelectorAll('.chip').forEach(b=>b.onclick=()=>setSel(pi,b.dataset.m||null));
 }
+function renderRo(pi){
+  const M=maps[pi],R=M.P.ro3,meta=D.ro3,box=document.getElementById('ro'+pi),note=document.getElementById('rn'+pi);
+  if(!R||!meta){note.textContent='Data RO 3 Varian belum tersedia (tarik data lagi dari halaman Tarik Data).';box.innerHTML='';return;}
+  note.textContent='RO 3 Varian = kedai dengan transaksi minimal '+meta.min+' varian NutriSari atau HI LO dalam satu bulan, tidak termasuk Jeruk Peras dan ASO (bonus tidak dihitung). Database = kedai yang sudah mencapainya di '+(meta.baseMonths.length?meta.baseMonths.map(mlab).join(', '):'bulan sebelumnya')+'. Penambahan = kedai yang mencapainya di '+mlab(meta.month)+' dan belum ada di database (+1 tiap kedai). Semua MDS: tampil per MDS. Pilih satu MDS di atas untuk melihat per kecamatan.';
+  let rows,labelOf;
+  if(!M.sel){
+    rows=Object.entries(R.m).filter(([k])=>M.warnaMds[k]).map(([k,v])=>({k,b:v[0],a:v[1]}));
+    labelOf=r=>'<b>'+esc(r.k)+'</b>';
+  }else{
+    const kk=R.k[M.sel]||{};
+    rows=Object.entries(kk).map(([i,v])=>({k:i,b:v[0],a:v[1]}));
+    labelOf=r=>r.k==='-1'?'<i>Tanpa lokasi</i>':'<b>'+esc(M.P.kec[r.k].n)+'</b> <span class="n">'+esc(M.P.kec[r.k].kab)+'</span>';
+  }
+  rows.sort((x,y)=>y.a-x.a||(y.b+y.a)-(x.b+x.a));
+  const tb=rows.reduce((s,r)=>s+r.b,0),ta=rows.reduce((s,r)=>s+r.a,0),mx=Math.max(1,...rows.map(r=>r.b+r.a));
+  let h='<div class="rsum"><div>Database RO 3 Varian<br><b>'+tb+'</b> kedai</div><div class="add">Penambahan '+esc(mlab(meta.month))+'<br><b>+'+ta+'</b> kedai</div><div>Total sekarang<br><b>'+(tb+ta)+'</b> kedai</div></div>';
+  h+='<div class="rleg"><span><i style="background:#9fb8ac"></i>database ('+(meta.baseMonths.length?meta.baseMonths.map(mlab).join(', '):'-')+')</span><span><i style="background:#e8821a"></i>penambahan '+esc(mlab(meta.month))+'</span></div>';
+  h+=rows.map(r=>'<div class="rrow"><div class="bl2">'+labelOf(r)+'</div><div class="rtrack"><div class="b" style="width:'+(100*r.b/mx).toFixed(1)+'%"></div><div class="a" style="width:'+(100*r.a/mx).toFixed(1)+'%"></div></div><div class="bv2">database <b>'+r.b+'</b> &middot; <span class="up" style="color:#b45309">+'+r.a+'</span> &middot; total <b>'+(r.b+r.a)+'</b></div></div>').join('')||'<div class="note">Belum ada data.</div>';
+  if(M.sel){
+    const list=(R.list||[]).filter(x=>x[0]===M.sel).sort((x,y)=>y[3]-x[3]);
+    h+='<h3 style="font-size:13px;margin:16px 0 4px">Kedai penambahan '+esc(mlab(meta.month))+' ('+list.length+')</h3>'+(list.length?'<div class="scroll"><table class="rl"><thead><tr><th>Kedai</th><th>Kecamatan</th><th>Varian</th><th>Contoh varian</th></tr></thead><tbody>'+list.map(x=>'<tr><td><b>'+esc(x[2])+'</b></td><td>'+(x[1]<0?'-':esc(M.P.kec[x[1]].n)+' <span class="n">'+esc(M.P.kec[x[1]].kab)+'</span>')+'</td><td>'+x[3]+'</td><td>'+esc(x[4])+'</td></tr>').join('')+'</tbody></table></div>':'<div class="note">Belum ada penambahan.</div>');
+  }
+  box.innerHTML=h;
+}
 function setSel(pi,name){
   const M=maps[pi];M.sel=name;
   document.querySelectorAll('#fl'+pi+' .chip').forEach(b=>b.setAttribute('aria-pressed',(b.dataset.m||null)===name));
-  renderHeat(pi);fillTop(pi);renderBars(pi);renderCmp(pi);
+  renderHeat(pi);fillTop(pi);renderBars(pi);renderRo(pi);renderCmp(pi);
   document.querySelectorAll('#p'+pi+' .legend input').forEach(cb=>{const want=!name||cb.dataset.m===name;if(cb.checked!==want){cb.checked=want;if(cb.onchange)cb.onchange();}});
   refit(pi);
 }

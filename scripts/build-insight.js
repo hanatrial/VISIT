@@ -32,7 +32,7 @@ const pct=arr=>arr.map(v=>{const below=arr.filter(w=>w<v).length,eq=arr.filter(w
 const MAKS_BULAN=4; // 3 bulan database + bulan berjalan; dibuang hanya saat pergantian bulan disetujui
 const COLS={
   call:['ID Call','Tanggal','Provinsi','Kabupaten'],
-  ord:['ID Order','ID Call','Tanggal','Provinsi','Nama MDS','Brand','Nama Item','Value','Koordinat Call'],
+  ord:['ID Order','ID Call','Tanggal','Provinsi','Nama MDS','Brand','Nama Item','Value','Koordinat Call','Kode Customer','Nama Customer'],
   mer:['ID Merch','ID Call','Tanggal','Check In','Provinsi','Nama MDS','Kode Customer','Nama Customer','Kabupaten','Tipe Customer','Koordinat Call','Total SKU']
 };
 const monthOf=v=>iso(v).slice(0,7);
@@ -180,6 +180,29 @@ function buildInsight(XLSX,wb,stat,db,opts){
     if(!hit&&OTHER[r.Brand]!==undefined)h.g.add(OTHER[r.Brand]);
     if(h.g.has(0)||h.g.has(2))h.g.add(14);
   }
+  // RO 3 varian: kedai (Kode Customer) dengan transaksi >= 3 varian NutriSari atau HI LO dalam satu bulan, tanpa Jeruk Peras dan ASO.
+  // Database RO = kedai yang mencapainya di salah satu dari (maks) 3 bulan sebelum bulan berjalan; penambahan = tercapai di bulan berjalan tapi belum ada di database.
+  const normItem=n=>String(n||'').toUpperCase().replace(/^HI LO /,'HILO ').replace(/\s+\d+[A-Z]*X\d+[A-Z]*(X\d+G)?$/,'').replace(/\s+PLS\b.*$/,'').replace(/\s+14GX18PX40S$/,'').trim();
+  const kb={};
+  for(const r of all.ord){
+    if(!(r.Value>0)||(r.Brand!=='NUTRISARI'&&r.Brand!=='HI LO')||!Number.isFinite(r.Tanggal)||!r['Kode Customer'])continue;
+    const nm=String(r['Nama Item']||'').toUpperCase();
+    if(PATS[0].test(nm)||PATS[2].test(nm))continue; // Jeruk Peras dan ASO tidak dihitung
+    const m=monthOf(r.Tanggal),key=m+'|'+r['Kode Customer'];
+    const o=kb[key]||(kb[key]={m,kode:r['Kode Customer'],v:new Set(),mds:{},last:null});
+    o.v.add(normItem(r['Nama Item']));o.mds[r['Nama MDS']]=(o.mds[r['Nama MDS']]||0)+1;
+    if(!o.last||r.Tanggal>=o.last.t)o.last={t:r.Tanggal,prov:r.Provinsi,mds:r['Nama MDS'],xy:r['Koordinat Call'],nama:r['Nama Customer']};
+  }
+  const roMonths=[...new Set(Object.values(kb).map(o=>o.m))].sort(),roBase=roMonths.filter(m=>m<cmpCm).slice(-3);
+  const roBaseSet={}; // kode -> info terbaru dari bulan database
+  const roAdd={};     // kode -> info bulan berjalan
+  for(const o of Object.values(kb)){
+    if(o.v.size<3)continue;
+    if(roBase.includes(o.m)){const x=roBaseSet[o.kode];if(!x||o.last.t>x.last.t)roBaseSet[o.kode]=o;}
+    else if(o.m===cmpCm)roAdd[o.kode]=o;
+  }
+  for(const k of Object.keys(roAdd))if(roBaseSet[k])delete roAdd[k];
+  out.ro3={min:3,month:cmpCm,baseMonths:roBase,exclude:['Jeruk Peras','ASO'],base:Object.keys(roBaseSet).length,add:Object.keys(roAdd).length};
   const covered={};call.forEach(r=>{(covered[r.Provinsi]=covered[r.Provinsi]||{})[kabKey(r.Kabupaten)]=1;});
 
   for(const prov of Object.keys(stat)){
@@ -241,6 +264,22 @@ function buildInsight(XLSX,wb,stat,db,opts){
         for(let i=0;i<P.kec.length&&idx<0;i++){const k=P.kec[i];if(x.p[1]<k.bb[0]||x.p[1]>k.bb[2]||x.p[0]<k.bb[1]||x.p[0]>k.bb[3])continue;if(k.g.some(g=>inPoly(x.p[1],x.p[0],g)))idx=i;}
         return[+x.p[0].toFixed(5),+x.p[1].toFixed(5),x.mds,idx,x.sku];
       });
+    }
+
+    // RO 3 varian per MDS dan per kecamatan: [database, penambahan]
+    P.ro3={m:{},k:{},list:[]};
+    const kecOf=xy=>{const p=parse(xy);if(!p)return -1;for(let i=0;i<P.kec.length;i++){const k=P.kec[i];if(p[1]<k.bb[0]||p[1]>k.bb[2]||p[0]<k.bb[1]||p[0]>k.bb[3])continue;if(k.g.some(g=>inPoly(p[1],p[0],g)))return i;}return -1;};
+    const topMds=o=>Object.entries(o.mds).sort((a,b)=>b[1]-a[1])[0][0];
+    const put=(mds,idx,j)=>{const m=P.ro3.m[mds]||(P.ro3.m[mds]=[0,0]);m[j]++;const kk=P.ro3.k[mds]||(P.ro3.k[mds]={});const a=kk[idx]||(kk[idx]=[0,0]);a[j]++;};
+    for(const [src,j] of [[roBaseSet,0],[roAdd,1]]){
+      for(const o of Object.values(src)){
+        if(o.last.prov!==prov)continue;
+        const mds=j===1?topMds(o):o.last.mds;
+        if(!P.mds[mds])continue;
+        const idx=kecOf(o.last.xy);
+        put(mds,idx,j);
+        if(j===1)P.ro3.list.push([mds,idx,o.last.nama,o.v.size,[...o.v].slice(0,4).map(x=>x.replace(/^NS /,'')).join(', ')]);
+      }
     }
 
     // potensi (50% penduduk + 50% keramaian) vs jumlah toko ber-AV, hanya kabupaten yang dikunjungi
