@@ -1,0 +1,5 @@
+node_modules/
+cron.log
+*.log
+.arsip-insight-db-*.json
+insight-uji.json

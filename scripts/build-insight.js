@@ -8,7 +8,16 @@
   else root.InsightBuild=factory();
 })(typeof self!=='undefined'?self:this,function(){
 const SHEET_ID='18659aHA0dQiBW-dRd616uOuujYoABeo7l1d2AeUXvsU';
-const PIC='Muhammad Imadur';
+/* Area = satu tab di insight-mds.html, dihitung dari call satu PIC.
+   Beberapa area boleh berbagi provinsi (batas kecamatan & potensi dipakai bersama), tetapi data, titik,
+   perbandingan bulan, dan database tiap PIC dihitung terpisah. Kunci area = teks tab. */
+const AREAS=[
+  {key:'Sulawesi Selatan',pic:'Muhammad Imadur',prov:'Sulawesi Selatan'},
+  {key:'Gorontalo',pic:'Muhammad Imadur',prov:'Gorontalo'},
+  {key:'Bone, Soppeng, Wajo',pic:'Hibatullah Suryawafi',prov:'Sulawesi Selatan'}
+];
+const PIC=AREAS[0].pic;                        // PIC utama: pemilik arsip database format lama (v1)
+const PICS=[...new Set(AREAS.map(a=>a.pic))];
 const BB={'Sulawesi Selatan':[-8,-1.5,117,122.5],'Gorontalo':[0,1.6,121,124.5]};
 const GR=[['NutriSari',['Jeruk Peras','NS Tea','ASO','Mango','Nipis','Anggur','NS Lainnya']],['HI LO',['Matcha','Coklat','Swiss','Thai Tea','White','School','Hilo Lainnya']]];
 const PATS=[/JERUK PERAS/,/^NS .*(LEMON|LYCHEE|BLACKCURRANT|PEACH|ORANGE|APPLE) TEA/,/\bASO\b/,/SWEET MANGO/,s=>/JERUK NIPIS/.test(s)&&!/JAHE/.test(s),/ANGGUR/,null,/CREAMY MATCHA/,/^HI ?LO CHOCOLATE PLS/,/SWISS CHOCOLATE/,/THAI TEA/,/WHITE CHOCOLATE/,/HI ?LO SCHOOL/,null];
@@ -25,10 +34,12 @@ const inRing=(x,y,r)=>{let c=false;for(let i=0,j=r.length-1;i<r.length;j=i++){co
 const inPoly=(x,y,p)=>inRing(x,y,p[0])&&!p.slice(1).some(h=>inRing(x,y,h));
 const pct=arr=>arr.map(v=>{const below=arr.filter(w=>w<v).length,eq=arr.filter(w=>w===v).length;return 100*(below+(eq-1)/2)/Math.max(arr.length-1,1);});
 
-/* ---- Database 3 bulan (arsip bulan lalu) ----
-   Isi: baris PIC yang sudah diringkas per tabel (Call, Order, Merchandise), dikelompokkan per bulan.
-   Bulan berjalan tidak disimpan di sini: diambil langsung dari sheet. Tutup bulan = pindahkan bulan yang sudah lewat
-   dari sheet ke database, lalu buang bulan tertua sampai tersisa MAKS_BULAN. */
+/* ---- Database bulan lalu (arsip per PIC) ----
+   Isi: baris PIC yang sudah diringkas per tabel (Call, Order, Merchandise), dikelompokkan per bulan, per PIC.
+   Bulan berjalan ikut dicadangkan tiap tarikan: bulan berjalan tidak dipakai untuk "bulan lalu", baru dipakai
+   setelah bulan berganti. Tutup bulan = buang bulan tertua sampai tersisa MAKS_BULAN per PIC.
+   PIC yang belum punya arsip (mis. Hibatullah) otomatis tidak punya pembanding bulan lalu: halaman hanya
+   menampilkan bulan berjalan sampai arsipnya terisi dari tarikan berikutnya. */
 const MAKS_BULAN=4; // 3 bulan database + bulan berjalan; dibuang hanya saat pergantian bulan disetujui
 const COLS={
   call:['ID Call','Tanggal','Provinsi','Kabupaten'],
@@ -36,22 +47,31 @@ const COLS={
   mer:['ID Merch','ID Call','Tanggal','Check In','Provinsi','Nama MDS','Kode Customer','Nama Customer','Kabupaten','Tipe Customer','Koordinat Call','Total SKU']
 };
 const monthOf=v=>iso(v).slice(0,7);
-function emptyDb(){return{months:{}};}
-function pickRows(XLSX,wb){
-  const rows=n=>wb.Sheets[n]?XLSX.utils.sheet_to_json(wb.Sheets[n],{defval:null}).filter(r=>r.PIC===PIC):[];
+function emptyDb(){return{pics:{}};}
+function picRec(db,pic){return db.pics[pic]||(db.pics[pic]={months:{}});}
+function pickRows(XLSX,wb,pic){
+  const p=pic||PIC;
+  const rows=n=>wb.Sheets[n]?XLSX.utils.sheet_to_json(wb.Sheets[n],{defval:null}).filter(r=>r.PIC===p):[];
   return{call:rows('Call'),ord:rows('Order'),mer:rows('Merchandise')};
 }
-function slim(t,rows){return rows.filter(r=>Number.isFinite(r.Tanggal)).map(r=>COLS[t].map(c=>r[c]===undefined?null:r[c]));}
-/* gabungkan baris sheet ke database; onlyBefore ('YYYY-MM') = hanya bulan sebelum bulan itu; duplikat (ID sama) diganti yang terbaru */
+function pickRowsAll(XLSX,wb){
+  const keep=new Set(PICS);
+  const rows=n=>wb.Sheets[n]?XLSX.utils.sheet_to_json(wb.Sheets[n],{defval:null}).filter(r=>keep.has(r.PIC)):[];
+  return{call:rows('Call'),ord:rows('Order'),mer:rows('Merchandise')};
+}
+/* gabungkan baris sheet ke database per PIC; onlyBefore ('YYYY-MM') = hanya bulan sebelum bulan itu; duplikat (ID sama) diganti yang terbaru */
 function mergeIntoDb(db,picked,onlyBefore){
-  const added={};
+  const added={},keep=new Set(PICS);
   for(const t of ['call','ord','mer']){
     const idc=COLS[t].indexOf(t==='call'?'ID Call':t==='ord'?'ID Order':'ID Merch'),tc=COLS[t].indexOf('Tanggal');
     const idx={};
-    for(const row of slim(t,picked[t])){
+    for(const src of picked[t]){
+      const pic=src.PIC;
+      if(!keep.has(pic)||!Number.isFinite(src.Tanggal))continue;
+      const row=COLS[t].map(c=>src[c]===undefined?null:src[c]);
       const m=monthOf(row[tc]);if(onlyBefore&&m>=onlyBefore)continue;
-      const M=db.months[m]||(db.months[m]={call:[],ord:[],mer:[]});
-      const map=idx[m]||(idx[m]=new Map(M[t].map((r,i)=>[r[idc],i])));
+      const MD=picRec(db,pic),M=MD.months[m]||(MD.months[m]={call:[],ord:[],mer:[]});
+      const ik=pic+'|'+m,map=idx[ik]||(idx[ik]=new Map(M[t].map((r,i)=>[r[idc],i])));
       const k=row[idc];
       if(k!=null&&map.has(k))M[t][map.get(k)]=row;else{M[t].push(row);if(k!=null)map.set(k,M[t].length-1);added[m]=(added[m]||0)+1;}
     }
@@ -59,8 +79,12 @@ function mergeIntoDb(db,picked,onlyBefore){
   return added;
 }
 function trimDb(db,max){
-  const keys=Object.keys(db.months).sort(),drop=keys.slice(0,Math.max(0,keys.length-(max||MAKS_BULAN)));
-  drop.forEach(k=>delete db.months[k]);return drop;
+  const dropped=[];
+  for(const rec of Object.values(db.pics)){
+    const keys=Object.keys(rec.months).sort(),drop=keys.slice(0,Math.max(0,keys.length-(max||MAKS_BULAN)));
+    drop.forEach(k=>{delete rec.months[k];if(!dropped.includes(k))dropped.push(k);});
+  }
+  return dropped.sort();
 }
 /* tutup bulan: pindahkan semua bulan yang sudah lewat (sebelum bulan terbaru di sheet) ke database, buang yang tertua */
 function closeMonths(db,picked){
@@ -71,12 +95,18 @@ function closeMonths(db,picked){
   const dropped=trimDb(db);
   return{current,added,dropped};
 }
-function packDb(db){return JSON.stringify({v:1,months:db.months});}
-function unpackDb(str){const o=JSON.parse(str);return{months:o.months||{}};}
-function dbExtra(db){
-  const ex={call:[],ord:[],mer:[]};
-  for(const m of Object.keys(db.months).sort())for(const t of ['call','ord','mer'])
-    for(const row of db.months[m][t]){const o={PIC};COLS[t].forEach((c,i)=>o[c]=row[i]);ex[t].push(o);}
+function packDb(db){return JSON.stringify({v:2,pics:db.pics});}
+function unpackDb(str){
+  const o=JSON.parse(str);
+  if(o&&o.pics)return{pics:o.pics};
+  // format lama (v1): satu PIC, belum dipisah per PIC
+  return{pics:{[PIC]:{months:(o&&o.months)||{}}}};
+}
+function dbExtra(db,pic){
+  const ex={call:[],ord:[],mer:[]},rec=db.pics[pic];
+  if(!rec)return ex;
+  for(const m of Object.keys(rec.months).sort())for(const t of ['call','ord','mer'])
+    for(const row of rec.months[m][t]){const o={PIC:pic};COLS[t].forEach((c,i)=>o[c]=row[i]);ex[t].push(o);}
   return ex;
 }
 const DB_CHUNK=500000;
@@ -90,7 +120,9 @@ async function loadDb(fsGet){
 async function saveDb(db,fsPatch,fsDelete,oldCount){
   const str=packDb(db),ch=[];for(let i=0;i<str.length;i+=DB_CHUNK)ch.push(str.slice(i,i+DB_CHUNK));
   for(let i=0;i<ch.length;i++)await fsPatch('insight_db_chunk_'+i,{data:{stringValue:ch[i]}});
-  await fsPatch('insight_db_meta',{chunkCount:{integerValue:String(ch.length)},updatedAt:{stringValue:new Date().toISOString()},months:{stringValue:Object.keys(db.months).sort().join(',')}});
+  const months={};for(const[pic,rec]of Object.entries(db.pics))months[pic]=Object.keys(rec.months).sort().join(',');
+  await fsPatch('insight_db_meta',{chunkCount:{integerValue:String(ch.length)},updatedAt:{stringValue:new Date().toISOString()},
+    months:{stringValue:Object.keys(db.pics).sort().map(p=>p+'='+(months[p]||'')).join(';')}});
   for(let i=ch.length;i<(oldCount||0);i++)await fsDelete('insight_db_chunk_'+i);
   return{chunks:ch.length,bytes:str.length};
 }
@@ -116,7 +148,7 @@ async function saveState(fsPatch,st){
 /* satu pintu untuk pull-call.js dan tarik.js: tentukan mode (normal/pause/advance), tutup bulan bila disetujui, hitung insight */
 async function runInsight(env){
   const{XLSX,wb,stat,fsGet,fsPatch,fsDelete}=env;
-  const picked=pickRows(XLSX,wb),cm=liveMonth(picked);
+  const picked=pickRowsAll(XLSX,wb),cm=liveMonth(picked);
   let state=await loadState(fsGet);
   const d=decideState(state,cm);
   const db=await loadDb(fsGet);
@@ -150,23 +182,45 @@ async function runInsight(env){
 const prevMonth=m=>{const p=m.split('-').map(Number);return new Date(Date.UTC(p[0],p[1]-2,1)).toISOString().slice(0,7);};
 function buildInsight(XLSX,wb,stat,db,opts){
   opts=opts||{};
-  const live=pickRows(XLSX,wb);
-  if(live.call.length<20)throw new Error('Baris call terlalu sedikit ('+live.call.length+'), dibatalkan.');
+  const cache={},rowsOf=pic=>cache[pic]||(cache[pic]=pickRows(XLSX,wb,pic));
+  const liveOf={};for(const p of PICS)liveOf[p]=rowsOf(p);
+  const allLive={call:[],ord:[],mer:[]};
+  for(const p of PICS)for(const t of ['call','ord','mer'])allLive[t]=allLive[t].concat(liveOf[p][t]);
+  const cmpCm=opts.month||liveMonth(allLive);
+  if(!cmpCm)throw new Error('Sheet tidak punya data call.');
+  const cmpPm=prevMonth(cmpCm);
+  const dbset=new Set();
+  for(const p of PICS){const rec=db&&db.pics[p];if(rec)Object.keys(rec.months).forEach(m=>dbset.add(m));}
+  const dates=allLive.call.map(r=>r.Tanggal).filter(Number.isFinite);
+  const out={generatedAt:new Date().toISOString(),periode:[iso(Math.min(...dates)),iso(Math.max(...dates))],dbMonths:[...dbset].sort(),
+    month:cmpCm,pending:opts.pending||null,fokus:FOKUS,groups:GR.map(g=>({b:g[0],n:g[1].length})),prov:{},areas:[],ro3:{}};
+  for(const A of AREAS){
+    const r=buildArea(A,liveOf[A.pic],stat,db,{cmpCm,cmpPm});
+    if(!r){console.warn('Area dilewati (data call kurang):',A.key,'/',A.pic);continue;}
+    out.prov[A.key]=r.P;out.ro3[A.key]=r.ro3;
+    out.areas.push({key:A.key,pic:A.pic,prov:A.prov,month:cmpCm,prevMonth:cmpPm,dbMonths:r.dbMonths,
+      before:r.P.cmp.prev.length>0,titik:r.P.titik.length,kec:r.P.kec.filter(k=>k.cov).length,mds:Object.keys(r.P.mds)});
+  }
+  return out;
+}
+/* satu area = satu PIC; prov menentukan batas kecamatan, potensi, dan bbox koordinat */
+function buildArea(A,live,stat,db,o){
+  const prov=A.prov,statProv=stat[prov];
+  if(!statProv)throw new Error('Batas kecamatan '+prov+' belum ada di insight-static.json');
+  if(!live||live.call.length<20)return null;
+  const dbMonths=db&&db.pics[A.pic]?Object.keys(db.pics[A.pic].months).sort():[];
   // sheet + database digabung (ID yang sama: sheet menang), lalu disaring per bulan
   const all={call:live.call.slice(),ord:live.ord.slice(),mer:live.mer.slice()};
-  const dbMonths=db?Object.keys(db.months).sort():[];
-  if(db&&dbMonths.length){
-    const ex=dbExtra(db),idk={call:'ID Call',ord:'ID Order',mer:'ID Merch'};
+  if(dbMonths.length){
+    const ex=dbExtra(db,A.pic),idk={call:'ID Call',ord:'ID Order',mer:'ID Merch'};
     for(const t of ['call','ord','mer']){const have=new Set(live[t].map(r=>r[idk[t]]));all[t]=all[t].concat(ex[t].filter(r=>!have.has(r[idk[t]])));}
   }
   const inM=(rows,m)=>rows.filter(r=>Number.isFinite(r.Tanggal)&&monthOf(r.Tanggal)===m);
-  const cmpCm=opts.month||liveMonth(live),cmpPm=prevMonth(cmpCm);
-  // analisis utama = bulan berjalan saja; bulan lalu hanya untuk perbandingan
+  const {cmpCm,cmpPm}=o;
+  // analisis utama = bulan berjalan saja; bulan lalu hanya untuk perbandingan (kalau arsipnya ada)
   const call=inM(all.call,cmpCm),ord=inM(all.ord,cmpCm),mer=inM(all.mer,cmpCm);
-  if(!call.length)throw new Error('Tidak ada data call untuk bulan '+cmpCm);
+  if(!call.length)return null;
   const cmpMer=inM(all.mer,cmpPm).concat(mer);
-  const dates=call.map(r=>r.Tanggal).filter(Number.isFinite);
-  const out={generatedAt:new Date().toISOString(),periode:[iso(Math.min(...dates)),iso(Math.max(...dates))],dbMonths,month:cmpCm,pending:opts.pending||null,fokus:FOKUS,groups:GR.map(g=>({b:g[0],n:g[1].length})),prov:{}};
 
   // heatmap dari penjualan: visit transaksi (nominal > 0, bukan bonus)
   const heat={};
@@ -189,118 +243,116 @@ function buildInsight(XLSX,wb,stat,db,opts){
     const nm=String(r['Nama Item']||'').toUpperCase();
     if(PATS[0].test(nm)||PATS[2].test(nm))continue; // Jeruk Peras dan ASO tidak dihitung
     const m=monthOf(r.Tanggal),key=m+'|'+r['Kode Customer'];
-    const o=kb[key]||(kb[key]={m,kode:r['Kode Customer'],v:new Set(),mds:{},last:null});
-    o.v.add(normItem(r['Nama Item']));o.mds[r['Nama MDS']]=(o.mds[r['Nama MDS']]||0)+1;
-    if(!o.last||r.Tanggal>=o.last.t)o.last={t:r.Tanggal,prov:r.Provinsi,mds:r['Nama MDS'],xy:r['Koordinat Call'],nama:r['Nama Customer']};
+    const o2=kb[key]||(kb[key]={m,kode:r['Kode Customer'],v:new Set(),mds:{},last:null});
+    o2.v.add(normItem(r['Nama Item']));o2.mds[r['Nama MDS']]=(o2.mds[r['Nama MDS']]||0)+1;
+    if(!o2.last||r.Tanggal>=o2.last.t)o2.last={t:r.Tanggal,prov:r.Provinsi,mds:r['Nama MDS'],xy:r['Koordinat Call'],nama:r['Nama Customer']};
   }
-  const roMonths=[...new Set(Object.values(kb).map(o=>o.m))].sort(),roBase=roMonths.filter(m=>m<cmpCm).slice(-3);
+  const roMonths=[...new Set(Object.values(kb).map(o2=>o2.m))].sort(),roBase=roMonths.filter(m=>m<cmpCm).slice(-3);
   const roBaseSet={}; // kode -> info terbaru dari bulan database
   const roAdd={};     // kode -> info bulan berjalan
-  for(const o of Object.values(kb)){
-    if(o.v.size<3)continue;
-    if(roBase.includes(o.m)){const x=roBaseSet[o.kode];if(!x||o.last.t>x.last.t)roBaseSet[o.kode]=o;}
-    else if(o.m===cmpCm)roAdd[o.kode]=o;
+  for(const o2 of Object.values(kb)){
+    if(o2.v.size<3)continue;
+    if(roBase.includes(o2.m)){const x=roBaseSet[o2.kode];if(!x||o2.last.t>x.last.t)roBaseSet[o2.kode]=o2;}
+    else if(o2.m===cmpCm)roAdd[o2.kode]=o2;
   }
   for(const k of Object.keys(roAdd))if(roBaseSet[k])delete roAdd[k];
-  out.ro3={min:3,month:cmpCm,baseMonths:roBase,exclude:['Jeruk Peras','ASO'],base:Object.keys(roBaseSet).length,add:Object.keys(roAdd).length};
+  const ro3={min:3,month:cmpCm,baseMonths:roBase,exclude:['Jeruk Peras','ASO'],base:Object.keys(roBaseSet).length,add:Object.keys(roAdd).length};
   const covered={};call.forEach(r=>{(covered[r.Provinsi]=covered[r.Provinsi]||{})[kabKey(r.Kabupaten)]=1;});
 
-  for(const prov of Object.keys(stat)){
-    const P={mds:{},titik:[],kec:stat[prov].map(k=>({...k}))};
-    for(const c of Object.values(heat)){
-      if(c.prov!==prov)continue;
-      const m=P.mds[c.mds]||(P.mds[c.mds]={n:0,ada:FOKUS.map(()=>0)});
-      m.n++;c.g.forEach(gi=>m.ada[gi]++);
-    }
-    for(const k of Object.keys(P.mds))if(P.mds[k].n<10)delete P.mds[k];
-
-    // titik = toko unik yang AV-nya pernah diinput (sheet Merchandise), koordinat check-in terbaru
-    const tx={};
-    for(const r of mer){
-      if(r.Provinsi!==prov||!P.mds[r['Nama MDS']])continue;
-      const p=parse(r['Koordinat Call']),b=BB[prov];
-      if(!p||p[0]<b[0]||p[0]>b[1]||p[1]<b[2]||p[1]>b[3])continue;
-      const k=r['Kode Customer'],t=(r.Tanggal||0)+(r['Check In']||0);
-      if(!tx[k]||t>tx[k].t)tx[k]={t,p,mds:r['Nama MDS'],nama:r['Nama Customer'],kab:r.Kabupaten,tipe:r['Tipe Customer'],tgl:iso(r.Tanggal),sku:Number(r['Total SKU'])||0};
-    }
-    P.titik=Object.values(tx).map(x=>[+x.p[0].toFixed(6),+x.p[1].toFixed(6),x.mds,x.nama,x.kab,x.tipe,x.tgl,1]);
-
-    // kecamatan: bbox + centroid, indeks kecamatan tiap titik
-    P.kec.forEach(k=>{
-      const r=k.g.reduce((a,b)=>b[0].length>a[0].length?b:a)[0];
-      k.bb=[Math.min(...r.map(c=>c[0])),Math.min(...r.map(c=>c[1])),Math.max(...r.map(c=>c[0])),Math.max(...r.map(c=>c[1]))];
-      k.cx=r.reduce((a,c)=>a+c[0],0)/r.length;k.cy=r.reduce((a,c)=>a+c[1],0)/r.length;k.tx=0;
-      k.cov=(covered[prov]||{})[kabKey(k.kab)]||(kabKey(k.kab)==='pangkajenedankepulauan'&&(covered[prov]||{}).pangkajenekepulauan)?1:0;
-    });
-    const skus=Object.values(tx).map(x=>x.sku);
-    // heatmap per kecamatan untuk tiap MDS (dipakai saat filter satu MDS): [jumlah visit transaksi, ...jumlah per kelompok item]
-    P.hk={};
-    for(const c of Object.values(heat)){
-      if(c.prov!==prov||!P.mds[c.mds])continue;
-      const p=parse(c.xy);let idx=-1;
-      if(p)for(let i=0;i<P.kec.length&&idx<0;i++){const k=P.kec[i];if(p[1]<k.bb[0]||p[1]>k.bb[2]||p[0]<k.bb[1]||p[0]>k.bb[3])continue;if(k.g.some(g=>inPoly(p[1],p[0],g)))idx=i;}
-      const o=P.hk[c.mds]||(P.hk[c.mds]={});const a=o[idx]||(o[idx]=[0].concat(FOKUS.map(()=>0)));
-      a[0]++;c.g.forEach(gi=>a[gi+1]++);
-    }
-    P.titik.forEach((t,ti)=>{
-      let idx=-1;
-      for(let i=0;i<P.kec.length&&idx<0;i++){const k=P.kec[i];if(t[1]<k.bb[0]||t[1]>k.bb[2]||t[0]<k.bb[1]||t[0]>k.bb[3])continue;if(k.g.some(p=>inPoly(t[1],t[0],p)))idx=i;}
-      t.push(idx);t.push(skus[ti]);if(idx>=0)P.kec[idx].tx++;
-    });
-
-    // perbandingan titik operator ber-AV: bulan lalu vs bulan berjalan, per kecamatan. Baris: [lat,lon,MDS,idx kecamatan,total SKU]
-    P.cmp={pm:cmpPm,cm:cmpCm,prev:[],cur:[]};
-    for(const [lab,month] of [['prev',cmpPm],['cur',cmpCm]]){
-      const last={};
-      for(const r of cmpMer){
-        if(r.Provinsi!==prov||!P.mds[r['Nama MDS']]||!Number.isFinite(r.Tanggal)||monthOf(r.Tanggal)!==month)continue;
-        const p=parse(r['Koordinat Call']),bb=BB[prov];
-        if(!p||p[0]<bb[0]||p[0]>bb[1]||p[1]<bb[2]||p[1]>bb[3])continue;
-        const k=r['Kode Customer'],t=(r.Tanggal||0)+(r['Check In']||0);
-        if(!last[k]||t>last[k].t)last[k]={t,p,mds:r['Nama MDS'],sku:Number(r['Total SKU'])||0};
-      }
-      P.cmp[lab]=Object.values(last).map(x=>{
-        let idx=-1;
-        for(let i=0;i<P.kec.length&&idx<0;i++){const k=P.kec[i];if(x.p[1]<k.bb[0]||x.p[1]>k.bb[2]||x.p[0]<k.bb[1]||x.p[0]>k.bb[3])continue;if(k.g.some(g=>inPoly(x.p[1],x.p[0],g)))idx=i;}
-        return[+x.p[0].toFixed(5),+x.p[1].toFixed(5),x.mds,idx,x.sku];
-      });
-    }
-
-    // RO 3 varian per MDS dan per kecamatan: [database, penambahan]
-    P.ro3={m:{},k:{},list:[]};
-    const kecOf=xy=>{const p=parse(xy);if(!p)return -1;for(let i=0;i<P.kec.length;i++){const k=P.kec[i];if(p[1]<k.bb[0]||p[1]>k.bb[2]||p[0]<k.bb[1]||p[0]>k.bb[3])continue;if(k.g.some(g=>inPoly(p[1],p[0],g)))return i;}return -1;};
-    const topMds=o=>Object.entries(o.mds).sort((a,b)=>b[1]-a[1])[0][0];
-    const put=(mds,idx,j)=>{const m=P.ro3.m[mds]||(P.ro3.m[mds]=[0,0]);m[j]++;const kk=P.ro3.k[mds]||(P.ro3.k[mds]={});const a=kk[idx]||(kk[idx]=[0,0]);a[j]++;};
-    for(const [src,j] of [[roBaseSet,0],[roAdd,1]]){
-      for(const o of Object.values(src)){
-        if(o.last.prov!==prov)continue;
-        const mds=j===1?topMds(o):o.last.mds;
-        if(!P.mds[mds])continue;
-        const idx=kecOf(o.last.xy);
-        put(mds,idx,j);
-        if(j===1)P.ro3.list.push([mds,idx,o.last.nama,o.v.size,[...o.v].slice(0,4).map(x=>x.replace(/^NS /,'')).join(', ')]);
-      }
-    }
-
-    // potensi (50% penduduk + 50% keramaian) vs jumlah toko ber-AV, hanya kabupaten yang dikunjungi
-    const U=P.kec.filter(k=>k.cov);
-    const ker=U.map(k=>k.pasar*5+k.term*3+k.spbu+k.toko);
-    const pp=pct(U.map(k=>k.pend||0)),pk=pct(ker),pt=pct(U.map(k=>k.tx));
-    U.forEach((k,i)=>{k.ker=ker[i];k.pot=Math.round(.5*pp[i]+.5*pk[i]);k.txs=Math.round(pt[i]);k.celah=k.pot-k.txs;});
-    const dom=P.kec.map(()=>({}));P.titik.forEach(t=>{if(t[8]>=0)dom[t[8]][t[2]]=(dom[t[8]][t[2]]||0)+1;});
-    const withTx=P.kec.map((k,i)=>({k,i})).filter(x=>x.k.tx);
-    P.kec.forEach((k,i)=>{
-      if(!k.cov)return;let j=i;
-      if(!k.tx){let bd=1e18;withTx.forEach(x=>{const d=(x.k.cx-k.cx)**2+(x.k.cy-k.cy)**2;if(d<bd){bd=d;j=x.i;}});}
-      const e=Object.entries(dom[j]).sort((a,b)=>b[1]-a[1])[0];k.mds=e?e[0]:null;
-    });
-    P.kec.forEach(k=>{delete k.bb;delete k.cx;delete k.cy;});
-    out.prov[prov]=P;
-    console.log(prov,'MDS',Object.keys(P.mds).length,'titik',P.titik.length,'kecamatan dicakup',U.length);
+  const P={mds:{},titik:[],kec:statProv.map(k=>({...k})),label:A.key,pic:A.pic,prov,cm:cmpCm,pm:cmpPm,dbMonths};
+  for(const c of Object.values(heat)){
+    if(c.prov!==prov)continue;
+    const m=P.mds[c.mds]||(P.mds[c.mds]={n:0,ada:FOKUS.map(()=>0)});
+    m.n++;c.g.forEach(gi=>m.ada[gi]++);
   }
-  return out;
+  for(const k of Object.keys(P.mds))if(P.mds[k].n<10)delete P.mds[k];
+
+  // titik = toko unik yang AV-nya pernah diinput (sheet Merchandise), koordinat check-in terbaru
+  const tx={};
+  for(const r of mer){
+    if(r.Provinsi!==prov||!P.mds[r['Nama MDS']])continue;
+    const p=parse(r['Koordinat Call']),b=BB[prov];
+    if(!p||p[0]<b[0]||p[0]>b[1]||p[1]<b[2]||p[1]>b[3])continue;
+    const k=r['Kode Customer'],t=(r.Tanggal||0)+(r['Check In']||0);
+    if(!tx[k]||t>tx[k].t)tx[k]={t,p,mds:r['Nama MDS'],nama:r['Nama Customer'],kab:r.Kabupaten,tipe:r['Tipe Customer'],tgl:iso(r.Tanggal),sku:Number(r['Total SKU'])||0};
+  }
+  P.titik=Object.values(tx).map(x=>[+x.p[0].toFixed(6),+x.p[1].toFixed(6),x.mds,x.nama,x.kab,x.tipe,x.tgl,1]);
+
+  // kecamatan: bbox + centroid, indeks kecamatan tiap titik
+  P.kec.forEach(k=>{
+    const r=k.g.reduce((a,b)=>b[0].length>a[0].length?b:a)[0];
+    k.bb=[Math.min(...r.map(c=>c[0])),Math.min(...r.map(c=>c[1])),Math.max(...r.map(c=>c[0])),Math.max(...r.map(c=>c[1]))];
+    k.cx=r.reduce((a,c)=>a+c[0],0)/r.length;k.cy=r.reduce((a,c)=>a+c[1],0)/r.length;k.tx=0;
+    k.cov=(covered[prov]||{})[kabKey(k.kab)]||(kabKey(k.kab)==='pangkajenedankepulauan'&&(covered[prov]||{}).pangkajenekepulauan)?1:0;
+  });
+  const skus=Object.values(tx).map(x=>x.sku);
+  // heatmap per kecamatan untuk tiap MDS (dipakai saat filter satu MDS): [jumlah visit transaksi, ...jumlah per kelompok item]
+  P.hk={};
+  for(const c of Object.values(heat)){
+    if(c.prov!==prov||!P.mds[c.mds])continue;
+    const p=parse(c.xy);let idx=-1;
+    if(p)for(let i=0;i<P.kec.length&&idx<0;i++){const k=P.kec[i];if(p[1]<k.bb[0]||p[1]>k.bb[2]||p[0]<k.bb[1]||p[0]>k.bb[3])continue;if(k.g.some(g=>inPoly(p[1],p[0],g)))idx=i;}
+    const o2=P.hk[c.mds]||(P.hk[c.mds]={});const a=o2[idx]||(o2[idx]=[0].concat(FOKUS.map(()=>0)));
+    a[0]++;c.g.forEach(gi=>a[gi+1]++);
+  }
+  P.titik.forEach((t,ti)=>{
+    let idx=-1;
+    for(let i=0;i<P.kec.length&&idx<0;i++){const k=P.kec[i];if(t[1]<k.bb[0]||t[1]>k.bb[2]||t[0]<k.bb[1]||t[0]>k.bb[3])continue;if(k.g.some(p=>inPoly(t[1],t[0],p)))idx=i;}
+    t.push(idx);t.push(skus[ti]);if(idx>=0)P.kec[idx].tx++;
+  });
+
+  // perbandingan titik operator ber-AV: bulan lalu vs bulan berjalan, per kecamatan. Baris: [lat,lon,MDS,idx kecamatan,total SKU]
+  P.cmp={pm:cmpPm,cm:cmpCm,prev:[],cur:[]};
+  for(const [lab,month] of [['prev',cmpPm],['cur',cmpCm]]){
+    const last={};
+    for(const r of cmpMer){
+      if(r.Provinsi!==prov||!P.mds[r['Nama MDS']]||!Number.isFinite(r.Tanggal)||monthOf(r.Tanggal)!==month)continue;
+      const p=parse(r['Koordinat Call']),bb=BB[prov];
+      if(!p||p[0]<bb[0]||p[0]>bb[1]||p[1]<bb[2]||p[1]>bb[3])continue;
+      const k=r['Kode Customer'],t=(r.Tanggal||0)+(r['Check In']||0);
+      if(!last[k]||t>last[k].t)last[k]={t,p,mds:r['Nama MDS'],sku:Number(r['Total SKU'])||0};
+    }
+    P.cmp[lab]=Object.values(last).map(x=>{
+      let idx=-1;
+      for(let i=0;i<P.kec.length&&idx<0;i++){const k=P.kec[i];if(x.p[1]<k.bb[0]||x.p[1]>k.bb[2]||x.p[0]<k.bb[1]||x.p[0]>k.bb[3])continue;if(k.g.some(g=>inPoly(x.p[1],x.p[0],g)))idx=i;}
+      return[+x.p[0].toFixed(5),+x.p[1].toFixed(5),x.mds,idx,x.sku];
+    });
+  }
+
+  // RO 3 varian per MDS dan per kecamatan: [database, penambahan]
+  P.ro3={m:{},k:{},list:[]};
+  const kecOf=xy=>{const p=parse(xy);if(!p)return -1;for(let i=0;i<P.kec.length;i++){const k=P.kec[i];if(p[1]<k.bb[0]||p[1]>k.bb[2]||p[0]<k.bb[1]||p[0]>k.bb[3])continue;if(k.g.some(g=>inPoly(p[1],p[0],g)))return i;}return -1;};
+  const topMds=o2=>Object.entries(o2.mds).sort((a,b)=>b[1]-a[1])[0][0];
+  const put=(mds,idx,j)=>{const m=P.ro3.m[mds]||(P.ro3.m[mds]=[0,0]);m[j]++;const kk=P.ro3.k[mds]||(P.ro3.k[mds]={});const a=kk[idx]||(kk[idx]=[0,0]);a[j]++;};
+  for(const [src,j] of [[roBaseSet,0],[roAdd,1]]){
+    for(const o2 of Object.values(src)){
+      if(o2.last.prov!==prov)continue;
+      const mds=j===1?topMds(o2):o2.last.mds;
+      if(!P.mds[mds])continue;
+      const idx=kecOf(o2.last.xy);
+      put(mds,idx,j);
+      if(j===1)P.ro3.list.push([mds,idx,o2.last.nama,o2.v.size,[...o2.v].slice(0,4).map(x=>x.replace(/^NS /,'')).join(', ')]);
+    }
+  }
+
+  // potensi (50% penduduk + 50% keramaian) vs jumlah toko ber-AV, hanya kabupaten yang dikunjungi
+  const U=P.kec.filter(k=>k.cov);
+  const ker=U.map(k=>k.pasar*5+k.term*3+k.spbu+k.toko);
+  const pp=pct(U.map(k=>k.pend||0)),pk=pct(ker),pt=pct(U.map(k=>k.tx));
+  U.forEach((k,i)=>{k.ker=ker[i];k.pot=Math.round(.5*pp[i]+.5*pk[i]);k.txs=Math.round(pt[i]);k.celah=k.pot-k.txs;});
+  const dom=P.kec.map(()=>({}));P.titik.forEach(t=>{if(t[8]>=0)dom[t[8]][t[2]]=(dom[t[8]][t[2]]||0)+1;});
+  const withTx=P.kec.map((k,i)=>({k,i})).filter(x=>x.k.tx);
+  P.kec.forEach((k,i)=>{
+    if(!k.cov)return;let j=i;
+    if(!k.tx){let bd=1e18;withTx.forEach(x=>{const d=(x.k.cx-k.cx)**2+(x.k.cy-k.cy)**2;if(d<bd){bd=d;j=x.i;}});}
+    const e=Object.entries(dom[j]).sort((a,b)=>b[1]-a[1])[0];k.mds=e?e[0]:null;
+  });
+  P.kec.forEach(k=>{delete k.bb;delete k.cx;delete k.cy;});
+  console.log(A.key,'('+A.pic+')','MDS',Object.keys(P.mds).length,'titik',P.titik.length,'kecamatan dicakup',U.length,
+    '| bulan lalu',P.cmp.prev.length,'| database',dbMonths.join(',')||'-');
+  return{P,ro3,dbMonths};
 }
-return{buildInsight,runInsight,loadState,saveState,decideState,liveMonth,pickRows,mergeIntoDb,trimDb,closeMonths,emptyDb,packDb,unpackDb,loadDb,saveDb,READ_SHEETS:['Call','Merchandise','Order'],MAKS_BULAN};
+return{buildInsight,runInsight,loadState,saveState,decideState,liveMonth,pickRows,pickRowsAll,mergeIntoDb,trimDb,closeMonths,emptyDb,packDb,unpackDb,loadDb,saveDb,AREAS,PICS,READ_SHEETS:['Call','Merchandise','Order'],MAKS_BULAN};
 });
 
 if(typeof module==='object'&&require.main===module)(async()=>{
