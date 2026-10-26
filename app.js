@@ -25719,7 +25719,7 @@ function submitSpg(){
   document.querySelectorAll('#s-spg .step-section').forEach((s,i)=>s.classList.toggle('active',i===spgStep));
   document.getElementById('spg-wrap').scrollTop=0;
 }
-function spgQtyUnit(name){ return /PLS/i.test(name)?'rnc':'qty'; } // item tanpa 'PLS' (box, TS, dll) pakai 'qty'
+function spgQtyUnit(name){ return /PLS/i.test(name)?'pcs':'qty'; } // item tanpa 'PLS' (box, TS, dll) pakai 'qty'
 function spgItemLine(name,qty,omzet){
   const line=qty+' rc = Rp '+omzet.toLocaleString('id-ID');
   if(omzet>150000)return '• *'+name+'*\n   *'+line+'*\n';
