@@ -2005,7 +2005,7 @@ function spgMatrixData(){
   }
   const[Y,M]=mi.value.split('-').map(Number);
   const daysInMonth=new Date(Y,M,0).getDate();
-  const skipSun=true; // work week is Mon–Sat (6 days): Sunday is never counted as a missed report
+  const skipSun=false; // tim kerja 7 hari: Minggu ikut dihitung (bukan hari libur)
   const area=(document.getElementById('f-area')?.value||'').toLowerCase();
   const mdsQ=(document.getElementById('f-mds')?.value||'').toLowerCase();
   const todayKey=_ymd(new Date());
@@ -2086,7 +2086,7 @@ function renderSpgMatrix(){
   const totalMissed=rows.reduce((s,p)=>s+p.missed.length,0);
   const chip=(t,c)=>`<span style="display:inline-block;margin:2px 4px 2px 0;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;background:var(--${c}-g);color:var(--${c})">${t}</span>`;
   if(sum){
-    sum.innerHTML=spgRecapHtml()+`<div style="font-size:11px;color:var(--t2);margin-bottom:6px">${rows.length} SPG \u00b7 ${totalMissed} hari belum lapor (s/d kemarin \u00b7 Senin\u2013Sabtu, Minggu tidak dihitung)</div>`;
+    sum.innerHTML=spgRecapHtml()+`<div style="font-size:11px;color:var(--t2);margin-bottom:6px">${rows.length} SPG \u00b7 ${totalMissed} hari belum lapor (s/d kemarin \u00b7 Minggu ikut dihitung)</div>`;
   }
   if(!rows.length){host.innerHTML='<div class="empty-state">Belum ada SPG untuk filter ini.</div>';return;}
 
@@ -2123,9 +2123,8 @@ function renderSpgMatrix(){
   host.innerHTML=html;
 }
 /* ── Rekap & Reminder "belum lapor", dikelompokkan per AREA ──────────────────────────────
-   Dipakai tiap pagi: siapa yang kemarin (Senin–Sabtu; Minggu tidak dihitung, jadi Senin pagi
-   yang dicek adalah hari Sabtu) tidak input laporan harian, per area, lengkap dengan teks
-   pesan siap-salin / buka WhatsApp untuk tiap area. Data diambil langsung dari Firestore
+   Dipakai tiap pagi: siapa yang kemarin tidak input laporan harian, per area (semua hari termasuk Minggu),
+      pesan siap-salin / buka WhatsApp untuk tiap area. Data diambil langsung dari Firestore
    (14 hari terakhir) supaya tidak kena batas limit(2000) pada SPG_ALL. Daftar SPG = roster
    (app_data/spg_names) + siapa pun yang lapor 14 hari terakhir, sama seperti grid di bawahnya.
    Nama berisi "event" (mis. "Sujar Event") bukan orang, jadi tidak ikut dihitung. */
@@ -2148,7 +2147,6 @@ function _escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
 function spgRecapData(){
   const today=new Date();today.setHours(0,0,0,0);
   const yest=new Date(today);yest.setDate(yest.getDate()-1);
-  while(yest.getDay()===0)yest.setDate(yest.getDate()-1); // Minggu bukan hari lapor
   const areaQ=(document.getElementById('f-area')?.value||'').toLowerCase();
   const mdsQ=(document.getElementById('f-mds')?.value||'').toLowerCase();
   const people={};
@@ -2177,7 +2175,7 @@ function spgRecapData(){
   };
   const yKey=_ymd(yest), tKey=_ymd(today);
   const label=d=>d.toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long'});
-  return{total:list.length,yest:{key:yKey,label:label(yest),groups:group(yKey)},today:{key:tKey,label:label(today),groups:today.getDay()===0?[]:group(tKey),isSunday:today.getDay()===0}};
+  return{total:list.length,yest:{key:yKey,label:label(yest),groups:group(yKey)},today:{key:tKey,label:label(today),groups:group(tKey),isSunday:false}};
 }
 function copySpgRecap(i){
   const t=_SPG_RECAP_MSGS[i]||'';
@@ -2216,7 +2214,7 @@ function spgRecapHtml(){
   };
   const nY=R.yest.groups.reduce((s,g)=>s+g.people.length,0);
   return`<div style="padding:10px 12px;border:1px solid var(--border2);border-radius:10px;margin-bottom:10px">
-    <div style="font-size:13px;font-weight:800">🔔 Rekap pagi · belum lapor per area <span style="font-weight:500;color:var(--t3);font-size:10px">(${R.total} SPG dipantau · Senin–Sabtu)</span></div>
+    <div style="font-size:13px;font-weight:800">🔔 Rekap pagi · belum lapor per area <span style="font-weight:500;color:var(--t3);font-size:10px">(${R.total} SPG dipantau Â· setiap hari, termasuk Minggu)</span></div>
     ${block(`Kemarin — ${R.yest.label} (${nY} belum lapor)`,R.yest,true)}
     ${block(`Hari ini — ${R.today.label}`,R.today,false)}
   </div>`;
