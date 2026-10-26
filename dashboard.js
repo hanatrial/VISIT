@@ -2066,6 +2066,7 @@ function spgMatrixData(){
 }
 function renderSpgMatrix(){
   loadSpgRoster();
+  loadSpgRecent();
   const host=document.getElementById('spg-matrix-body');
   const sum=document.getElementById('spg-matrix-summary');
   if(!host)return;
@@ -2085,11 +2086,7 @@ function renderSpgMatrix(){
   const totalMissed=rows.reduce((s,p)=>s+p.missed.length,0);
   const chip=(t,c)=>`<span style="display:inline-block;margin:2px 4px 2px 0;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;background:var(--${c}-g);color:var(--${c})">${t}</span>`;
   if(sum){
-    let s=`<div style="font-size:11px;color:var(--t2);margin-bottom:6px">${rows.length} SPG · ${totalMissed} hari belum lapor (s/d kemarin · Senin–Sabtu, Minggu tidak dihitung)</div>`;
-    if(isCurrentMonth)s+=todayMissing.length
-      ?`<div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:4px">Belum lapor hari ini (${todayMissing.length}):</div>`+todayMissing.map(p=>chip(p.name,'amber')).join('')
-      :'<div style="font-size:11px;font-weight:700;color:var(--green)">✓ Semua SPG sudah lapor hari ini</div>';
-    sum.innerHTML=s;
+    sum.innerHTML=spgRecapHtml()+`<div style="font-size:11px;color:var(--t2);margin-bottom:6px">${rows.length} SPG \u00b7 ${totalMissed} hari belum lapor (s/d kemarin \u00b7 Senin\u2013Sabtu, Minggu tidak dihitung)</div>`;
   }
   if(!rows.length){host.innerHTML='<div class="empty-state">Belum ada SPG untuk filter ini.</div>';return;}
 
@@ -2125,6 +2122,106 @@ function renderSpgMatrix(){
   html+='</tbody></table>';
   host.innerHTML=html;
 }
+/* ── Rekap & Reminder "belum lapor", dikelompokkan per AREA ──────────────────────────────
+   Dipakai tiap pagi: siapa yang kemarin (Senin–Sabtu; Minggu tidak dihitung, jadi Senin pagi
+   yang dicek adalah hari Sabtu) tidak input laporan harian, per area, lengkap dengan teks
+   pesan siap-salin / buka WhatsApp untuk tiap area. Data diambil langsung dari Firestore
+   (14 hari terakhir) supaya tidak kena batas limit(2000) pada SPG_ALL. Daftar SPG = roster
+   (app_data/spg_names) + siapa pun yang lapor 14 hari terakhir, sama seperti grid di bawahnya.
+   Nama berisi "event" (mis. "Sujar Event") bukan orang, jadi tidak ikut dihitung. */
+let _spgRecent=[], _spgRecentAt=0, _spgRecentLoading=false, _SPG_RECAP_MSGS=[];
+function loadSpgRecent(force){
+  if(_spgRecentLoading)return;
+  if(!force&&_spgRecentAt&&Date.now()-_spgRecentAt<300000)return;
+  _spgRecentLoading=true;
+  const from=new Date();from.setHours(0,0,0,0);from.setDate(from.getDate()-14);
+  db.collection('spg_daily_logs').where('timestamp','>=',from).get()
+    .then(s=>{
+      _spgRecent=[];
+      s.forEach(d=>{const v=d.data();if(v.timestamp)_spgRecent.push({...v,timestamp:v.timestamp.toDate()});});
+      _spgRecentAt=Date.now();
+    })
+    .catch(e=>{console.error('spg recent load FAILED',e.code,e.message);_spgRecent=[];_spgRecentAt=Date.now()-240000;})
+    .then(()=>{_spgRecentLoading=false;if(TAB==='spg'&&SUBTAB_SPG==='matrix')renderSpgMatrix();});
+}
+function _escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function spgRecapData(){
+  const today=new Date();today.setHours(0,0,0,0);
+  const yest=new Date(today);yest.setDate(yest.getDate()-1);
+  while(yest.getDay()===0)yest.setDate(yest.getDate()-1); // Minggu bukan hari lapor
+  const areaQ=(document.getElementById('f-area')?.value||'').toLowerCase();
+  const mdsQ=(document.getElementById('f-mds')?.value||'').toLowerCase();
+  const people={};
+  const add=(n,a)=>{
+    n=String(n||'').trim();
+    if(!n||/\bevent\b/i.test(n))return null;
+    const k=_spgKey(n);
+    const p=people[k]||(people[k]={key:k,name:n,areas:{},days:{}});
+    if(a)p.areas[a]=(p.areas[a]||0)+1;
+    return p;
+  };
+  Object.entries(SPG_ROSTER).forEach(([a,ns])=>ns.forEach(n=>add(n,a)));
+  _spgRecent.forEach(r=>{const p=add(r.nama,r.area||'');if(p)p.days[_ymd(r.timestamp)]=1;});
+  const list=Object.values(people).map(p=>{
+    p.area=(Object.entries(p.areas).sort((a,b)=>b[1]-a[1])[0]||['Tanpa area',0])[0];
+    return p;
+  }).filter(p=>{
+    if(areaQ&&!p.area.toLowerCase().includes(areaQ))return false;
+    if(mdsQ&&!p.name.toLowerCase().includes(mdsQ))return false;
+    return true;
+  });
+  const group=key=>{
+    const g={};
+    list.filter(p=>!p.days[key]).forEach(p=>{(g[p.area]=g[p.area]||[]).push(p);});
+    return Object.entries(g).sort((a,b)=>a[0].localeCompare(b[0])).map(([area,ps])=>({area,people:ps.sort((a,b)=>a.name.localeCompare(b.name))}));
+  };
+  const yKey=_ymd(yest), tKey=_ymd(today);
+  const label=d=>d.toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long'});
+  return{total:list.length,yest:{key:yKey,label:label(yest),groups:group(yKey)},today:{key:tKey,label:label(today),groups:today.getDay()===0?[]:group(tKey),isSunday:today.getDay()===0}};
+}
+function copySpgRecap(i){
+  const t=_SPG_RECAP_MSGS[i]||'';
+  const done=()=>{const b=document.getElementById('spg-recap-copy-'+i);if(b){const o=b.textContent;b.textContent='✓ Tersalin';setTimeout(()=>{b.textContent=o;},1500);}};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done).catch(()=>{});return;}
+  const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');done();}catch(e){}
+  ta.remove();
+}
+function spgRecapHtml(){
+  if(!_spgRecentAt)return'<div style="font-size:11px;color:var(--t2);margin-bottom:8px">Memuat rekap belum lapor…</div>';
+  const R=spgRecapData();
+  _SPG_RECAP_MSGS=[];
+  const chip=n=>`<span style="display:inline-block;margin:2px 4px 2px 0;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;background:var(--red-g);color:var(--red)">${_escHtml(n)}</span>`;
+  const msgFor=(area,ps,label)=>
+    `Selamat pagi tim ${area} 🙏\nReminder: laporan harian SPG hari ${label} belum masuk dari:\n`+
+    ps.map((p,i)=>`${i+1}. ${p.name}`).join('\n')+
+    `\nMohon segera input laporannya ya. Terima kasih 🙏`;
+  const block=(title,sec,withMsg)=>{
+    let h=`<div style="font-size:12px;font-weight:800;color:var(--t1);margin:10px 0 6px">${title}</div>`;
+    if(sec.isSunday)return h+'<div style="font-size:11px;color:var(--t3)">Hari Minggu — tidak ada kewajiban lapor.</div>';
+    if(!sec.groups.length)return h+'<div style="font-size:11px;font-weight:700;color:var(--green)">✓ Semua SPG sudah lapor</div>';
+    h+=sec.groups.map(g=>{
+      let btn='';
+      if(withMsg){
+        const idx=_SPG_RECAP_MSGS.push(msgFor(g.area,g.people,sec.label))-1;
+        const wa='https://wa.me/?text='+encodeURIComponent(_SPG_RECAP_MSGS[idx]);
+        btn=`<button class="btn" id="spg-recap-copy-${idx}" style="margin-left:8px;font-size:10px;padding:2px 8px" onclick="copySpgRecap(${idx})">📋 Salin pesan</button>`+
+            `<a class="btn" href="${wa}" target="_blank" rel="noopener" style="margin-left:4px;font-size:10px;padding:2px 8px;text-decoration:none">💬 WhatsApp</a>`;
+      }
+      return`<div style="margin:0 0 8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px">
+        <div style="font-size:11px;font-weight:800;margin-bottom:4px">${_escHtml(g.area)} <span style="color:var(--red)">· ${g.people.length} belum lapor</span>${btn}</div>
+        <div>${g.people.map(p=>chip(p.name)).join('')}</div></div>`;
+    }).join('');
+    return h;
+  };
+  const nY=R.yest.groups.reduce((s,g)=>s+g.people.length,0);
+  return`<div style="padding:10px 12px;border:1px solid var(--border2);border-radius:10px;margin-bottom:10px">
+    <div style="font-size:13px;font-weight:800">🔔 Rekap pagi · belum lapor per area <span style="font-weight:500;color:var(--t3);font-size:10px">(${R.total} SPG dipantau · Senin–Sabtu)</span></div>
+    ${block(`Kemarin — ${R.yest.label} (${nY} belum lapor)`,R.yest,true)}
+    ${block(`Hari ini — ${R.today.label}`,R.today,false)}
+  </div>`;
+}
+
 function exportSpgMatrixCSV(){
   const data=_SPG_MATRIX_EXPORT||spgMatrixData();
   if(!data||!data.rows.length){alert('Tidak ada data untuk diexport.');return;}
