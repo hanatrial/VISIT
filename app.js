@@ -25836,7 +25836,7 @@ function shareSpgWhatsApp(){
     [['📦 *NON POLOS*',nonPolos,'Non Polos'],['🥤 *POLOS*',polos,'Polos']].forEach(([judul,arr,lbl])=>{
       if(!arr.length)return;
       text+=judul+'\n';
-      arr.forEach(([name,{qty,omzet}])=>{ text+='• '+name+'\n   '+qty+' '+spgQtyUnit(name)+' = Rp '+omzet.toLocaleString('id-ID')+'\n'; });
+      arr.forEach(([name,{qty,omzet}])=>{ text+=(prioSetD.has(name)?'⭐ ':'• ')+name+'\n   '+qty+' '+spgQtyUnit(name)+' = Rp '+omzet.toLocaleString('id-ID')+'\n'; }); // ⭐ = item prioritas
       text+='_Subtotal '+lbl+': Rp '+sumOmz(arr).toLocaleString('id-ID')+'_\n';
       text+='─────────────────\n';
     });
