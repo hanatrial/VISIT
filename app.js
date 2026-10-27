@@ -25827,6 +25827,22 @@ function shareSpgWhatsApp(){
     return;
   }
   const spgDetailItem=/nur azizah/i.test(SG.nama||''); // format rinci per item + satuan pcs/qty: khusus SPG Nur Azizah
+  if(spgDetailItem){ // dipisah 2: POLOS (nama ada PLS) dan NON POLOS (sisanya)
+    const ents=Object.entries(SG.items);
+    const polos=ents.filter(([name])=>/PLS/i.test(name));
+    const nonPolos=ents.filter(([name])=>!/PLS/i.test(name));
+    const sumOmz=arr=>arr.reduce((s,[,{omzet}])=>s+omzet,0);
+    [['🥤 *POLOS*',polos,'Polos'],['📦 *NON POLOS*',nonPolos,'Non Polos']].forEach(([judul,arr,lbl])=>{
+      if(!arr.length)return;
+      text+=judul+'\n';
+      arr.forEach(([name,{qty,omzet}])=>{ text+='• '+name+'\n   '+qty+' '+spgQtyUnit(name)+' = Rp '+omzet.toLocaleString('id-ID')+'\n'; });
+      text+='_Subtotal '+lbl+': Rp '+sumOmz(arr).toLocaleString('id-ID')+'_\n';
+      text+='─────────────────\n';
+    });
+    text+='*TOTAL OMZET: Rp '+SG.total.toLocaleString('id-ID')+'*';
+    location.href='https://wa.me/?text='+encodeURIComponent(text);
+    return;
+  }
   const prioSet=new Set(SPG_PRIORITY_ITEMS);
   const prioEntries=Object.entries(SG.items).filter(([name])=>prioSet.has(name));
   const lainEntries=Object.entries(SG.items).filter(([name])=>!prioSet.has(name));
