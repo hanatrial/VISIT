@@ -23403,7 +23403,8 @@ const SPG_STORES_BY_AREA = {
   'Makassar': ['Satu Sama Landak','Satu Sama Perintis','Satu Sama Hertasning','Hengky Tranku','Top Mode Perintis','Grand Toserba Pengayoman','Ektong','Grand Toserba Hertasning','Satu Sama Karlink','Gelael','Grand Mall','Diamond','Indogrosir Makassar'],
   'Gorontalo': ['Indogrosir Gorontalo'],
   'Kendari': ['Indogrosir Kendari'],
-  'Manado': ['Indogrosir Manado']
+  'Manado': ['Indogrosir Manado'],
+  'Bone': ['Surya Indah Amir']
 };
 function canonicalSpgStore(area,name){
   const n=String(name).trim();
@@ -25605,10 +25606,12 @@ const _SPG_SP_BASE=[
 ];
 const SPG_SINAR_PLASTIK_GROUPS=[{label:'⭐ PRIORITAS', items:SPG_IG_SP_PRIORITY_ITEMS}]
   .concat(_SPG_SP_BASE.map(g=>({label:g.label, items:g.items.filter(n=>!_SPG_IG_SP_PRIO_SET.has(n)&&!SPG_SP_REMOVED_ITEMS.has(n))})));
+/* Stores that use the Sinar Plastik 3 item list + WhatsApp layout */
+function spgIsSinarPlastikTemplate(store){ return /^(sinar plastik 3|surya indah amir)$/i.test((store||'').trim()); }
 function spgSinarPlastikItems(){ return SPG_SINAR_PLASTIK_GROUPS.flatMap(g=>g.items); }
 function spgSinarPlastikGroupOf(name){ const g=SPG_SINAR_PLASTIK_GROUPS.find(g=>g.items.includes(name)); return g?g.label:''; }
 function spgOrderedItems(){
-  if(/^sinar plastik 3$/i.test((SG.store||'').trim())) return spgSinarPlastikItems();
+  if(spgIsSinarPlastikTemplate(SG.store)) return spgSinarPlastikItems();
   if(/indogrosir/i.test(SG.store||'')) return spgIndogrosirItems();
   const prio=new Set(SPG_PRIORITY_ITEMS);
   const rest=[];
@@ -25619,7 +25622,7 @@ function renderSpgItems(){
   const list=document.getElementById('spg-item-list');
   list.innerHTML='';
   const order=spgOrderedItems();
-  const isSinarPlastik=/^sinar plastik 3$/i.test((SG.store||'').trim());
+  const isSinarPlastik=spgIsSinarPlastikTemplate(SG.store);
   const isIndogrosir=!isSinarPlastik&&/indogrosir/i.test(SG.store||'');
   let lastGroup=null;
   order.forEach((name,fi)=>{
@@ -25752,7 +25755,7 @@ function spgItemLine(name,qty,omzet){
 }
 function shareSpgWhatsApp(){
   const tgl=spgDateLabel(SG.date);
-  const isSinarPlastik=/^sinar plastik 3$/i.test((SG.store||'').trim());
+  const isSinarPlastik=spgIsSinarPlastikTemplate(SG.store);
   const isIndogrosir=!isSinarPlastik&&/indogrosir/i.test(SG.store);
   let text='*REPORT HARIAN SPG*\n';
   text+='📅 '+tgl+'\n';
