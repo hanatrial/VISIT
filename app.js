@@ -25826,7 +25826,7 @@ function shareSpgWhatsApp(){
     location.href='https://wa.me/?text='+encodeURIComponent(text);
     return;
   }
-  const spgDetailItem=/nur azizah/i.test(SG.nama||''); // format rinci per item + satuan pcs/qty: khusus SPG Nur Azizah
+  const spgDetailItem=/nur azizah/i.test(SG.nama||'')&&/^bone$/i.test((SG.area||'').trim()); // format rinci per item + satuan pcs/qty: khusus SPG Nur Azizah (area Bone)
   if(spgDetailItem){ // dipisah 2: POLOS (nama ada PLS) dan NON POLOS (sisanya)
     const ents=Object.entries(SG.items);
     const polos=ents.filter(([name])=>/PLS/i.test(name));
