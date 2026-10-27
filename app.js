@@ -25577,11 +25577,13 @@ const SPG_INDOGROSIR_GROUPS=[
 function spgIndogrosirItems(){ return SPG_INDOGROSIR_GROUPS.flatMap(g=>g.items); }
 function spgIndogrosirGroupOf(name){ const g=SPG_INDOGROSIR_GROUPS.find(g=>g.items.includes(name)); return g?g.label:''; }
 const SPG_SINAR_PLASTIK_GROUPS=[
+  {label:'⭐ PRIORITAS', items:['HI LO ACTIVE CLEAR PROTEIN PEACH 12PX8SX30G','HI LO ACTIVE POWERMELON 12DX7SX32G','L-MEN PLATINUM NOODLE SEMUR DAGING 18BAGX56.5G'].filter(nm=>STOCK_PRODUCTS.some(g=>g.items.includes(nm)))},
   {label:'NS PLS', items: spgGroupItems('NS').filter(n=>/PLS/i.test(n)&&!/\bREF\b/i.test(n)&&!/BAG/i.test(n)&&!/\bFC\b/i.test(n))},
   {label:'NS Bag', items:['NS JERUK PERAS REF 12BAGX500G','NS PREMIUM JUS MANGGA REF PLS 12BAGX420G','NS LYCHEE TEA REF PLS 12BAGX400G']},
   {label:'HI LO DRINK PLS', items: spgGroupItems('HILO DRINK PLS')},
   {label:'HI LO SCHOOL PLS', items: spgGroupItems('HILO SCHOOL PLS')},
-  {label:'TS SWT PLS', items: spgGroupItems('TS SWT').filter(n=>/PLS/i.test(n))}
+  {label:'TS SWT PLS', items: spgGroupItems('TS SWT').filter(n=>/PLS/i.test(n))},
+  {label:'HI LO BOX', items:['HI LO SCHOOL VANILLA VEGIBERI 12DX500G','HI LO SCHOOL VANILLA VEGIBERI 6DX750G','HI LO SCHOOL HONEY 12DX250G','HI LO SCHOOL HONEY 12DX500G','HI LO SCHOOL STRAWBERRY CHEESECAKE 12DX500G','HI LO SCHOOL BUBBLE GUM 12DX500G','HI LO TEEN VANILLA CARAMEL 12DX250G','HI LO TEEN VANILLA CARAMEL 12DX500G','HI LO TEEN VANILLA CARAMEL 6DX750G','HI LO TEEN KOREAN BANANA 12DX250G'].filter(nm=>STOCK_PRODUCTS.some(g=>g.items.includes(nm)))}
 ];
 function spgSinarPlastikItems(){ return SPG_SINAR_PLASTIK_GROUPS.flatMap(g=>g.items); }
 function spgSinarPlastikGroupOf(name){ const g=SPG_SINAR_PLASTIK_GROUPS.find(g=>g.items.includes(name)); return g?g.label:''; }
