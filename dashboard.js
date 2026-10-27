@@ -1037,7 +1037,7 @@ function loadAll(){
   if(has('sec-spg'))db.collection('spg_daily_logs').limit(2000).get(SRV)
     .catch(()=>db.collection('spg_daily_logs').get())
     .then(s=>{
-    SPG_ALL=[];s.forEach(d=>{const v=d.data();SPG_ALL.push({...v,timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
+    SPG_ALL=[];s.forEach(d=>{const v=d.data();SPG_ALL.push({..._spgNormRow(v),timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
     SPG_ALL.sort((a,b)=>b.timestamp-a.timestamp);
     render();
   }).catch(e=>console.error('spg_daily_logs FAILED',e.code,e.message));
@@ -1188,7 +1188,7 @@ function initDash(){
   },e=>console.error('ned snap err',e));
   if(has('sec-spg'))db.collection('spg_daily_logs').limit(2000).onSnapshot({includeMetadataChanges:true},s=>{
     if(s.metadata.fromCache)return;
-    SPG_ALL=[];s.forEach(d=>{const v=d.data();SPG_ALL.push({...v,timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
+    SPG_ALL=[];s.forEach(d=>{const v=d.data();SPG_ALL.push({..._spgNormRow(v),timestamp:v.timestamp?v.timestamp.toDate():new Date()});});
     SPG_ALL.sort((a,b)=>b.timestamp-a.timestamp);
     render();
   },e=>console.error('spg snap err',e));
@@ -1897,6 +1897,21 @@ const SPG_PRIO_GROUPS=[
   {label:'HI LO Active',items:["HI LO ACTIVE DAYBREAK VANILLA CEREAL 12PX8SX50G","HI LO ACTIVE MOONLIGHT ORIGINAL 12PX8SX32G","HI LO ACTIVE CLEAR PROTEIN PEACH 12PX8SX30G","HI LO ACTIVE POWERMELON 12DX7SX32G"]},
   {label:'L-MEN Platinum Noodle',items:["L-MEN PLATINUM NOODLE SEMUR DAGING 18BAGX56.5G"]}
 ];
+/* Name / store clean-up rules (from the names sheet). Keep in sync with app.js.
+   HIDDEN = dropped from the roster lists only; past reports are kept and still shown.
+   ALIAS  = spelling variants merged into one — applied to past reports as they are loaded. */
+function spgCleanKey(s){ return String(s==null?'':s).trim().replace(/\s+/g,' ').toLowerCase(); }
+const SPG_NAME_HIDDEN=new Set(['a. etriani','ilsa putri','ilsa putri ayuningtiyas','nayla','tarlin komari','masker angelica takasihaeng']);
+const SPG_NAME_ALIAS={'elce':'Elce Mosiewa'};
+const SPG_STORE_ALIAS={
+  'hypermart the park':'Hypermart The Park Kendari','hypermart the park kendari':'Hypermart The Park Kendari',
+  'tk. hypermart the oark':'Hypermart The Park Kendari','tk. hypermart the park':'Hypermart The Park Kendari',
+  'farmers':'Farmers','farmers market':'Farmers'
+};
+function spgNameAlias(n){ return (n&&SPG_NAME_ALIAS[spgCleanKey(n)])||n; }
+function spgNameHidden(n){ return SPG_NAME_HIDDEN.has(spgCleanKey(n)); }
+function spgStoreAlias(s){ return (s&&SPG_STORE_ALIAS[spgCleanKey(s)])||s; }
+function _spgNormRow(v){ return {...v, nama:spgNameAlias(v.nama), store:spgStoreAlias(v.store)}; }
 function _escJs(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
 /* One identity per SPG regardless of letter case or stray internal spacing */
 function _spgKey(n){return String(n||'?').trim().replace(/\s+/g,' ').toLowerCase();}
@@ -1965,7 +1980,7 @@ function loadSpgRoster(){
       Object.entries(doc.data()).forEach(([a,v])=>{
         if(!Array.isArray(v))return;
         SPG_ROSTER[a]=SPG_ROSTER[a]||[];
-        v.forEach(n=>{if(n&&!SPG_ROSTER[a].some(x=>_spgKey(x)===_spgKey(n)))SPG_ROSTER[a].push(n);});
+        v.map(n=>spgNameAlias(n)).filter(n=>n&&!spgNameHidden(n)).forEach(n=>{if(!SPG_ROSTER[a].some(x=>_spgKey(x)===_spgKey(n)))SPG_ROSTER[a].push(n);});
       });
       if(TAB==='spg'&&SUBTAB_SPG==='matrix')renderSpgMatrix();
     }).catch(e=>console.warn('spg roster load failed',e));
@@ -1987,7 +2002,7 @@ function loadSpgMonth(force){
     .where('timestamp','>=',new Date(Y,M-1,1)).where('timestamp','<',new Date(Y,M,1)).get()
     .then(s=>{
       _spgMonthRows=[];
-      s.forEach(d=>{const v=d.data();if(v.timestamp)_spgMonthRows.push({...v,timestamp:v.timestamp.toDate()});});
+      s.forEach(d=>{const v=d.data();if(v.timestamp)_spgMonthRows.push({..._spgNormRow(v),timestamp:v.timestamp.toDate()});});
       _spgMonthKey=key;
     })
     .catch(e=>{console.error('spg month load FAILED',e.code,e.message);_spgMonthRows=[];_spgMonthKey=key;})
@@ -2019,7 +2034,7 @@ function spgMatrixData(){
   };
   Object.entries(SPG_ROSTER).forEach(([a,names])=>names.forEach(n=>person(n,a)));
   // identity/area from everything already loaded (so past reporters appear even with a blank month)
-  SPG_ALL.forEach(r=>{const n=(r.nama||'').trim(); if(n)person(n,r.area||'');});
+  SPG_ALL.forEach(r=>{const n=(r.nama||'').trim(); if(n&&!spgNameHidden(n))person(n,r.area||'');});
   // the reports themselves come from the month-scoped fetch, which isn't capped like SPG_ALL
   _spgMonthRows.forEach(r=>{
     const n=(r.nama||'').trim(); if(!n)return;

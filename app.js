@@ -23399,6 +23399,22 @@ async function loadCustomStores(){
 
 /* SPG has its own isolated store list — not shared with RKA/Beli/NED/Stock */
 const SPG_INDOGROSIR_ONLY_NAMES = ['Sarwendah - Indogrosir','Tiara - Indogrosir','Rosa - Indogrosir','Sri Rahayu Dongio'];
+/* Name / store clean-up rules (from the names sheet). Keep in sync with dashboard.js.
+   HIDDEN = removed from the picker lists only; their past reports are kept.
+   ALIAS  = spelling variants merged into one canonical name. */
+function spgCleanKey(s){ return String(s==null?'':s).trim().replace(/\s+/g,' ').toLowerCase(); }
+const SPG_NAME_HIDDEN=new Set(['a. etriani','ilsa putri','ilsa putri ayuningtiyas','nayla','tarlin komari','masker angelica takasihaeng']);
+const SPG_NAME_ALIAS={'elce':'Elce Mosiewa'};
+const SPG_STORE_HIDDEN={'bone':new Set(['a']),'luwuk':new Set(['gags'])};
+const SPG_STORE_ALIAS={
+  'hypermart the park':'Hypermart The Park Kendari','hypermart the park kendari':'Hypermart The Park Kendari',
+  'tk. hypermart the oark':'Hypermart The Park Kendari','tk. hypermart the park':'Hypermart The Park Kendari',
+  'farmers':'Farmers','farmers market':'Farmers'
+};
+function spgNameAlias(n){ return (n&&SPG_NAME_ALIAS[spgCleanKey(n)])||n; }
+function spgNameHidden(n){ return SPG_NAME_HIDDEN.has(spgCleanKey(n)); }
+function spgStoreAlias(s){ return (s&&SPG_STORE_ALIAS[spgCleanKey(s)])||s; }
+function spgStoreHidden(area,s){ const h=SPG_STORE_HIDDEN[spgCleanKey(area)]; return !!(h&&h.has(spgCleanKey(s))); }
 const SPG_STORES_BY_AREA = {
   'Makassar': ['Satu Sama Landak','Satu Sama Perintis','Satu Sama Hertasning','Hengky Tranku','Top Mode Perintis','Grand Toserba Pengayoman','Ektong','Grand Toserba Hertasning','Satu Sama Karlink','Gelael','Grand Mall','Diamond','Indogrosir Makassar'],
   'Gorontalo': ['Indogrosir Gorontalo'],
@@ -23407,11 +23423,12 @@ const SPG_STORES_BY_AREA = {
   'Bone': ['Surya Indah Amir']
 };
 function canonicalSpgStore(area,name){
-  const n=String(name).trim();
+  const n=spgStoreAlias(String(name).trim());
   return (SPG_STORES_BY_AREA[area]||[]).find(s=>_sameName(s,n))||n;
 }
 function _mergeSpgStores(area,stores){
   if(!Array.isArray(stores))return;
+  stores=stores.map(s=>spgStoreAlias(s)).filter(s=>s&&!spgStoreHidden(area,s));
   if(!SPG_STORES_BY_AREA[area])SPG_STORES_BY_AREA[area]=[];
   stores.forEach(s=>{ if(!SPG_STORES_BY_AREA[area].some(x=>_sameName(x,s)))SPG_STORES_BY_AREA[area].push(s); });
   try{
@@ -23451,11 +23468,12 @@ const SPG_NAMES_BY_AREA = {
 function canonicalSpgName(area,name){
   // collapse internal whitespace too, not just trim: "siti  RAHMA" and "siti RAHMA"
   // must resolve to one person, otherwise the picker just moves the duplicate problem
-  const n=String(name).trim().replace(/\s+/g,' ');
+  const n=spgNameAlias(String(name).trim().replace(/\s+/g,' '));
   return (SPG_NAMES_BY_AREA[area]||[]).find(s=>_sameName(s,n))||n;
 }
 function _mergeSpgNames(area,names){
   if(!Array.isArray(names))return;
+  names=names.map(s=>s?spgNameAlias(s):s).filter(s=>s&&!spgNameHidden(s));
   if(!SPG_NAMES_BY_AREA[area])SPG_NAMES_BY_AREA[area]=[];
   names.forEach(s=>{ if(s&&!SPG_NAMES_BY_AREA[area].some(x=>_sameName(x,s)))SPG_NAMES_BY_AREA[area].push(s); });
   SPG_NAMES_BY_AREA[area].sort((a,b)=>a.localeCompare(b));
