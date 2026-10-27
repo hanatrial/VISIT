@@ -25830,9 +25830,10 @@ function shareSpgWhatsApp(){
   if(spgDetailItem){ // dipisah 2: POLOS (nama ada PLS) dan NON POLOS (sisanya)
     const ents=Object.entries(SG.items);
     const polos=ents.filter(([name])=>/PLS/i.test(name));
-    const nonPolos=ents.filter(([name])=>!/PLS/i.test(name));
+    const prioSetD=new Set(SPG_PRIORITY_ITEMS);
+    const nonPolos=ents.filter(([name])=>!/PLS/i.test(name)).sort((x,y)=>(prioSetD.has(y[0])?1:0)-(prioSetD.has(x[0])?1:0)); // prioritas dulu, lalu biasa
     const sumOmz=arr=>arr.reduce((s,[,{omzet}])=>s+omzet,0);
-    [['🥤 *POLOS*',polos,'Polos'],['📦 *NON POLOS*',nonPolos,'Non Polos']].forEach(([judul,arr,lbl])=>{
+    [['📦 *NON POLOS*',nonPolos,'Non Polos'],['🥤 *POLOS*',polos,'Polos']].forEach(([judul,arr,lbl])=>{
       if(!arr.length)return;
       text+=judul+'\n';
       arr.forEach(([name,{qty,omzet}])=>{ text+='• '+name+'\n   '+qty+' '+spgQtyUnit(name)+' = Rp '+omzet.toLocaleString('id-ID')+'\n'; });
