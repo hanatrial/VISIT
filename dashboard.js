@@ -2191,6 +2191,19 @@ function spgRecapData(){
   const label=d=>d.toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long'});
   return{total:list.length,yest:{key:yKey,label:label(yest),groups:group(yKey)},today:{key:tKey,label:label(today),groups:group(tKey),isSunday:false}};
 }
+/* Your own WhatsApp number, stored only on this device, so "Kirim ke saya" opens your chat directly */
+function spgRecapWaNumber(){ try{return localStorage.getItem('spg_recap_wa')||'';}catch(e){return '';} }
+function saveSpgRecapWaNumber(v){
+  let d=String(v||'').replace(/\D/g,'');
+  if(d.startsWith('0'))d='62'+d.slice(1);
+  try{if(d)localStorage.setItem('spg_recap_wa',d);else localStorage.removeItem('spg_recap_wa');}catch(e){}
+  const el=document.getElementById('spg-recap-wa');if(el&&d)el.value=d;
+}
+function sendSpgRecapToMe(i){
+  const t=_SPG_RECAP_MSGS[i]||'';
+  const n=spgRecapWaNumber();
+  window.open('https://wa.me/'+n+'?text='+encodeURIComponent(t),'_blank','noopener');
+}
 function copySpgRecap(i){
   const t=_SPG_RECAP_MSGS[i]||'';
   const done=()=>{const b=document.getElementById('spg-recap-copy-'+i);if(b){const o=b.textContent;b.textContent='✓ Tersalin';setTimeout(()=>{b.textContent=o;},1500);}};
@@ -2227,8 +2240,21 @@ function spgRecapHtml(){
     return h;
   };
   const nY=R.yest.groups.reduce((s,g)=>s+g.people.length,0);
+  // One summary message with every area, meant to be sent to yourself (then forwarded as needed)
+  const allMsg=R.yest.groups.length
+    ?`🔔 *Rekap pagi SPG* — belum lapor ${R.yest.label} (${nY} orang)\n\n`+
+      R.yest.groups.map(g=>`*${g.area}* (${g.people.length})\n`+g.people.map((p,i)=>`${i+1}. ${p.name}`).join('\n')).join('\n\n')
+    :`🔔 *Rekap pagi SPG* — ${R.yest.label}\n✓ Semua SPG sudah lapor`;
+  const allIdx=_SPG_RECAP_MSGS.push(allMsg)-1;
+  const allBar=`<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 0 2px;padding:8px 10px;border-radius:8px;background:var(--card)">
+      <span style="font-size:11px;font-weight:800">Semua area sekaligus:</span>
+      <button class="btn" id="spg-recap-copy-${allIdx}" style="font-size:10px;padding:3px 9px" onclick="copySpgRecap(${allIdx})">📋 Salin rekap</button>
+      <button class="btn" style="font-size:10px;padding:3px 9px" onclick="sendSpgRecapToMe(${allIdx})">💬 Kirim ke saya</button>
+      <input id="spg-recap-wa" class="fi" placeholder="No. WA kamu (08…)" value="${_escHtml(spgRecapWaNumber())}" style="width:130px;font-size:10px" onchange="saveSpgRecapWaNumber(this.value)" title="Disimpan di perangkat ini supaya tombol langsung membuka chat ke nomor kamu">
+    </div>`;
   return`<div style="padding:10px 12px;border:1px solid var(--border2);border-radius:10px;margin-bottom:10px">
     <div style="font-size:13px;font-weight:800">🔔 Rekap pagi · belum lapor per area <span style="font-weight:500;color:var(--t3);font-size:10px">(${R.total} SPG dipantau · setiap hari, termasuk Minggu)</span></div>
+    ${allBar}
     ${block(`Kemarin — ${R.yest.label} (${nY} belum lapor)`,R.yest,true)}
     ${block(`Hari ini — ${R.today.label}`,R.today,false)}
   </div>`;
