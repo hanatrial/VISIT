@@ -2151,7 +2151,7 @@ function loadSpgRecent(force){
   db.collection('spg_daily_logs').where('timestamp','>=',from).get()
     .then(s=>{
       _spgRecent=[];
-      s.forEach(d=>{const v=d.data();if(v.timestamp)_spgRecent.push({...v,timestamp:v.timestamp.toDate()});});
+      s.forEach(d=>{const v=d.data();if(v.timestamp)_spgRecent.push({..._spgNormRow(v),timestamp:v.timestamp.toDate()});});
       _spgRecentAt=Date.now();
     })
     .catch(e=>{console.error('spg recent load FAILED',e.code,e.message);_spgRecent=[];_spgRecentAt=Date.now()-240000;})
@@ -2165,8 +2165,8 @@ function spgRecapData(){
   const mdsQ=(document.getElementById('f-mds')?.value||'').toLowerCase();
   const people={};
   const add=(n,a)=>{
-    n=String(n||'').trim();
-    if(!n||/\bevent\b/i.test(n))return null;
+    n=spgNameAlias(String(n||'').trim());
+    if(!n||/\bevent\b/i.test(n)||spgNameHidden(n))return null;
     const k=_spgKey(n);
     const p=people[k]||(people[k]={key:k,name:n,areas:{},days:{}});
     if(a)p.areas[a]=(p.areas[a]||0)+1;
@@ -2228,7 +2228,7 @@ function spgRecapHtml(){
   };
   const nY=R.yest.groups.reduce((s,g)=>s+g.people.length,0);
   return`<div style="padding:10px 12px;border:1px solid var(--border2);border-radius:10px;margin-bottom:10px">
-    <div style="font-size:13px;font-weight:800">🔔 Rekap pagi · belum lapor per area <span style="font-weight:500;color:var(--t3);font-size:10px">(${R.total} SPG dipantau Â· setiap hari, termasuk Minggu)</span></div>
+    <div style="font-size:13px;font-weight:800">🔔 Rekap pagi · belum lapor per area <span style="font-weight:500;color:var(--t3);font-size:10px">(${R.total} SPG dipantau · setiap hari, termasuk Minggu)</span></div>
     ${block(`Kemarin — ${R.yest.label} (${nY} belum lapor)`,R.yest,true)}
     ${block(`Hari ini — ${R.today.label}`,R.today,false)}
   </div>`;
