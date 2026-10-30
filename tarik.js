@@ -147,6 +147,11 @@ async function run(){
     const {call,order}=SheetMap.mapSheet(XLSX,wb);
     setStep(2,'done',nf(call.length)+' call · '+nf(order.length)+' order');bar(50);
 
+    // Simpan baris sheet per bulan ke simpanan gabungan (untuk gambar Okt-Nov). Dijalankan SEBELUM pengaman di bawah,
+    // supaya bulan baru yang barisnya masih sedikit tetap tersimpan. Gagal di sini tidak membatalkan tarikan.
+    let gabung=null,gabungErr=null;
+    try{gabung=await Gabung.mergeSheet({fsGet,fsPatch,fsDelete,call,order});}catch(e){console.warn('Simpanan gabungan gagal',e);gabungErr=e;}
+
     // pengaman: jangan timpa data bagus dengan hasil kosong / jauh lebih kecil
     if(call.length<100)throw new Error('Baris call terlalu sedikit ('+call.length+'). Penarikan dibatalkan, data lama aman.');
     if(before&&before.call&&call.length<before.call*0.5)throw new Error('Baris call turun drastis ('+nf(before.call)+' → '+nf(call.length)+'). Penarikan dibatalkan, data lama aman.');
@@ -194,14 +199,14 @@ async function run(){
       }
     }catch(e){console.warn('Insight dilewati',e);setStep(4,'fail','Dilewati: '+String(e.message||e).slice(0,80));}
     bar(100);
-    window.PJ_CACHE={call,order,at:nowIso};   // dipakai bagian gambar per area, tanpa unduh ulang
-
+    
     const dCall=before&&before.call!=null?call.length-before.call:null;
     const dOrder=before&&before.order!=null?order.length-before.order:null;
     const sign=n=>n==null?'':(n>=0?'+':'')+nf(n);
     $('res').className='result ok';
     $('res').innerHTML='<h2>✅ Data berhasil diupload</h2>'+
       '<p>Selesai pukul <b>'+fmtWita(nowIso)+'</b>. Dashboard sudah memakai data terbaru; buka ulang dashboard untuk melihatnya.</p>'+
+      (gabung?'<p>Simpanan gambar (Okt-Nov dst.): '+(gabung.written.length?'bulan <b>'+gabung.written.join(', ')+'</b> diperbarui':'tidak ada perubahan')+(gabung.kept.length?'; '+gabung.kept.join(', ')+' dipertahankan (sheet lebih sedikit)':'')+'.</p>':gabungErr?'<p>⚠️ Simpanan gambar gagal diperbarui: '+String(gabungErr.message||gabungErr).replace(/</g,'&lt;')+'. Tarik ulang.</p>':'')+
       '<div class="nums"><div><b>'+nf(call.length)+'</b><span>baris Call'+(dCall!=null?' ('+sign(dCall)+')':'')+'</span></div>'+
       '<div><b>'+nf(order.length)+'</b><span>baris Order'+(dOrder!=null?' ('+sign(dOrder)+')':'')+'</span></div></div>';
     await loadLast();

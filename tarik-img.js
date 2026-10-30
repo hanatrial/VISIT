@@ -21,10 +21,13 @@
     return PJ.names.find(n=>normName(n)===t)||null;
   }
   async function loadPJ(setMsg,metaAt){
-    // pakai data yang baru ditarik di halaman ini bila versinya sama dengan di cloud
-    if(window.PJ_CACHE&&(!metaAt||window.PJ_CACHE.at===metaAt)){PJ={call:window.PJ_CACHE.call,order:window.PJ_CACHE.order,at:window.PJ_CACHE.at};}
-    else if(!(PJ&&metaAt&&PJ.at===metaAt)){
+    // Sumber utama: simpanan gabungan per bulan (Okt + Nov + ...), bukan isi sheet saat ini saja.
+    if(!(PJ&&metaAt&&PJ.at===metaAt)){
       setMsg('Memuat data dari cloud…');
+      const g=await Gabung.loadAll({fsGet,onProgress:(i,n)=>setMsg('Memuat data gabungan dari cloud ('+i+'/'+n+')…')});
+      if(g){PJ={call:g.call,order:g.order,at:g.at,months:g.months};}
+      else{
+      // cadangan: simpanan gabungan belum ada -> pakai data tarikan terakhir seperti sebelumnya
       const meta=await fsGet('meta');
       if(!meta)throw new Error('Belum ada data Call/Order di cloud. Tarik data dulu.');
       const n=Number(meta.fields.chunkCount.integerValue||0);let full='';
@@ -34,6 +37,7 @@
       }
       const parsed=JSON.parse(full);
       PJ={call:parsed.call||[],order:parsed.order||[],at:meta.fields.updatedAt&&meta.fields.updatedAt.stringValue};
+      }
     }
     PJ.names=[...new Set(PJ.call.map(r=>r.NamaMDS).filter(Boolean))];
     try{
@@ -332,7 +336,7 @@
 
       // 1) cek versi data di cloud (1 bacaan kecil)
       let metaAt=null,online=true;
-      try{const m=await fsGet('meta');metaAt=m&&m.fields&&m.fields.updatedAt&&m.fields.updatedAt.stringValue;}catch(e){online=false;}
+      try{metaAt=await Gabung.metaAt(fsGet);if(!metaAt){const m=await fsGet('meta');metaAt=m&&m.fields&&m.fields.updatedAt&&m.fields.updatedAt.stringValue;}}catch(e){online=false;}
       if(stored&&(!online||(metaAt&&stored.at===metaAt))){
         $('imgNote').textContent=online?'✓ Data belum berubah sejak gambar ini dibuat ('+fmtWita(stored.time)+'). Tidak perlu dibuat ulang.'
                                       :'Tidak ada internet, memakai gambar tersimpan ('+fmtWita(stored.time)+').';

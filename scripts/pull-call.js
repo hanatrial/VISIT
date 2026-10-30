@@ -46,6 +46,12 @@ async function currentCounts(){
   const {call,order}=mapSheet(XLSX,wb);
   console.log(`Sheet: ${call.length} baris call, ${order.length} baris order`);
 
+  // Simpanan gabungan per bulan (gambar Okt-Nov): sebelum pengaman di bawah, agar bulan baru yang masih sedikit tetap tersimpan.
+  try{
+    const g=await require('./gabung.js').mergeSheet({fsGet,fsPatch,fsDelete,call,order});
+    console.log('Gabungan: diperbarui',g.written.join(',')||'-','| sama',g.same.join(',')||'-','| dipertahankan',g.kept.join(',')||'-');
+  }catch(e){console.warn('Simpanan gabungan gagal:',e.message);}
+
   // Pengaman: jangan timpa data bagus dengan hasil kosong / jauh lebih kecil.
   const cur=await currentCounts();
   if(cur)console.log(`Firestore sekarang: ${cur.call} call, ${cur.order} order`);

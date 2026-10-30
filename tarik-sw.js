@@ -1,7 +1,7 @@
 /* Service worker halaman Tarik Data: cache kecil agar aplikasi cepat dibuka / bisa dipasang,
    dan menangani klik notifikasi. Hanya menyentuh file milik halaman ini; halaman lain tidak diubah. */
-const CACHE='tarik-v2';
-const SHELL=['tarik.html','tarik.js','tarik-img.js','sekolah_db.js','scripts/sheet-map.js','tarik.webmanifest','tarik-icon-192.png','tarik-icon-512.png'];
+const CACHE='tarik-v3';
+const SHELL=['tarik.html','tarik.js','tarik-img.js','sekolah_db.js','scripts/sheet-map.js','scripts/gabung.js','tarik.webmanifest','tarik-icon-192.png','tarik-icon-512.png'];
 
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL).catch(()=>{})).then(()=>self.skipWaiting()));
