@@ -46,5 +46,27 @@
     }));
     return{call,order};
   }
-  return{toIso,mapSheet};
+  /* Gabungkan data lama di cloud dengan hasil tarikan Sheet. Sheet hanya memuat periode berjalan (isi lama dibersihkan tiap
+     ganti bulan), jadi menimpa penuh = data bulan lalu hilang. Aturan: baris Sheet SELALU dipakai penuh (Sheet = sumber
+     kebenaran untuk tanggal yang dicakupnya); baris lama hanya dipertahankan bila tanggalnya SEBELUM baris tertua di Sheet
+     dan bulannya masih dalam jendela keepMonths (default 2 = bulan berjalan + bulan lalu). Bulan mengikuti kolom "Bulan". */
+  function ymOf(r){
+    const t=Date.parse(r&&r.Tanggal);if(!isFinite(t)||!r.Bulan)return null;
+    const d=new Date(t+8*3600e3);let y=d.getUTCFullYear();const mo=d.getUTCMonth()+1;
+    if(r.Bulan-mo>6)y--;else if(mo-r.Bulan>6)y++;
+    return y*12+r.Bulan;
+  }
+  function mergeKeep(old,call,order,keepMonths){
+    keepMonths=keepMonths||2;
+    let latest=-1;call.concat(order).forEach(r=>{const y=ymOf(r);if(y!=null&&y>latest)latest=y;});
+    const from=latest-(keepMonths-1);
+    const part=(oldArr,newArr)=>{
+      let cut='9999';newArr.forEach(r=>{if(r.Tanggal&&r.Tanggal<cut)cut=r.Tanggal;});
+      const keep=latest<0?[]:(oldArr||[]).filter(r=>{const y=ymOf(r);return r.Tanggal&&r.Tanggal<cut&&y!=null&&y>=from;});
+      return{rows:keep.concat(newArr),kept:keep.length};
+    };
+    const c=part(old&&old.call,call),o=part(old&&old.order,order);
+    return{call:c.rows,order:o.rows,keptCall:c.kept,keptOrder:o.kept};
+  }
+  return{toIso,mapSheet,mergeKeep};
 });

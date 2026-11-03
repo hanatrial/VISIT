@@ -47,6 +47,15 @@ async function fsDelete(path){
 const intVal=f=>f&&f.integerValue!==undefined?Number(f.integerValue):null;
 
 /* ── info "terakhir diperbarui" ───────────────────────────────────────── */
+/* Data call/order yang sekarang ada di cloud (untuk digabung dengan Sheet; bulan lalu tidak ikut hilang). */
+async function loadOldPayload(before){
+  if(!before||!before.chunkCount)return null;
+  try{
+    let full='';
+    for(let i=0;i<before.chunkCount;i++){const d=await fsGet('chunk_'+i);full+=d&&d.fields?d.fields.data.stringValue:'';}
+    const o=JSON.parse(full);return o&&Array.isArray(o.call)?o:null;
+  }catch(e){console.warn('Data lama tidak terbaca, hanya memakai Sheet',e);return null;}
+}
 async function loadLast(){
   try{
     const m=await fsGet('meta');
@@ -144,8 +153,13 @@ async function run(){
     await ensureXlsx();await sleep(30);
     setStep(2,'on','Membaca sheet Call & Order…');await sleep(30);
     const wb=XLSX.read(bytes,{type:'array',sheets:['Call','Merchandise','Order']});
-    const {call,order}=SheetMap.mapSheet(XLSX,wb);
-    setStep(2,'done',nf(call.length)+' call · '+nf(order.length)+' order');bar(50);
+    const sheetData=SheetMap.mapSheet(XLSX,wb);
+    setStep(2,'on','Menggabungkan dengan data bulan lalu…');
+    const old=await loadOldPayload(before);
+    // Sheet hanya memuat periode berjalan: data bulan lalu di cloud dipertahankan, bukan ditimpa
+    const mg=SheetMap.mergeKeep(old,sheetData.call,sheetData.order);
+    const call=mg.call,order=mg.order;
+    setStep(2,'done',nf(sheetData.call.length)+' call · '+nf(sheetData.order.length)+' order dari Sheet'+(mg.keptCall?' + '+nf(mg.keptCall)+' call bulan lalu':''));bar(50);
 
     // pengaman: jangan timpa data bagus dengan hasil kosong / jauh lebih kecil
     if(call.length<100)throw new Error('Baris call terlalu sedikit ('+call.length+'). Penarikan dibatalkan, data lama aman.');

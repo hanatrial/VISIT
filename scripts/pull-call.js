@@ -4,7 +4,7 @@
    Pemetaan data ada di scripts/sheet-map.js (dipakai bersama halaman tarik.html).
    Pakai: node scripts/pull-call.js [--dry]   (--dry = hanya baca & cek, tidak menulis) */
 const XLSX=require('xlsx');
-const {mapSheet}=require('./sheet-map.js');
+const {mapSheet,mergeKeep}=require('./sheet-map.js');
 const SHEET_ID='18659aHA0dQiBW-dRd616uOuujYoABeo7l1d2AeUXvsU';
 const FS_PROJECT='mds-sulawesi', FS_KEY='AIzaSyCA8Q8athqYIsY3By5wPxcU97GjDBR6DAs';
 const COLLECTION='pjmds_data';
@@ -32,7 +32,7 @@ async function currentCounts(){
     const meta=await fsGet('meta');if(!meta)return null;
     const n=Number(meta.fields.chunkCount.integerValue||0);let full='';
     for(let i=0;i<n;i++){const d=await fsGet('chunk_'+i);full+=d?d.fields.data.stringValue:'';}
-    const cur=JSON.parse(full);return{call:cur.call.length,order:cur.order.length,chunkCount:n};
+    const cur=JSON.parse(full);return{call:cur.call.length,order:cur.order.length,chunkCount:n,data:cur};
   }catch(e){console.warn('Tidak bisa membaca data lama:',e.message);return null;}
 }
 
@@ -43,12 +43,16 @@ async function currentCounts(){
   const buf=Buffer.from(await res.arrayBuffer());
   console.log('Diunduh',(buf.length/1024/1024).toFixed(1),'MB');
   const wb=XLSX.read(buf,{type:'buffer',sheets:['Call','Order']});
-  const {call,order}=mapSheet(XLSX,wb);
-  console.log(`Sheet: ${call.length} baris call, ${order.length} baris order`);
+  const sheet=mapSheet(XLSX,wb);
+  console.log(`Sheet: ${sheet.call.length} baris call, ${sheet.order.length} baris order`);
 
   // Pengaman: jangan timpa data bagus dengan hasil kosong / jauh lebih kecil.
   const cur=await currentCounts();
   if(cur)console.log(`Firestore sekarang: ${cur.call} call, ${cur.order} order`);
+  // Sheet hanya memuat periode berjalan (dibersihkan tiap ganti bulan): data bulan lalu di cloud DIPERTAHANKAN, bukan ditimpa.
+  const mg=mergeKeep(cur&&cur.data,sheet.call,sheet.order);
+  const call=mg.call,order=mg.order;
+  console.log(`Gabung: ${call.length} call (${mg.keptCall} dari data lama + ${sheet.call.length} dari Sheet), ${order.length} order (${mg.keptOrder} lama + ${sheet.order.length} Sheet)`);
   if(call.length<100)throw new Error('Baris call terlalu sedikit ('+call.length+'), dibatalkan.');
   if(cur&&call.length<cur.call*0.5)throw new Error(`Baris call turun drastis (${cur.call} -> ${call.length}), dibatalkan.`);
   if(cur&&order.length<cur.order*0.5)throw new Error(`Baris order turun drastis (${cur.order} -> ${order.length}), dibatalkan.`);
