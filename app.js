@@ -26109,21 +26109,14 @@ function shareSpgWhatsApp(){
     const isAso=SG.area==='Manado'||SG.area==='Gorontalo';
     const prioMatch=name=>isAso?name.includes('AMERICAN SWEET ORANGE'):name.includes('JERUK PERAS');
     const entries=Object.entries(SG.items);
-    const isPrio=name=>_SPG_IG_SP_PRIO_SET.has(name);
-    const prioEntries=entries.filter(([name])=>isPrio(name)).sort((a,b)=>SPG_IG_SP_PRIORITY_ITEMS.indexOf(a[0])-SPG_IG_SP_PRIORITY_ITEMS.indexOf(b[0]));
     const nsAll=entries.filter(([name])=>spgGroupOf(name)==='NS'&&name.includes('PLS'));
-    const nsTea=nsAll.filter(([name])=>name.includes('TEA')&&!isPrio(name));
-    const nsRasa=nsAll.filter(([name])=>!name.includes('TEA')&&!prioMatch(name)&&!isPrio(name));
-    const hiloAll=entries.filter(([name])=>{ const g=spgGroupOf(name); return (g==='HILO DRINK PLS'||g==='HILO SCHOOL PLS')&&!isPrio(name); });
-    const used=new Set([...prioEntries,...nsTea,...nsRasa,...hiloAll].map(([name])=>name));
+    const nsTea=nsAll.filter(([name])=>name.includes('TEA'));
+    const nsRasa=nsAll.filter(([name])=>!name.includes('TEA')&&!prioMatch(name));
+    const hiloAll=entries.filter(([name])=>{ const g=spgGroupOf(name); return g==='HILO DRINK PLS'||g==='HILO SCHOOL PLS'; });
+    const used=new Set([...nsTea,...nsRasa,...hiloAll].map(([name])=>name));
     const lainEntries=entries.filter(([name])=>!used.has(name)&&!name.includes('PLS'));
     const sumQty=arr=>arr.reduce((s,[,{qty}])=>s+qty,0);
     const sumOmz=arr=>arr.reduce((s,[,{omzet}])=>s+omzet,0);
-    if(prioEntries.length){
-      text+='⭐ *PRIORITAS*\n   '+sumQty(prioEntries)+' rc = Rp '+sumOmz(prioEntries).toLocaleString('id-ID')+'\n';
-      prioEntries.forEach(([name,{qty,omzet}])=>{ text+=spgItemLine(name,qty,omzet); });
-      text+='─────────────────\n';
-    }
     if(nsAll.length){
       text+='🍊 *ALL NS*\n   '+sumQty(nsAll)+' rc = Rp '+sumOmz(nsAll).toLocaleString('id-ID')+'\n';
       text+='─────────────────\n';
