@@ -257,7 +257,9 @@ function buildArea(A,live,stat,db,o){
   }
   for(const k of Object.keys(roAdd))if(roBaseSet[k])delete roAdd[k];
   const ro3={min:3,month:cmpCm,baseMonths:roBase,exclude:['Jeruk Peras','ASO'],base:Object.keys(roBaseSet).length,add:Object.keys(roAdd).length};
-  const covered={};call.forEach(r=>{(covered[r.Provinsi]=covered[r.Provinsi]||{})[kabKey(r.Kabupaten)]=1;});
+  // Kabupaten "pernah dikunjungi" = dari SEMUA bulan yang ada (sheet + database), bukan hanya bulan berjalan. Kalau hanya bulan berjalan,
+  // di awal bulan hampir semua kabupaten tampil abu-abu di KEDUA peta karena belum sempat dikunjungi.
+  const covered={};all.call.forEach(r=>{(covered[r.Provinsi]=covered[r.Provinsi]||{})[kabKey(r.Kabupaten)]=1;});
 
   const P={mds:{},titik:[],kec:statProv.map(k=>({...k})),label:A.key,pic:A.pic,prov,cm:cmpCm,pm:cmpPm,dbMonths};
   for(const c of Object.values(heat)){
