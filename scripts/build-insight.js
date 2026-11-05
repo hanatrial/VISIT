@@ -12,7 +12,7 @@ const SHEET_ID='18659aHA0dQiBW-dRd616uOuujYoABeo7l1d2AeUXvsU';
    Beberapa area boleh berbagi provinsi (batas kecamatan & potensi dipakai bersama), tetapi data, titik,
    perbandingan bulan, dan database tiap PIC dihitung terpisah. Kunci area = teks tab. */
 const AREAS=[
-  {key:'Sulawesi Selatan',pic:'Muhammad Imadur',prov:'Sulawesi Selatan'},
+  {key:'Sulawesi Selatan',pic:'Muhammad Imadur',prov:'Sulawesi Selatan',uncovered:['Sinjai']},   // uncovered = kabupaten yang selalu abu-abu di tab ini
   {key:'Gorontalo',pic:'Muhammad Imadur',prov:'Gorontalo'},
   {key:'Bone, Soppeng, Wajo',pic:'Hibatullah Suryawafi',prov:'Sulawesi Selatan'}
 ];
@@ -260,6 +260,7 @@ function buildArea(A,live,stat,db,o){
   // Kabupaten "pernah dikunjungi" = dari SEMUA bulan yang ada (sheet + database), bukan hanya bulan berjalan. Kalau hanya bulan berjalan,
   // di awal bulan hampir semua kabupaten tampil abu-abu di KEDUA peta karena belum sempat dikunjungi.
   const covered={};all.call.forEach(r=>{(covered[r.Provinsi]=covered[r.Provinsi]||{})[kabKey(r.Kabupaten)]=1;});
+  (A.uncovered||[]).forEach(n=>{if(covered[prov])delete covered[prov][kabKey(n)];});   // mis. Sinjai: bukan wilayah MDS tab ini
 
   const P={mds:{},titik:[],kec:statProv.map(k=>({...k})),label:A.key,pic:A.pic,prov,cm:cmpCm,pm:cmpPm,dbMonths};
   for(const c of Object.values(heat)){
@@ -268,7 +269,7 @@ function buildArea(A,live,stat,db,o){
     m.n++;c.g.forEach(gi=>m.ada[gi]++);
   }
   for(const k of Object.keys(P.mds))if(P.mds[k].n<10)delete P.mds[k];
-  // MDS yang aktif di bulan lalu (>= 10 visit transaksi) tetap tampil walau bulan berjalan belum ada / masih sedikit (awal bulan).
+  // SEMUA MDS yang punya visit transaksi di bulan lalu tetap tampil walau bulan berjalan belum ada / masih sedikit (awal bulan).
   // Bulan berjalan-nya n=0: tabel heatmap menampilkan '-', titik dan peta bulan lalu tetap muncul.
   if(cmpPm){
     const pv={};
@@ -276,7 +277,7 @@ function buildArea(A,live,stat,db,o){
       if(!(r.Value>0)||r.Brand==='BONUS'||r.Provinsi!==prov||!r['ID Call'])continue;
       (pv[r['Nama MDS']]=pv[r['Nama MDS']]||new Set()).add(r['ID Call']);
     }
-    for(const [nm,set] of Object.entries(pv))if(set.size>=10&&!P.mds[nm])P.mds[nm]={n:0,ada:FOKUS.map(()=>0)};
+    for(const [nm,set] of Object.entries(pv))if(set.size>=1&&!P.mds[nm])P.mds[nm]={n:0,ada:FOKUS.map(()=>0)};
   }
 
   // titik = toko unik yang AV-nya pernah diinput (sheet Merchandise), koordinat check-in terbaru
