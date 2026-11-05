@@ -150,7 +150,7 @@ function renderHeat(pi){
   if(M.sel){renderHeatKec(pi);return;}
   const cols=colsOf(M);
   let h='<table class="hm"><colgroup><col style="width:165px"></colgroup><thead><tr>'+grpHead(cols)+'</tr><tr><th class="r2">MDS</th>'+cols.map(i=>'<th class="c2">'+esc(D.fokus[i])+'</th>').join('')+'</tr></thead><tbody>';
-  names.forEach(n=>{const m=P.mds[n];h+='<tr><th class="r">'+esc(n.toUpperCase())+' <span class="n">('+m.n+')</span></th>'+cols.map(i=>{const a=m.ada[i],p=a/m.n;return '<td style="'+hc(p,i)+'" title="'+esc(D.fokus[i])+': '+a+' dari '+m.n+' visit">'+Math.round(p*100)+'%</td>';}).join('')+'</tr>';});
+  names.forEach(n=>{const m=P.mds[n];h+='<tr><th class="r">'+esc(n.toUpperCase())+' <span class="n">('+m.n+')</span></th>'+cols.map(i=>{if(!m.n)return '<td class="t" title="Belum ada visit transaksi bulan ini">-</td>';const a=m.ada[i],p=a/m.n;return '<td style="'+hc(p,i)+'" title="'+esc(D.fokus[i])+': '+a+' dari '+m.n+' visit">'+Math.round(p*100)+'%</td>';}).join('')+'</tr>';});
   if(!M.sel){const N=names.reduce((a,n)=>a+P.mds[n].n,0);h+='<tr class="tot"><th class="r">'+esc(M.prov.toUpperCase())+'</th>'+cols.map(i=>'<td class="t">'+Math.round(100*names.reduce((a,n)=>a+P.mds[n].ada[i],0)/N)+'%</td>').join('')+'</tr>';}
   document.getElementById('hm'+pi).innerHTML=h+'</tbody></table>';
 }
@@ -167,7 +167,7 @@ function renderHeatKec(pi){
   rows.forEach(r=>{h+='<tr><th class="r">'+esc(r.k.n.toUpperCase())+' <span class="n">'+esc(r.k.kab)+' ('+r.a[0]+')</span></th>'+cell(r.a.slice(1),r.a[0],r.k.n)+'</tr>';});
   if(rest[0])h+='<tr><th class="r">LAINNYA <span class="n">(kecamatan &lt;3 visit / tanpa lokasi) ('+rest[0]+')</span></th>'+cell(rest.slice(1),rest[0],'lainnya')+'</tr>';
   const m=P.mds[M.sel];
-  h+='<tr class="tot"><th class="r">'+esc(M.sel.toUpperCase())+' <span class="n">('+m.n+')</span></th>'+cols.map(i=>'<td class="t">'+Math.round(100*m.ada[i]/m.n)+'%</td>').join('')+'</tr>';
+  h+='<tr class="tot"><th class="r">'+esc(M.sel.toUpperCase())+' <span class="n">('+m.n+')</span></th>'+cols.map(i=>'<td class="t">'+(m.n?Math.round(100*m.ada[i]/m.n)+'%':'-')+'</td>').join('')+'</tr>';
   document.getElementById('hm'+pi).innerHTML=h+'</tbody></table>';
 }
 function mlab(m){if(!m)return '-';const p=m.split('-');return BLN[+p[1]-1]+' '+p[0];}

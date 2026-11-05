@@ -268,6 +268,16 @@ function buildArea(A,live,stat,db,o){
     m.n++;c.g.forEach(gi=>m.ada[gi]++);
   }
   for(const k of Object.keys(P.mds))if(P.mds[k].n<10)delete P.mds[k];
+  // MDS yang aktif di bulan lalu (>= 10 visit transaksi) tetap tampil walau bulan berjalan belum ada / masih sedikit (awal bulan).
+  // Bulan berjalan-nya n=0: tabel heatmap menampilkan '-', titik dan peta bulan lalu tetap muncul.
+  if(cmpPm){
+    const pv={};
+    for(const r of inM(all.ord,cmpPm)){
+      if(!(r.Value>0)||r.Brand==='BONUS'||r.Provinsi!==prov||!r['ID Call'])continue;
+      (pv[r['Nama MDS']]=pv[r['Nama MDS']]||new Set()).add(r['ID Call']);
+    }
+    for(const [nm,set] of Object.entries(pv))if(set.size>=10&&!P.mds[nm])P.mds[nm]={n:0,ada:FOKUS.map(()=>0)};
+  }
 
   // titik = toko unik yang AV-nya pernah diinput (sheet Merchandise), koordinat check-in terbaru
   const tx={};
