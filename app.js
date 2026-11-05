@@ -26045,66 +26045,13 @@ function spgItemLine(name,qty,omzet){
 }
 function shareSpgWhatsApp(){
   const tgl=spgDateLabel(SG.date);
-  const isSinarPlastik=spgIsSinarPlastikTemplate(SG.store);
-  const isIndogrosir=!isSinarPlastik&&/indogrosir/i.test(SG.store);
+  // Indogrosir, Sinar Plastik 3, dan Surya Indah Amir memakai format yang sama (3 format: ini, Nur Azizah Bone, umum)
+  const isIndogrosir=/indogrosir/i.test(SG.store)||spgIsSinarPlastikTemplate(SG.store);
   let text='*REPORT HARIAN SPG*\n';
   text+='📅 '+tgl+'\n';
   text+='👤 '+SG.nama+'\n';
   text+='🏪 '+SG.store+' ('+SG.area+')\n';
   text+='─────────────────\n';
-  if(isSinarPlastik){
-    const prioMatch=name=>name.includes('JERUK PERAS')&&!name.includes('BAG');
-    const nsBagNames=new Set(['NS JERUK PERAS REF 12BAGX500G','NS PREMIUM JUS MANGGA REF PLS 12BAGX420G','NS LYCHEE TEA REF PLS 12BAGX400G']);
-    const entries=Object.entries(SG.items);
-    const isPrio=name=>_SPG_IG_SP_PRIO_SET.has(name);
-    const prioEntries=entries.filter(([name])=>isPrio(name)).sort((a,b)=>SPG_IG_SP_PRIORITY_ITEMS.indexOf(a[0])-SPG_IG_SP_PRIORITY_ITEMS.indexOf(b[0]));
-    const nsAll=entries.filter(([name])=>(spgGroupOf(name)==='NS'&&name.includes('PLS')&&!nsBagNames.has(name))||nsBagNames.has(name));
-    const nsTea=nsAll.filter(([name])=>name.includes('TEA')&&!nsBagNames.has(name)&&!isPrio(name));
-    const nsBag=nsAll.filter(([name])=>nsBagNames.has(name));
-    const nsRasa=nsAll.filter(([name])=>!nsBagNames.has(name)&&!name.includes('TEA')&&!prioMatch(name)&&!isPrio(name));
-    const hiloAll=entries.filter(([name])=>{ const g=spgGroupOf(name); return (g==='HILO DRINK PLS'||g==='HILO SCHOOL PLS')&&!isPrio(name); });
-    const used=new Set([...prioEntries,...nsTea,...nsRasa,...nsBag,...hiloAll].map(([name])=>name));
-    const lainEntries=entries.filter(([name])=>!used.has(name));
-    const sumQty=arr=>arr.reduce((s,[,{qty}])=>s+qty,0);
-    const sumOmz=arr=>arr.reduce((s,[,{omzet}])=>s+omzet,0);
-    if(prioEntries.length){
-      text+='⭐ *PRIORITAS*\n   '+sumQty(prioEntries)+' rc = Rp '+sumOmz(prioEntries).toLocaleString('id-ID')+'\n';
-      prioEntries.forEach(([name,{qty,omzet}])=>{ text+=spgItemLine(name,qty,omzet); });
-      text+='─────────────────\n';
-    }
-    if(nsAll.length){
-      text+='🍊 *ALL NS*\n   '+sumQty(nsAll)+' rc = Rp '+sumOmz(nsAll).toLocaleString('id-ID')+'\n';
-      text+='─────────────────\n';
-    }
-    if(nsTea.length){
-      text+='🍵 *NS TEA*\n   '+sumQty(nsTea)+' rc = Rp '+sumOmz(nsTea).toLocaleString('id-ID')+'\n';
-      nsTea.forEach(([name,{qty,omzet}])=>{ text+=spgItemLine(name,qty,omzet); });
-      text+='─────────────────\n';
-    }
-    if(nsRasa.length){
-      text+='🍹 *NS RASA-RASA*\n   '+sumQty(nsRasa)+' rc = Rp '+sumOmz(nsRasa).toLocaleString('id-ID')+'\n';
-      nsRasa.forEach(([name,{qty,omzet}])=>{ text+=spgItemLine(name,qty,omzet); });
-      text+='─────────────────\n';
-    }
-    if(nsBag.length){
-      text+='📦 *NS BAG*\n   '+sumQty(nsBag)+' rc = Rp '+sumOmz(nsBag).toLocaleString('id-ID')+'\n';
-      nsBag.forEach(([name,{qty,omzet}])=>{ text+=spgItemLine(name,qty,omzet); });
-      text+='─────────────────\n';
-    }
-    if(hiloAll.length){
-      text+='🥛 *HI LO*\n   '+sumQty(hiloAll)+' rc = Rp '+sumOmz(hiloAll).toLocaleString('id-ID')+'\n';
-      hiloAll.forEach(([name,{qty,omzet}])=>{ text+=spgItemLine(name,qty,omzet); });
-      text+='─────────────────\n';
-    }
-    if(lainEntries.length){
-      text+='*ITEM LAINNYA*\n';
-      lainEntries.forEach(([name,{qty,omzet}])=>{ text+=spgItemLine(name,qty,omzet); });
-      text+='─────────────────\n';
-    }
-    text+='*TOTAL OMZET: Rp '+SG.total.toLocaleString('id-ID')+'*';
-    location.href='https://wa.me/?text='+encodeURIComponent(text);
-    return;
-  }
   if(isIndogrosir){
     const isAso=SG.area==='Manado'||SG.area==='Gorontalo';
     const prioMatch=name=>isAso?name.includes('AMERICAN SWEET ORANGE'):name.includes('JERUK PERAS');
