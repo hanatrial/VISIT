@@ -26045,8 +26045,9 @@ function spgItemLine(name,qty,omzet){
 }
 function shareSpgWhatsApp(){
   const tgl=spgDateLabel(SG.date);
-  // Indogrosir, Sinar Plastik 3, dan Surya Indah Amir memakai format yang sama (3 format: ini, Nur Azizah Bone, umum)
-  const isIndogrosir=/indogrosir/i.test(SG.store)||spgIsSinarPlastikTemplate(SG.store);
+  // 3 format: (1) Indogrosir + Sinar Plastik 3, (2) Nur Azizah Bone + Surya Indah Amir, (3) umum
+  const isSuryaIndah=/^surya indah amir$/i.test((SG.store||'').trim());
+  const isIndogrosir=/indogrosir/i.test(SG.store)||(spgIsSinarPlastikTemplate(SG.store)&&!isSuryaIndah);
   let text='*REPORT HARIAN SPG*\n';
   text+='📅 '+tgl+'\n';
   text+='👤 '+SG.nama+'\n';
@@ -26100,7 +26101,7 @@ function shareSpgWhatsApp(){
     location.href='https://wa.me/?text='+encodeURIComponent(text);
     return;
   }
-  const spgDetailItem=/nur azizah/i.test(SG.nama||'')&&/^bone$/i.test((SG.area||'').trim()); // format rinci per item + satuan pcs/qty: khusus SPG Nur Azizah (area Bone)
+  const spgDetailItem=isSuryaIndah||(/nur azizah/i.test(SG.nama||'')&&/^bone$/i.test((SG.area||'').trim())); // format rinci per item + satuan rcg/pcs: SPG Nur Azizah (area Bone) dan toko Surya Indah Amir
   if(spgDetailItem){ // dipisah 2: POLOS (nama ada PLS) dan NON POLOS (sisanya)
     const ents=Object.entries(SG.items);
     const polos=ents.filter(([name])=>/PLS/i.test(name));
