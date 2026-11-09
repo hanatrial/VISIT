@@ -26066,6 +26066,8 @@ function shareSpgWhatsApp(){
     const sumOmz=arr=>arr.reduce((s,[,{omzet}])=>s+omzet,0);
     if(nsAll.length){
       text+='🍊 *ALL NS*\n   '+sumQty(nsAll)+' rcg = Rp '+sumOmz(nsAll).toLocaleString('id-ID')+'\n';
+      // item prioritas (Jeruk Peras / American Sweet Orange) tidak masuk NS Tea maupun NS Rasa-rasa, jadi dirinci di sini supaya tidak hilang
+      nsAll.filter(([name])=>prioMatch(name)).forEach(([name,{qty,omzet}])=>{ text+=spgItemLine(name,qty,omzet); });
       text+='─────────────────\n';
     }
     if(nsTea.length){
